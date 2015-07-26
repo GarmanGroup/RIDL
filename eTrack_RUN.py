@@ -4,20 +4,19 @@ Created on Tue Jan 13 22:23:09 2015
 
 @author: charlie
 """
-from convert_maps2pkldobjectlists import maps2pkldobjs
+from convertmaps2PkldObjLists import maps2pkldobjs
 from savevariables import retrieve_objectlist,save_objectlist
-from PDBfile_manipulation import multiARRAY_diffatomnumbers
-from topdamagehits import topNdamsites_resibarplotter,topNdamsites_chainbarplotter,topNdamsites_printer
+from PDBFileManipulation import multiARRAY_diffatomnumbers
+from topDamageHits import topNdamsites_resibarplotter,topNdamsites_chainbarplotter,topNdamsites_printer
 import os
-from PDBmulti2txt import objlist2txt
-from find_metricchange import find_Bchange
-from PDBfile_manipulation import PDBtoCLASSARRAY_v2 as pdb2list
-from bdam import numsurroundatoms_calculate,bdamage_calculate,numsurroundatms_extract
-from bdamchange_vs_atomnum import bdamBfac_change_v_atomnum,bdamchange_v_atomnum
-from densityanalysisplots import numneighbours_scatter
+from PDBMulti2Txt import objlist2txt
+from findMetricChange import find_Bchange
+from PDBFileManipulation import PDBtoCLASSARRAY_v2 as pdb2list
+from BDamageCalculator import numsurroundatoms_calculate,bdamage_calculate,numsurroundatms_extract
+from BDamChangeVsAtomnum import bdamBfac_change_v_atomnum,bdamchange_v_atomnum
+from densityAnalysisPlots import numneighbours_scatter
 import shutil
  
-
 ########################################################################
 #                      master file for eTrack                          #
 ########################################################################
