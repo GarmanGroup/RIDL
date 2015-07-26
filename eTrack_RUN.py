@@ -104,14 +104,14 @@ class eTrack(object):
 
 		initialPDBlist = pdb2list(self.where+self.initialPDB,[])
 
-		# # determine the number of surrounding atoms for each atom in structure
-		# numsurroundatoms_calculate(self.where+self.initialPDB,initialPDBlist,10)
+		# determine the number of surrounding atoms for each atom in structure
+		numsurroundatoms_calculate(self.where+self.initialPDB,initialPDBlist,10)
 
-		# # plot a scatter plot of # neighbouring atoms vs protons
-		# numneighbours_scatter(self.where,initialPDBlist,self.seriesname)
+		# plot a scatter plot of # neighbouring atoms vs protons
+		numneighbours_scatter(self.where,initialPDBlist,self.seriesname)
 
-		# # determine Bdamage metric for initial PDB structure
-		# bdamage_calculate(initialPDBlist)
+		# determine Bdamage metric for initial PDB structure
+		bdamage_calculate(initialPDBlist)
 
 		# retrieve object lists of atoms for each damage set
 		print '•••••••••••••••••••••••••••••••'
@@ -121,12 +121,12 @@ class eTrack(object):
 			print '\nDamage file number {}:'.format(len(data_list)+1)
 			PDB_ret = retrieve_objectlist(pkl_filename)
 
-			# # extract number of surrounding atoms for each atom in later structure
-			# # from initial structure
-			# numsurroundatms_extract(initialPDBlist,PDB_ret)
+			# extract number of surrounding atoms for each atom in later structure
+			# from initial structure
+			numsurroundatms_extract(initialPDBlist,PDB_ret)
 
-			# # determine Bdamage metric for later PDB structures
-			# bdamage_calculate(PDB_ret)
+			# determine Bdamage metric for later PDB structures
+			bdamage_calculate(PDB_ret)
 
 			# add new retrieved damage set list to data_list
 			data_list.append(PDB_ret)
@@ -138,8 +138,8 @@ class eTrack(object):
 		# determine Bfactor change between later datasets and initial 
 		find_Bchange(initialPDBlist,self.PDBmulti,'Bfactor')
 
-		# # determine Bdamage change between later datasets and initial 
-		# find_Bchange(initialPDBlist,self.PDBmulti,'Bdamage')
+		# determine Bdamage change between later datasets and initial 
+		find_Bchange(initialPDBlist,self.PDBmulti,'Bdamage')
 
 		# write atom numbers and density metrics to simple text files - one for 
 		# each density metric separately
