@@ -4,7 +4,7 @@ Created on Tue Jan 13 22:23:09 2015
 
 @author: charlie
 """
-from convertmaps2PkldObjLists import maps2pkldobjs
+from convertMaps2PkldObjLists import maps2pkldobjs
 from savevariables import retrieve_objectlist,save_objectlist
 from PDBFileManipulation import multiARRAY_diffatomnumbers
 from topDamageHits import topNdamsites_resibarplotter,topNdamsites_chainbarplotter,topNdamsites_printer
