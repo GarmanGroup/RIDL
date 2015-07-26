@@ -149,7 +149,6 @@ def Npercentmostdamaged(var,PDBarray,percent):
 ###############################################################################
     
 
-
 ###############################################################################
 def bfac_scatter(pdbfilename,PDBarray,mainorside,restypes,atomtypes,densmet,bmet):
     ##simply plots scatter plot of two numerical attributes of atom objects of StructurePDB class

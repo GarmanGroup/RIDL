@@ -5,7 +5,7 @@ Created on Wed Jan  7 00:14:01 2015
 @author: charlie
 """
 import struct
-from classholder_v2 import electron_map_info
+from classHolder import electron_map_info
 import os
 import sys
 
