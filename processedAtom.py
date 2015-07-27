@@ -3,6 +3,7 @@
 
 from classHolder import multiPDB
 from scipy import stats
+from numpy import np
 
 class processedAtom(multiPDB):
 	# A subclass extension for a collection of multiple different dose pdb file structures as defined by the multiPDB class. This class adds additonal 
@@ -16,23 +17,24 @@ class processedAtom(multiPDB):
 				 min95tile=[],max95tile=[],modedensity=[],rsddensity=[],dipstat=[],rangedensity=[]):
 
 		super(processedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,
-											X_coord,Y_coord,Z_coord,atomidentifier,numsurroundatoms,
-											numsurroundprotons,bdam,bdamchange,Bfactorchange,
-											meandensity_norm,maxdensity_norm,mindensity_norm,
-											mediandensity_norm,numvoxels,stddensity,min90tile,
-											max90tile,min95tile,max95tile,modedensity,rsddensity,
-											dipstat,rangedensity)   
+								X_coord,Y_coord,Z_coord,atomidentifier,numsurroundatoms,
+								numsurroundprotons,bdam,bdamchange,Bfactorchange,
+								meandensity_norm,maxdensity_norm,mindensity_norm,
+								mediandensity_norm,numvoxels,stddensity,min90tile,
+								max90tile,min95tile,max95tile,modedensity,rsddensity,
+								dipstat,rangedensity)   
+
+
+	def cloneInfo(self,atom):
+		# clone the information from a specific PDBmulti atom to a 
+		# new processedAtom
+		self.__dict__ = atom.__dict__.copy()
 
 		# these attributes are dictionaries and will contain values for multiple
 		# variations of the density change metrics
 		self.maxDensLoss	= {}     
 		self.maxDensGain	= {}
 		self.meanDensChange	= {}
-
-	def cloneInfo(self,atom):
-		# clone the information from a specific PDBmulti atom to a 
-		# new processedAtom
-		self.__dict__ = atom.__dict__.copy()
 
 		self.maxDensLoss['Standard']	= self.mindensity     
 		self.maxDensGain['Standard']	= self.maxdensity
@@ -92,9 +94,9 @@ class processedAtom(multiPDB):
 			print 'Calpha weights not yet calculated.. need to calculate first, see CalphaWeight class'
 			return
 
-		self.maxDensLoss['Calpha normalised'] 		= list(np.divide(self.self.maxDensLoss['Standard'],CalphaWeights.weight_MaxDensLoss))
-		self.maxDensGain['Calpha normalised'] 		= list(np.divide(self.self.maxDensGain['Standard'],CalphaWeights.weight_MaxDensGain))
-		self.meanDensChange['Calpha normalised'] 	= list(np.divide(self.self.meanDensChange['Standard'],CalphaWeights.weight_MeanDensChange))
+		self.maxDensLoss['Calpha normalised'] 		= list(np.divide(self.maxDensLoss['Standard'],CalphaWeights.weight_MaxDensLoss))
+		self.maxDensGain['Calpha normalised'] 		= list(np.divide(self.maxDensGain['Standard'],CalphaWeights.weight_MaxDensGain))
+		self.meanDensChange['Calpha normalised'] 	= list(np.divide(self.meanDensChange['Standard'],CalphaWeights.weight_MeanDensChange))
 
 
 
