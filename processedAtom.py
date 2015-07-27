@@ -49,7 +49,7 @@ class processedAtom(multiPDB):
 
 		# calculate lin reg for max dens loss metric
 		self.maxDensLoss['lin reg'] = {}
-		y = np.array(atom.mindensity[0:numDatasets-1])
+		y = np.array(self.mindensity[0:numDatasets-1])
 		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
 
 		self.maxDensLoss['lin reg']['slope'] 		= slope
@@ -60,7 +60,7 @@ class processedAtom(multiPDB):
 
 		# calculate lin reg for max dens gain metric
 		self.maxDensGain['lin reg'] = {}
-		y = np.array(atom.maxdensity[0:numDatasets-1])
+		y = np.array(self.maxdensity[0:numDatasets-1])
 		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
 
 		self.maxDensGain['lin reg']['slope'] 		= slope
@@ -71,7 +71,7 @@ class processedAtom(multiPDB):
 
 		# calculate lin reg for mean dens change metric
 		self.meanDensChange['lin reg'] = {}
-		y = np.array(atom.meandensity[0:numDatasets-1])
+		y = np.array(self.meandensity[0:numDatasets-1])
 		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
 
 		self.meanDensChange['lin reg']['slope'] 	= slope
