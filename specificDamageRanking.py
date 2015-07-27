@@ -6,10 +6,11 @@ import numpy as np
 from scipy import stats
 
 class specificDamageRank(object):
-	def __init__(self, residueName = "", damageRank = 0 , maxDensLossSlope = 0,
-				 slopeError = 0):
+	def __init__(self, residueName = "", atomType = "", damageRank = 0 ,
+				 maxDensLossSlope = 0, slopeError = 0):
 
 		self.residueName 		= residueName
+		self.atomType			= atomType
 		self.damageRank 		= damageRank
 		self.maxDensLossSlope 	= maxDensLossSlope
 		self.slopeError			= slopeError
@@ -28,20 +29,22 @@ class specificDamageRanking(object):
 
 		residueDict = {}
 		for atom in self.PDBmulti:
-			if atom.basetype not in residueDict.keys():
-				residueDict[atom.basetype]['slope'] = []
-				residueDict[atom.basetype]['std_err'] = []
+			indentifier = "{} {}".format(atom.basetype,atom.atomtype)
+			if indentifier not in residueDict.keys():
+				residueDict[indentifier] = {}
+				residueDict[indentifier]['slope'] = []
+				residueDict[indentifier]['std_err'] = []
 
 			y = np.array(atom.mindensity[0:p-1])
 			x = np.array(range(2,p+1))
 			slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
-			residueDict[atom.basetype]['slope'].append(slope)
-			residueDict[atom.basetype]['std_err'].append(std_err)
+			residueDict[indentifier]['slope'].append(slope)
+			residueDict[indentifier]['std_err'].append(std_err)
 
 		# calculate the average straight line slope for each residue/nucleotide type
 		specificDamageRanks = []
 		for key in residueDict.keys():
-			damageStats = specificDamageRank(key)
+			damageStats = specificDamageRank(key.split()[0],key.split()[1])
 			damageStats.maxDensLossSlope = np.mean(residueDict[key]['slope'])
 			damageStats.slopeError = np.std(residueDict[key]['slope'])
 			specificDamageRanks.append(damageStats)
@@ -61,9 +64,8 @@ class specificDamageRanking(object):
 		print '--------------------------------------------------------------------'
 		print 'Ordering of damage as follows:'
 		for res in self.specificDamageRanks:
-			print '{}\t{}\tSlope: {}\tStd Dev: {}'.format(str(res.damageRank), res.residueName,
-														  str(res.maxDensLossSlope), str(res.slopeError))
-
+			print '{}\t{} {}\tSlope: {}\tStd Dev: {}'.format(str(res.damageRank),res.residueName, res.atomType,
+														  	 str(res.maxDensLossSlope)[:6], str(res.slopeError)[:6])
 
 
 
