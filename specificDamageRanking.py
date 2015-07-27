@@ -16,30 +16,25 @@ class specificDamageRank(object):
 		self.slopeError			= slopeError
 
 class specificDamageRanking(object):
-	def __init__(self,PDBmulti = []):
-		self.PDBmulti = PDBmulti
+	def __init__(self,atomList = []):
+		self.atomList = atomList
 
 	def calculateRanks(self):
-		# for each atom within the PDBmulti list of atom objects, group into 
+		# for each atom within the atomList list of atom objects, group into 
 		# residue/nucleotide types and determine the average slope for straight
 		# lines of best fit for each residue/nucleotide type (for plots of 
 		# dataset number vs max density loss)
 
-		p = 10 # number of damage datasets to include in slope calculation
-
 		residueDict = {}
-		for atom in self.PDBmulti:
-			indentifier = "{} {}".format(atom.basetype,atom.atomtype)
-			if indentifier not in residueDict.keys():
-				residueDict[indentifier] = {}
-				residueDict[indentifier]['slope'] = []
-				residueDict[indentifier]['std_err'] = []
+		for atom in self.atomList:
+			identifier = "{} {}".format(atom.basetype,atom.atomtype)
+			if identifier not in residueDict.keys():
+				residueDict[identifier] = {}
+				residueDict[identifier]['slope'] = []
+				residueDict[identifier]['std_err'] = []
 
-			y = np.array(atom.mindensity[0:p-1])
-			x = np.array(range(2,p+1))
-			slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
-			residueDict[indentifier]['slope'].append(slope)
-			residueDict[indentifier]['std_err'].append(std_err)
+			residueDict[identifier]['slope'].append(atom.maxDensLoss['lin reg']['slope'])
+			residueDict[identifier]['std_err'].append(atom.maxDensLoss['lin reg']['std_err'])
 
 		# calculate the average straight line slope for each residue/nucleotide type
 		specificDamageRanks = []
