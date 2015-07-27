@@ -33,6 +33,8 @@ class processedAtomList(object):
 			processedList.append(newAtom)
 		self.processedAtomList = processedList
 
+		
+
 
 
 

@@ -17,13 +17,12 @@ class processedAtom(multiPDB):
 				 min95tile=[],max95tile=[],modedensity=[],rsddensity=[],dipstat=[],rangedensity=[]):
 
 		super(processedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,
-								X_coord,Y_coord,Z_coord,atomidentifier,numsurroundatoms,
-								numsurroundprotons,bdam,bdamchange,Bfactorchange,
-								meandensity_norm,maxdensity_norm,mindensity_norm,
-								mediandensity_norm,numvoxels,stddensity,min90tile,
-								max90tile,min95tile,max95tile,modedensity,rsddensity,
-								dipstat,rangedensity)   
-
+											X_coord,Y_coord,Z_coord,atomidentifier,numsurroundatoms,
+											numsurroundprotons,bdam,bdamchange,Bfactorchange,
+											meandensity_norm,maxdensity_norm,mindensity_norm,
+											mediandensity_norm,numvoxels,stddensity,min90tile,
+											max90tile,min95tile,max95tile,modedensity,rsddensity,
+											dipstat,rangedensity)   
 
 	def cloneInfo(self,atom):
 		# clone the information from a specific PDBmulti atom to a 
