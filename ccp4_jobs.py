@@ -5,6 +5,7 @@
 # SFALL --> to create map file with voxel values given as atom numbers (of most contributing atom)
 # FFT --> to create difference density map file over unit cell with same grid sampling as SFALL output atom map
 # MAPMASK --> to crop/extend the FFT density map to same extent as atom map file (over asymmetric unit)
+
 import os
 import struct
 import sys
@@ -48,7 +49,6 @@ class FFT_output:
 		self.fastaxis = fastaxis
 		self.medaxis = medaxis
 		self.slowaxis = slowaxis
-
 
 def pdbCUR_run(inputpdbfile,outputpdbfile):
 
@@ -104,8 +104,6 @@ def pdbCUR_run(inputpdbfile,outputpdbfile):
 	pdbcur_runoutput = pdbcur_output(inputpdbfile,outputpdbfile)
 
 	return pdbcur_runoutput
-
-
 
 def SFALL_run(inputpdbfile,outputmapfile,symmetrygroup,sfall_GRID):
 
@@ -244,7 +242,6 @@ def FFT_run(SFALL_runoutput,inputmergedmtzfile,outputmapfile,mtzlabels):
 
 	return FFT_runoutput
 
-
 def mapmask_run(inputmapfile,inputmapfile2,outputmapfile):
 
 	input1 = "/Applications/ccp4-6.4.0/bin/mapmask "+\
@@ -268,7 +265,6 @@ def mapmask_run(inputmapfile,inputmapfile2,outputmapfile):
 	print '\n---> MAPMASK run complete...'
 	print '--------------------------'
 
-
 def mapmask_run_confine2AS(inputmapfile,outputmapfile):
 
 	input1 = "/Applications/ccp4-6.4.0/bin/mapmask "+\
@@ -290,8 +286,6 @@ def mapmask_run_confine2AS(inputmapfile,outputmapfile):
 	# summary of run to command line
 	print '\n---> MAPMASK run complete...'
 	print '--------------------------'
-
-
 
 def atmmap_densmap_check(SFALL_runoutput,FFT_runoutput):
 	# this function determines whether the atom map and density map calculated using SFALL and FFT
@@ -355,7 +349,6 @@ def renumber_pdbfile(pdbfilein,pdbfileout):
 			pdbout.write(line[11:80]+'\n')
 
 	return pdbfileout
-
 
 def get_atomanddensmaps():
 	# read in inputfile
