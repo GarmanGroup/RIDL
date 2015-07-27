@@ -3,7 +3,7 @@
 
 from classHolder import multiPDB
 from scipy import stats
-from numpy import np
+import numpy as np
 
 class processedAtom(multiPDB):
 	# A subclass extension for a collection of multiple different dose pdb file structures as defined by the multiPDB class. This class adds additonal 
