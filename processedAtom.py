@@ -86,9 +86,9 @@ class processedAtom(multiPDB):
 		# these are an input (and thus not recalculated for every single atom)
 		# - see the CalphaWeights class for details on how to calculate these
 
-		self.maxDensLoss['Calpha normalised'] 		= list(np.divide(self.self.maxDensLoss['Standard'],CalphaWeights))
-		self.maxDensGain['Calpha normalised'] 		= list(np.divide(self.self.maxDensGain['Standard'],CalphaWeights))
-		self.meanDensChange['Calpha normalised'] 	= list(np.divide(self.self.meanDensChange['Standard'],CalphaWeights))
+		self.maxDensLoss['Calpha normalised'] 		= list(np.divide(self.self.maxDensLoss['Standard'],CalphaWeights.weight_MaxDensLoss))
+		self.maxDensGain['Calpha normalised'] 		= list(np.divide(self.self.maxDensGain['Standard'],CalphaWeights.weight_MaxDensGain))
+		self.meanDensChange['Calpha normalised'] 	= list(np.divide(self.self.meanDensChange['Standard'],CalphaWeights.weight_MeanDensChange))
 
 
 
