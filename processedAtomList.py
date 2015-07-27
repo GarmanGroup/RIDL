@@ -28,8 +28,10 @@ class processedAtomList(object):
 		for oldAtom in self.unprocessedAtomList:
 			newAtom = processedAtom()
 			newAtom.cloneInfo(oldAtom)
-			newAtom.calculateLinReg(self.numDatasets)
+			newAtom.calculateLinReg(self.numDatasets,'Standard')
 			newAtom.CalphaWeightedDensChange(CAweights)
+			newAtom.calculateLinReg(self.numDatasets,'Calpha normalised')
+
 			processedList.append(newAtom)
 		self.processedAtomList = processedList
 

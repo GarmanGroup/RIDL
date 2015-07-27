@@ -35,49 +35,54 @@ class processedAtom(multiPDB):
 		self.maxDensGain	= {}
 		self.meanDensChange	= {}
 
-		self.maxDensLoss['Standard']	= self.mindensity     
-		self.maxDensGain['Standard']	= self.maxdensity
-		self.meanDensChange['Standard']	= self.meandensity
+		self.maxDensLoss['Standard'] 	= {}
+		self.maxDensGain['Standard'] 	= {}
+		self.meanDensChange['Standard'] = {}
 
-	def calculateLinReg(self,numDatasets):
+		self.maxDensLoss['Standard']['values']		= self.mindensity     
+		self.maxDensGain['Standard']['values']		= self.maxdensity
+		self.meanDensChange['Standard']['values']	= self.meandensity
+
+	def calculateLinReg(self,numDatasets,type):
 		# Calculates linear regression for the density change metrics and
 		# determines the linear slope of density change
 		# 'numDatasets' in the number of difference map datasets across which 
-		# linear regression will be preformed
+		# linear regression will be preformed. 'type' specifies whether 'Standard'
+		# or 'Calpha normalised' metric values should be used
 		x = np.array(range(2,numDatasets+1))
 
 		# calculate lin reg for max dens loss metric
-		self.maxDensLoss['lin reg'] = {}
-		y = np.array(self.mindensity[0:numDatasets-1])
+		self.maxDensLoss[type]['lin reg'] = {}
+		y = np.array(self.maxDensLoss[type]['values'][0:numDatasets-1])
 		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
 
-		self.maxDensLoss['lin reg']['slope'] 		= slope
-		self.maxDensLoss['lin reg']['intercept'] 	= intercept
-		self.maxDensLoss['lin reg']['r_squared'] 	= r_value**2
-		self.maxDensLoss['lin reg']['p_value'] 		= p_value
-		self.maxDensLoss['lin reg']['std_err'] 		= std_err
+		self.maxDensLoss[type]['lin reg']['slope'] 		= slope
+		self.maxDensLoss[type]['lin reg']['intercept'] 	= intercept
+		self.maxDensLoss[type]['lin reg']['r_squared'] 	= r_value**2
+		self.maxDensLoss[type]['lin reg']['p_value'] 	= p_value
+		self.maxDensLoss[type]['lin reg']['std_err'] 	= std_err
 
 		# calculate lin reg for max dens gain metric
-		self.maxDensGain['lin reg'] = {}
-		y = np.array(self.maxdensity[0:numDatasets-1])
+		self.maxDensGain[type]['lin reg'] = {}
+		y = np.array(self.maxDensGain[type]['values'][0:numDatasets-1])
 		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
 
-		self.maxDensGain['lin reg']['slope'] 		= slope
-		self.maxDensGain['lin reg']['intercept'] 	= intercept
-		self.maxDensGain['lin reg']['r_squared'] 	= r_value**2
-		self.maxDensGain['lin reg']['p_value'] 		= p_value
-		self.maxDensGain['lin reg']['std_err'] 		= std_err
+		self.maxDensGain[type]['lin reg']['slope'] 		= slope
+		self.maxDensGain[type]['lin reg']['intercept'] 	= intercept
+		self.maxDensGain[type]['lin reg']['r_squared'] 	= r_value**2
+		self.maxDensGain[type]['lin reg']['p_value'] 	= p_value
+		self.maxDensGain[type]['lin reg']['std_err'] 	= std_err
 
 		# calculate lin reg for mean dens change metric
-		self.meanDensChange['lin reg'] = {}
-		y = np.array(self.meandensity[0:numDatasets-1])
+		self.meanDensChange[type]['lin reg'] = {}
+		y = np.array(self.meanDensChange[type]['values'][0:numDatasets-1])
 		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
 
-		self.meanDensChange['lin reg']['slope'] 	= slope
-		self.meanDensChange['lin reg']['intercept'] = intercept
-		self.meanDensChange['lin reg']['r_squared'] = r_value**2
-		self.meanDensChange['lin reg']['p_value'] 	= p_value
-		self.meanDensChange['lin reg']['std_err'] 	= std_err
+		self.meanDensChange[type]['lin reg']['slope'] 		= slope
+		self.meanDensChange[type]['lin reg']['intercept'] 	= intercept
+		self.meanDensChange[type]['lin reg']['r_squared'] 	= r_value**2
+		self.meanDensChange[type]['lin reg']['p_value']		= p_value
+		self.meanDensChange[type]['lin reg']['std_err'] 	= std_err
 
 	def CalphaWeightedDensChange(self,CalphaWeights):
 		# calculates the Calpha weighted density metrics, compensating for 
@@ -93,9 +98,13 @@ class processedAtom(multiPDB):
 			print 'Calpha weights not yet calculated.. need to calculate first, see CalphaWeight class'
 			return
 
-		self.maxDensLoss['Calpha normalised'] 		= list(np.divide(self.maxDensLoss['Standard'],CalphaWeights.weight_MaxDensLoss))
-		self.maxDensGain['Calpha normalised'] 		= list(np.divide(self.maxDensGain['Standard'],CalphaWeights.weight_MaxDensGain))
-		self.meanDensChange['Calpha normalised'] 	= list(np.divide(self.meanDensChange['Standard'],CalphaWeights.weight_MeanDensChange))
+		self.maxDensLoss['Calpha normalised'] 		= {}
+		self.maxDensGain['Calpha normalised'] 		= {}
+		self.meanDensChange['Calpha normalised'] 	= {}
+
+		self.maxDensLoss['Calpha normalised']['values'] 	= list(np.divide(self.maxDensLoss['Standard']['values'],CalphaWeights.weight_MaxDensLoss))
+		self.maxDensGain['Calpha normalised']['values'] 	= list(np.divide(self.maxDensGain['Standard']['values'],CalphaWeights.weight_MaxDensGain))
+		self.meanDensChange['Calpha normalised']['values'] 	= list(np.divide(self.meanDensChange['Standard']['values'],CalphaWeights.weight_MeanDensChange))
 
 
 

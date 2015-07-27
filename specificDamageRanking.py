@@ -17,10 +17,19 @@ class specificDamageRank(object):
 		self.densMetric			= densMetric
 
 class specificDamageRanking(object):
-	def __init__(self,atomList = [],densMetric = "",numLines = 0):
+	def __init__(self,atomList = [],densMetric = "Loss",numLines = 0,normalised = False):
 		self.atomList 	= atomList
 		self.densMetric = densMetric # the density metric for which the ranking will be based
 		self.numLines 	= numLines # specify the number of lines of output to display to command line
+		self.normalised = normalised # (Boolian) specifies whether the 'Standard' or 'Calpha normalised' metric values are used
+	
+	def normaliseType(self):
+		# determine the normalisation type 
+		if self.normalised == False:
+			# no normalisation (default)
+			return 'Standard'
+		else:
+			return 'Calpha normalised'
 
 	def calculateRanks(self):
 		# for each atom within the atomList list of atom objects, group into 
@@ -32,7 +41,10 @@ class specificDamageRanking(object):
 		if self.densMetric == "":
 			print 'Need to specify density metric before this function can be run'
 			return
-	
+		
+		# determine the normalisation type for density metrics
+		type = self.normaliseType()
+
 		residueDict = {}
 		for atom in self.atomList:
 			identifier = "{} {}".format(atom.basetype,atom.atomtype)
@@ -42,14 +54,14 @@ class specificDamageRanking(object):
 				residueDict[identifier]['std_err'] = []
 
 			if str(self.densMetric).lower() == 'loss':
-				residueDict[identifier]['slope'].append(atom.maxDensLoss['lin reg']['slope'])
-				residueDict[identifier]['std_err'].append(atom.maxDensLoss['lin reg']['std_err'])
+				residueDict[identifier]['slope'].append(atom.maxDensLoss[type]['lin reg']['slope'])
+				residueDict[identifier]['std_err'].append(atom.maxDensLoss[type]['lin reg']['std_err'])
 			elif str(self.densMetric).lower() == 'mean':
-				residueDict[identifier]['slope'].append(atom.meanDensChange['lin reg']['slope'])
-				residueDict[identifier]['std_err'].append(atom.meanDensChange['lin reg']['std_err'])
+				residueDict[identifier]['slope'].append(atom.meanDensChange[type]['lin reg']['slope'])
+				residueDict[identifier]['std_err'].append(atom.meanDensChange[type]['lin reg']['std_err'])
 			elif str(self.densMetric).lower() == 'gain':
-				residueDict[identifier]['slope'].append(atom.maxDensGain['lin reg']['slope'])
-				residueDict[identifier]['std_err'].append(atom.maxDensGain['lin reg']['std_err'])
+				residueDict[identifier]['slope'].append(atom.maxDensGain[type]['lin reg']['slope'])
+				residueDict[identifier]['std_err'].append(atom.maxDensGain[type]['lin reg']['std_err'])
 
 		# calculate the average straight line slope for each residue/nucleotide type
 		specificDamageRanks = []
@@ -80,7 +92,7 @@ class specificDamageRanking(object):
 			return
 
 		print '--------------------------------------------------------------------'
-		print 'Ordering of damage with D{} metric as follows:'.format(str(self.densMetric).lower())
+		print 'Ordering of damage with {} D{} metric as follows:'.format(type,str(self.densMetric).lower())
 		
 		# if the number of output lines is specified, use this value, otherwise print all lines
 		if self.numLines != 0:
@@ -90,14 +102,3 @@ class specificDamageRanking(object):
 		for res in self.specificDamageRanks[0:numLines+1]:
 			print '{}\t{} {}\tSlope: {}\tStd Dev: {}'.format(str(res.damageRank),res.residueName, res.atomType,
 															 str(res.densSlope)[:6], str(res.slopeError)[:6])
-
-
-
-
-
-
-
-
-
-
-
