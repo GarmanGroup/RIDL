@@ -21,19 +21,90 @@ class processedAtomList(object):
 		processedList = []
 
 		# calculate the Calpha weights for each dataset (see CalphaWeight class for details)
+		print 'Calculating Calpha weights at each dataset...'
 		CAweights = CalphaWeight(self.unprocessedAtomList)
 		CAweights.calculateWeights()
 
 		# loop over all atoms in list and determine new atom info (defined by processedAtom class)
+		print 'Creating new list of atom objects within class processedAtom...'
 		for oldAtom in self.unprocessedAtomList:
 			newAtom = processedAtom()
 			newAtom.cloneInfo(oldAtom)
 			newAtom.calculateLinReg(self.numDatasets,'Standard')
 			newAtom.CalphaWeightedDensChange(CAweights)
 			newAtom.calculateLinReg(self.numDatasets,'Calpha normalised')
+			newAtom.calculateAdditionalMetrics()
 
 			processedList.append(newAtom)
 		self.processedAtomList = processedList
+
+
+	def graphMetric(self):
+		# produce a graph of selected metric against dataset number for a specified atom
+		import seaborn as sns
+		import matplotlib.pyplot as plt
+
+		# only run this function if atom list has been processed already
+		try:
+			self.processedAtomList
+		except AttributeError:
+			print 'Need to process atom list before this function can be run'
+			return
+
+		self.atomType 	= raw_input("Atom type: ")
+		self.baseType 	= raw_input("Residue/nucleotide type: ")
+		self.residueNum = int(raw_input("Residue number: "))
+		self.densMetric = raw_input("Density metric type: ")
+		self.normalise  = raw_input("Normalisation type: ")
+
+		# find the correct atom specified by above properties
+		equivAtoms = []
+		for atom in self.processedAtomList:
+			if (atom.atomtype == self.atomType and atom.basetype == self.baseType 
+				and atom.residuenum == self.residueNum):
+				equivAtoms.append(atom)
+
+		# if an atom with specified properties not found, don't proceed
+		if len(equivAtoms) == 0:
+			print 'Atom not found within structure.. make sure atom properties correctly specified'
+			return
+
+		# define x range here (damage set numbers)
+		x = range(2,len(equivAtoms[0].mindensity)+2)
+
+		sns.set(style="white", context="talk")
+		f, axes = plt.subplots(1, 1, figsize=(12, 12), sharex=True)
+
+		# determine y values here dependent on density metric type specified 
+		for foundAtom in equivAtoms:
+			if self.densMetric == 'loss':
+				y = foundAtom.maxDensLoss[self.normalise]['values']
+			elif self.densMetric == 'mean':
+				y = foundAtom.meanDensChange[self.normalise]['values']
+			elif self.densMetric == 'gain':
+				y = foundAtom.maxDensGain[self.normalise]['values']
+			elif self.densMetric == 'weighted-loss':
+				y = foundAtom.weightedMaxLoss[self.normalise]['values']
+
+			try:
+				y
+			except NameError:
+				print 'Unexpected density metric name.. please try again'
+				return
+
+			# plot the graph here
+			plt.plot(x,y)
+
+		plt.xlabel('Dataset', fontsize=18)
+		plt.ylabel('{} D{}'.format(self.normalise,self.densMetric), fontsize=18)
+		f.suptitle('{} D{}: {} {} {}'.format(self.normalise,self.densMetric,
+												self.baseType,self.residueNum,
+												self.atomType),fontsize=24)
+
+		plt.show()
+
+
+
 
 		
 
