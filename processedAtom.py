@@ -107,5 +107,19 @@ class processedAtom(multiPDB):
 		self.meanDensChange['Calpha normalised']['values'] 	= list(np.divide(self.meanDensChange['Standard']['values'],CalphaWeights.weight_MeanDensChange))
 
 
+	def calculateAdditionalMetrics(self):
+		# calculates addition metrics for each atom. These secondary metrics are 
+		# algebraic expressions of the primary metrics (Dmean, Dloss, Dgain, 
+		# B-factor, BDamage etc)
+		weightedMaxLoss = {}
+		for metricType in ('Standard','Calpha normalised'):
+			weightedMaxLoss[metricType] = {}
+			weightedMaxLoss[metricType]['values'] = []
+			for dataset in range(0,len(self.mindensity)):
+				absMaxDensLoss = np.abs(self.maxDensLoss[metricType]['values'][dataset])
+				absMaxDensGain = np.abs(self.maxDensGain[metricType]['values'][dataset])
+				metricVal = absMaxDensLoss/(absMaxDensLoss + absMaxDensGain)
+				weightedMaxLoss[metricType]['values'].append(metricVal)
+		self.weightedMaxLoss = weightedMaxLoss
 
 		
