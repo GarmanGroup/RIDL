@@ -122,4 +122,18 @@ class processedAtom(multiPDB):
 				weightedMaxLoss[metricType]['values'].append(metricVal)
 		self.weightedMaxLoss = weightedMaxLoss
 
+		# the following metric attempts to determine whether there is a net loss, gain or disordering
+		# of density associated with a specific atom
+		netDensChange = {}
+		for metricType in ('Standard','Calpha normalised'):
+			netDensChange[metricType] = {}
+			netDensChange[metricType]['values'] = []
+			for dataset in range(0,len(self.mindensity)):
+				abs_maxDensLoss = np.abs(self.maxDensLoss[metricType]['values'][dataset]) 
+				abs_maxDensGain = np.abs(self.maxDensGain[metricType]['values'][dataset]) 
+				metricVal = (abs_maxDensLoss - abs_maxDensGain)
+				netDensChange[metricType]['values'].append(metricVal)
+		self.netDensChange = netDensChange
+
+
 		

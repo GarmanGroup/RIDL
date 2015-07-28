@@ -85,7 +85,8 @@ class processedAtomList(object):
 				y = foundAtom.maxDensGain[self.normalise]['values']
 			elif self.densMetric == 'weighted-loss':
 				y = foundAtom.weightedMaxLoss[self.normalise]['values']
-
+			elif self.densMetric == 'net':
+				y = foundAtom.netDensChange[self.normalise]['values']
 			try:
 				y
 			except NameError:
