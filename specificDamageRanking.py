@@ -92,7 +92,7 @@ class specificDamageRanking(object):
 			return
 
 		print '--------------------------------------------------------------------'
-		print 'Ordering of damage with {} D{} metric as follows:'.format(type,str(self.densMetric).lower())
+		print 'Ordering of damage with {} D{} metric as follows:'.format(self.normaliseType(),str(self.densMetric).lower())
 		
 		# if the number of output lines is specified, use this value, otherwise print all lines
 		if self.numLines != 0:
