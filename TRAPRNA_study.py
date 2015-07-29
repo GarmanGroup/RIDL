@@ -2704,7 +2704,7 @@ def ResTypeDamageErrorBara(pdbmulti,res1,atomtypes1,res2,atomtypes2,normalise):
 	
 	for i in range(len(pdbmulti[0].mindensity)):
 		
-		# use gly ca atoms as measure of background deteriation of density map
+		# use Calpha atoms as measure of background deteriation of density map
 		decay_normaliser = [] 
 		for otheratom in pdbmulti:
 			if otheratom.atomtype == 'CA':
@@ -2931,6 +2931,42 @@ def RNAphosphateBaseCorrelation(pdbmulti,datasetnum):
 	f.savefig('phosphateDensLossVsSugarDensGain'+str(i+2)+'.png')
 
 
+def findSolventAccessibilities(atomList):
+	# script to determine correlation between solvent accessiblity and
+	# damage susceptibility within the RNA binding interface. Uses new
+	# processedAtom class only!
 
+	solvAccessDict = {}
+	for boundType in ('unbound','bound'):
+		for resNum in (36,42):
+			key = '{} Glu {}'.format(boundType,resNum)
+			solvAccessDict[key] = {}
+			for atomType in ('CD','OE1','OE2'):
+				solvAccessDict[key][atomType] = {}
+				solvAccessDict[key][atomType]['values'] = []
+				for atom in atomList:
+					if (atom.atomtype == atomType and atom.residuenum == resNum
+						and atom.boundOrUnbound() == '{} protein'.format(boundType)):
+						solvAccess = atom.findSolventAccessibility('TRAPRNA1_areaimol1.pdb')
+						solvAccessDict[key][atomType]['values'].append(float(solvAccess))
+
+	for boundType in ('unbound','bound'):
+		key = '{} Asp {}'.format(boundType,39)
+		solvAccessDict[key] = {}
+		for atomType in ('CG','OD1','OD2'):
+			solvAccessDict[key][atomType] = {}
+			solvAccessDict[key][atomType]['values'] = []		
+			for atom in atomList:
+				if (atom.atomtype == atomType and atom.residuenum == 39
+					and atom.boundOrUnbound() == '{} protein'.format(boundType)):
+					solvAccess = atom.findSolventAccessibility('TRAPRNA1_areaimol1.pdb')
+					solvAccessDict[key][atomType]['values'].append(float(solvAccess))
+
+	for key in solvAccessDict.keys():
+		for subkey in solvAccessDict[key].keys():
+			solvAccessDict[key][subkey]['mean'] = np.mean(solvAccessDict[key][subkey]['values'])
+			solvAccessDict[key][subkey]['std'] = np.std(solvAccessDict[key][subkey]['values'])
+			print '{} {} mean: {} std: {}'.format(key,subkey,solvAccessDict[key][subkey]['mean'],solvAccessDict[key][subkey]['std'])
+			print solvAccessDict[key][subkey]['values']
 
 
