@@ -9,4 +9,4 @@ def retrieveAtomList():
 	et.runPipeline('n','n','y','n','e_Track_inputfile_TRAP.txt')
 	atomList = processedAtomList(et.PDBmulti,10)
 	atomList.processAtomList()
-	return atomList.processedAtomList
+	return atomList
