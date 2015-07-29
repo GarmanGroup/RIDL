@@ -125,5 +125,28 @@ class processedAtom(multiPDB):
 				metricVal = (abs_maxDensLoss - abs_maxDensGain)
 				self.densMetric['net'][normaliseType]['values'].append(metricVal)
 
+	def findSolventAccessibility(self,inputPDBfile):
+		# read in a pdb file output by ccp4 program 'areaimol' which calculates solvent 
+		# accessibility for each atom within a pdb file and writes value in Bfactor column
 
-		
+		# check if atom already has solvent accessibility calculated
+		try:
+			self.solventAccess
+			return self.solventAccess
+		except AttributeError:
+			# if not already calculated then..
+			openFile =  open(str(inputPDBfile), "r")
+			for line in openFile.readlines():
+				if (self.atomtype == str(line[12:16].strip())
+					and self.residuenum == int(line[22:26].strip())
+					and self.chaintype == str(line[21])  
+					and self.basetype == str(line[17:20].strip())):
+					self.solventAccess = str(line[60:66].strip()) 
+					return self.solventAccess
+		openFile.close()
+
+
+
+
+
+
