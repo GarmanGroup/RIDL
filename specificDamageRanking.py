@@ -16,7 +16,6 @@ class specificDamageRank(object):
 		self.damageRank 		= damageRank
 		self.densSlope 			= densSlope
 		self.slopeError			= slopeError
-		self.densMetric			= densMetric
 
 class specificDamageRanking(object):
 	def __init__(self,atomList = [],densMetric = "Loss",numLines = 0,normalised = False):
@@ -106,4 +105,48 @@ class specificDamageRanking(object):
 			print '{}\t{} {} {}\tSlope: {}\tStd Dev: {}'.format(str(res.damageRank),res.residueName, res.atomType,
 																res.boundOrUnbound,str(res.densSlope)[:6],
 																str(res.slopeError)[:6])
+
+	def compareDamageRanks(self):
+		# for two different density change metrics, compare the rankings for correlations
+		import seaborn as sns
+		import matplotlib.pyplot as plt
+
+		metric1 = raw_input("Metric type ('loss','gain','mean','net'): ")
+		normalised1 = bool(int(raw_input("Normalised? (True = 1 or False = 0): ")))
+		self.densMetric = metric1
+		self.normalised = normalised1
+		label1 = '{} D{}'.format(self.normaliseType(),metric1)
+		self.calculateRanks()
+		ranking1 = self.specificDamageRanks
+
+		metric2 = raw_input("Metric type ('loss','gain','mean','net'): ")
+		normalised2 = bool(int(raw_input("Normalised? (True = 1 or False = 0): ")))
+		self.densMetric = metric2
+		self.normalised = normalised2
+		label2 = '{} D{}'.format(self.normaliseType(),metric2)
+		self.calculateRanks()
+		ranking2 = self.specificDamageRanks
+
+		ranks1,ranks2 = [],[]
+		for atom in ranking1:
+			for otheratom in ranking2:
+				if (atom.residueName == otheratom.residueName and atom.atomType == otheratom.atomType
+					and atom.boundOrUnbound == otheratom.boundOrUnbound):
+					ranks1.append(atom.damageRank)
+					ranks2.append(otheratom.damageRank)
+
+		# Create a figure instance
+		sns.set_palette("deep", desat=.6)
+		sns.set_context(rc={"figure.figsize": (12, 12)})
+		f = plt.figure()
+		ax = plt.subplot(1,1,1)
+		plt.scatter(ranks1, ranks2, s=100, c='#d64d4d')
+		plt.xlabel('{} ranking'.format(label1), fontsize=18)
+		plt.ylabel('{} ranking'.format(label2), fontsize=18)
+		f.suptitle('{} vs {} rankings'.format(label1,label2),fontsize=30)
+		plt.setp(f.axes)
+		plt.show()
+
+
+
 
