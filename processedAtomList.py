@@ -2,6 +2,7 @@
 # (which have additional attributes and methods over those of multiPDB)
 from processedAtom import processedAtom
 from CalphaWeight import CalphaWeight
+from progbar import progress
 
 class processedAtomList(object):
 	# class for list of atom objects defined by processedAtom class
@@ -27,7 +28,11 @@ class processedAtomList(object):
 
 		# loop over all atoms in list and determine new atom info (defined by processedAtom class)
 		print 'Creating new list of atom objects within class processedAtom...'
+		counter = 0
+		num_atoms = len(self.unprocessedAtomList)
 		for oldAtom in self.unprocessedAtomList:
+			counter += 1
+			progress(counter, num_atoms, suffix='') #unessential loading bar add-in
 			newAtom = processedAtom()
 			newAtom.cloneInfo(oldAtom)
 			newAtom.CalphaWeightedDensChange(CAweights)
