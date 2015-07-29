@@ -25,16 +25,17 @@ class CalphaWeight(object):
 
 		# calculate the weighting for each dataset and for each density
 		# metric individually here
-		self.weight_MaxDensLoss = np.mean([atom.mindensity for atom in CalphaAtoms],0)
-		self.weight_MaxDensGain = np.mean([atom.maxdensity for atom in CalphaAtoms],0)
-		self.weight_MeanDensChange = np.mean([atom.meandensity for atom in CalphaAtoms],0)
+		self.weight = {}
+		self.weight['loss'] = np.mean([atom.mindensity for atom in CalphaAtoms],0)
+		self.weight['gain'] = np.mean([atom.maxdensity for atom in CalphaAtoms],0)
+		self.weight['mean'] = np.mean([atom.meandensity for atom in CalphaAtoms],0)
 
 	def printWeights(self):
 		# print the Calpha weights per dataset to command line
 
 		# don't run function if weights have not been calculated yet
 		try:
-			self.weight_MaxDensLoss
+			self.weight['loss']
 		except AttributeError:
 			print 'Need to calculate the weights first (use calculateWeights method)'
 			return 
@@ -43,9 +44,9 @@ class CalphaWeight(object):
 		print 'Calpha weights as follows:'
 		print '\tDataset\tDloss\tDmean\tDgain'
 		for counter in range(0,len(self.atomList[0].mindensity)):
-			print '\t{}\t{}\t{}\t{}'.format(counter,str(self.weight_MaxDensLoss[counter])[:5],
-													str(self.weight_MeanDensChange[counter])[:5],
-													str(self.weight_MaxDensGain[counter])[:5])
+			print '\t{}\t{}\t{}\t{}'.format(counter,str(self.weight['loss'][counter])[:5],
+													str(self.weight['mean'][counter])[:5],
+													str(self.weight['gain'][counter])[:5])
 
 
 

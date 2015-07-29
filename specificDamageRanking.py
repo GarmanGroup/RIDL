@@ -6,11 +6,13 @@ import numpy as np
 from scipy import stats
 
 class specificDamageRank(object):
-	def __init__(self, residueName = "", atomType = "",densMetric = "",
+	def __init__(self, residueName = "", atomType = "", densMetric = "", boundOrUnbound = "",
 				 damageRank = 0 ,densSlope = 0, slopeError = 0):
 
 		self.residueName 		= residueName
 		self.atomType			= atomType
+		self.densMetric			= densMetric
+		self.boundOrUnbound		= boundOrUnbound # this property is specific to TRAP-RNA binding
 		self.damageRank 		= damageRank
 		self.densSlope 			= densSlope
 		self.slopeError			= slopeError
@@ -43,36 +45,37 @@ class specificDamageRanking(object):
 			return
 		
 		# determine the normalisation type for density metrics
-		type = self.normaliseType()
+		normType = self.normaliseType()
 
 		residueDict = {}
 		for atom in self.atomList:
-			identifier = "{} {}".format(atom.basetype,atom.atomtype)
+			identifier = "{} {} {}".format(atom.basetype,atom.atomtype,atom.boundOrUnbound())
 			if identifier not in residueDict.keys():
 				residueDict[identifier] = {}
 				residueDict[identifier]['slope'] = []
 				residueDict[identifier]['std_err'] = []
 
-			if str(self.densMetric).lower() == 'loss':
-				residueDict[identifier]['slope'].append(atom.maxDensLoss[type]['lin reg']['slope'])
-				residueDict[identifier]['std_err'].append(atom.maxDensLoss[type]['lin reg']['std_err'])
-			elif str(self.densMetric).lower() == 'mean':
-				residueDict[identifier]['slope'].append(atom.meanDensChange[type]['lin reg']['slope'])
-				residueDict[identifier]['std_err'].append(atom.meanDensChange[type]['lin reg']['std_err'])
-			elif str(self.densMetric).lower() == 'gain':
-				residueDict[identifier]['slope'].append(atom.maxDensGain[type]['lin reg']['slope'])
-				residueDict[identifier]['std_err'].append(atom.maxDensGain[type]['lin reg']['std_err'])
-
+			residueDict[identifier]['slope'].append(atom.densMetric[self.densMetric.lower()][normType]['lin reg']['slope'])
+			residueDict[identifier]['std_err'].append(atom.densMetric[self.densMetric.lower()][normType]['lin reg']['std_err'])
+	
 		# calculate the average straight line slope for each residue/nucleotide type
 		specificDamageRanks = []
 		for key in residueDict.keys():
-			damageStats = specificDamageRank(key.split()[0],key.split()[1],self.densMetric)
+			damageStats = specificDamageRank(key.split()[0],key.split()[1],self.densMetric,key.split()[2])
 			damageStats.densSlope = np.mean(residueDict[key]['slope'])
 			damageStats.slopeError = np.std(residueDict[key]['slope'])
 			specificDamageRanks.append(damageStats)
 
-		# rank residues/nucleotides by slope value
-		specificDamageRanks.sort(key = lambda x: x.densSlope)
+		# rank residues/nucleotides by slope value 
+		if normType == 'Standard' and self.densMetric.lower() in ('loss','mean'):
+			specificDamageRanks.sort(key = lambda x: x.densSlope)
+		elif normType == 'Standard' and self.densMetric.lower() in ('gain','net'):
+			specificDamageRanks.sort(key = lambda x: x.densSlope, reverse = True)
+		elif normType == 'Calpha normalised' and self.densMetric.lower() in ('loss','mean','net'):
+			specificDamageRanks.sort(key = lambda x: x.densSlope,reverse = True)
+		elif normType == 'Calpha normalised' and self.densMetric.lower() in ('gain'):
+			specificDamageRanks.sort(key = lambda x: x.densSlope)
+
 		counter = 0
 		for residue in specificDamageRanks:
 			residue.damageRank = counter
@@ -100,5 +103,7 @@ class specificDamageRanking(object):
 		else:
 			numLines = len(self.specificDamageRanks)
 		for res in self.specificDamageRanks[0:numLines+1]:
-			print '{}\t{} {}\tSlope: {}\tStd Dev: {}'.format(str(res.damageRank),res.residueName, res.atomType,
-															 str(res.densSlope)[:6], str(res.slopeError)[:6])
+			print '{}\t{} {} {}\tSlope: {}\tStd Dev: {}'.format(str(res.damageRank),res.residueName, res.atomType,
+																res.boundOrUnbound,str(res.densSlope)[:6],
+																str(res.slopeError)[:6])
+

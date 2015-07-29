@@ -4,6 +4,7 @@
 from classHolder import multiPDB
 from scipy import stats
 import numpy as np
+import string
 
 class processedAtom(multiPDB):
 	# A subclass extension for a collection of multiple different dose pdb file structures as defined by the multiPDB class. This class adds additonal 
@@ -31,17 +32,26 @@ class processedAtom(multiPDB):
 
 		# these attributes are dictionaries and will contain values for multiple
 		# variations of the density change metrics
-		self.maxDensLoss	= {}     
-		self.maxDensGain	= {}
-		self.meanDensChange	= {}
+		self.densMetric	= {}
+		for metricType in ('loss','gain','mean'):
+			self.densMetric[metricType] = {}
+			self.densMetric[metricType]['Standard'] = {}
+		self.densMetric['loss']['Standard']['values'] = self.mindensity
+		self.densMetric['gain']['Standard']['values'] = self.maxdensity
+		self.densMetric['mean']['Standard']['values'] = self.meandensity
 
-		self.maxDensLoss['Standard'] 	= {}
-		self.maxDensGain['Standard'] 	= {}
-		self.meanDensChange['Standard'] = {}
-
-		self.maxDensLoss['Standard']['values']		= self.mindensity     
-		self.maxDensGain['Standard']['values']		= self.maxdensity
-		self.meanDensChange['Standard']['values']	= self.meandensity
+	def boundOrUnbound(self):
+		# for the TRAP-RNA study, determine whether an atom is a member of an RNA- bound or
+		# unbound protein chain.
+		unboundChains = list(string.ascii_lowercase.upper())[:11]
+		boundChains = list(string.ascii_lowercase.upper())[11:22]
+		rnaChains = list(string.ascii_lowercase.upper())[22:23]
+		if self.chaintype in unboundChains:
+			return 'bound protein'
+		elif self.chaintype in boundChains:
+			return 'unbound protein'
+		elif self.chaintype in rnaChains:
+			return 'rna'
 
 	def calculateLinReg(self,numDatasets,type):
 		# Calculates linear regression for the density change metrics and
@@ -52,37 +62,21 @@ class processedAtom(multiPDB):
 		x = np.array(range(2,numDatasets+1))
 
 		# calculate lin reg for max dens loss metric
-		self.maxDensLoss[type]['lin reg'] = {}
-		y = np.array(self.maxDensLoss[type]['values'][0:numDatasets-1])
-		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
+		for metricType in ('loss','gain','mean','net'):
+			# check each metric key is defined and skip if not
+			try:
+				self.densMetric[metricType]
+			except KeyError:
+				continue
+			self.densMetric[metricType][type]['lin reg'] = {}
+			y = np.array(self.densMetric[metricType][type]['values'][0:numDatasets-1])
+			slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
 
-		self.maxDensLoss[type]['lin reg']['slope'] 		= slope
-		self.maxDensLoss[type]['lin reg']['intercept'] 	= intercept
-		self.maxDensLoss[type]['lin reg']['r_squared'] 	= r_value**2
-		self.maxDensLoss[type]['lin reg']['p_value'] 	= p_value
-		self.maxDensLoss[type]['lin reg']['std_err'] 	= std_err
-
-		# calculate lin reg for max dens gain metric
-		self.maxDensGain[type]['lin reg'] = {}
-		y = np.array(self.maxDensGain[type]['values'][0:numDatasets-1])
-		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
-
-		self.maxDensGain[type]['lin reg']['slope'] 		= slope
-		self.maxDensGain[type]['lin reg']['intercept'] 	= intercept
-		self.maxDensGain[type]['lin reg']['r_squared'] 	= r_value**2
-		self.maxDensGain[type]['lin reg']['p_value'] 	= p_value
-		self.maxDensGain[type]['lin reg']['std_err'] 	= std_err
-
-		# calculate lin reg for mean dens change metric
-		self.meanDensChange[type]['lin reg'] = {}
-		y = np.array(self.meanDensChange[type]['values'][0:numDatasets-1])
-		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
-
-		self.meanDensChange[type]['lin reg']['slope'] 		= slope
-		self.meanDensChange[type]['lin reg']['intercept'] 	= intercept
-		self.meanDensChange[type]['lin reg']['r_squared'] 	= r_value**2
-		self.meanDensChange[type]['lin reg']['p_value']		= p_value
-		self.meanDensChange[type]['lin reg']['std_err'] 	= std_err
+			self.densMetric[metricType][type]['lin reg']['slope'] 		= slope
+			self.densMetric[metricType][type]['lin reg']['intercept'] 	= intercept
+			self.densMetric[metricType][type]['lin reg']['r_squared'] 	= r_value**2
+			self.densMetric[metricType][type]['lin reg']['p_value'] 	= p_value
+			self.densMetric[metricType][type]['lin reg']['std_err'] 	= std_err
 
 	def CalphaWeightedDensChange(self,CalphaWeights):
 		# calculates the Calpha weighted density metrics, compensating for 
@@ -93,47 +87,43 @@ class processedAtom(multiPDB):
 		# - see the CalphaWeights class for details on how to calculate these
 
 		try:
-			CalphaWeights.weight_MaxDensLoss
+			CalphaWeights.weight['loss']
 		except AttributeError:
 			print 'Calpha weights not yet calculated.. need to calculate first, see CalphaWeight class'
 			return
 
-		self.maxDensLoss['Calpha normalised'] 		= {}
-		self.maxDensGain['Calpha normalised'] 		= {}
-		self.meanDensChange['Calpha normalised'] 	= {}
-
-		self.maxDensLoss['Calpha normalised']['values'] 	= list(np.divide(self.maxDensLoss['Standard']['values'],CalphaWeights.weight_MaxDensLoss))
-		self.maxDensGain['Calpha normalised']['values'] 	= list(np.divide(self.maxDensGain['Standard']['values'],CalphaWeights.weight_MaxDensGain))
-		self.meanDensChange['Calpha normalised']['values'] 	= list(np.divide(self.meanDensChange['Standard']['values'],CalphaWeights.weight_MeanDensChange))
-
+		for metricType in ('loss','gain','mean'):
+			self.densMetric[metricType]['Calpha normalised'] = {}
+			weight = CalphaWeights.weight[metricType]
+			metric = self.densMetric[metricType]['Standard']['values']
+			self.densMetric[metricType]['Calpha normalised']['values'] 	= list(np.divide(metric-weight,weight))
 
 	def calculateAdditionalMetrics(self):
 		# calculates addition metrics for each atom. These secondary metrics are 
 		# algebraic expressions of the primary metrics (Dmean, Dloss, Dgain, 
 		# B-factor, BDamage etc)
-		weightedMaxLoss = {}
-		for metricType in ('Standard','Calpha normalised'):
-			weightedMaxLoss[metricType] = {}
-			weightedMaxLoss[metricType]['values'] = []
+
+		self.densMetric['weighted loss'] = {}
+		for normaliseType in ('Standard','Calpha normalised'):
+			self.densMetric['weighted loss'][normaliseType] = {}
+			self.densMetric['weighted loss'][normaliseType]['values'] = []
 			for dataset in range(0,len(self.mindensity)):
-				absMaxDensLoss = np.abs(self.maxDensLoss[metricType]['values'][dataset])
-				absMaxDensGain = np.abs(self.maxDensGain[metricType]['values'][dataset])
+				absMaxDensLoss = np.abs(self.densMetric['loss'][normaliseType]['values'][dataset])
+				absMaxDensGain = np.abs(self.densMetric['gain'][normaliseType]['values'][dataset])
 				metricVal = absMaxDensLoss/(absMaxDensLoss + absMaxDensGain)
-				weightedMaxLoss[metricType]['values'].append(metricVal)
-		self.weightedMaxLoss = weightedMaxLoss
+				self.densMetric['weighted loss'][normaliseType]['values'].append(metricVal)
 
 		# the following metric attempts to determine whether there is a net loss, gain or disordering
 		# of density associated with a specific atom
-		netDensChange = {}
-		for metricType in ('Standard','Calpha normalised'):
-			netDensChange[metricType] = {}
-			netDensChange[metricType]['values'] = []
+		self.densMetric['net'] = {}
+		for normaliseType in ('Standard','Calpha normalised'):
+			self.densMetric['net'][normaliseType] = {}
+			self.densMetric['net'][normaliseType]['values'] = []
 			for dataset in range(0,len(self.mindensity)):
-				abs_maxDensLoss = np.abs(self.maxDensLoss[metricType]['values'][dataset]) 
-				abs_maxDensGain = np.abs(self.maxDensGain[metricType]['values'][dataset]) 
+				abs_maxDensLoss = np.abs(self.densMetric['loss'][normaliseType]['values'][dataset]) 
+				abs_maxDensGain = np.abs(self.densMetric['gain'][normaliseType]['values'][dataset]) 
 				metricVal = (abs_maxDensLoss - abs_maxDensGain)
-				netDensChange[metricType]['values'].append(metricVal)
-		self.netDensChange = netDensChange
+				self.densMetric['net'][normaliseType]['values'].append(metricVal)
 
 
 		

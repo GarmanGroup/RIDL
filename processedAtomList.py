@@ -30,10 +30,10 @@ class processedAtomList(object):
 		for oldAtom in self.unprocessedAtomList:
 			newAtom = processedAtom()
 			newAtom.cloneInfo(oldAtom)
-			newAtom.calculateLinReg(self.numDatasets,'Standard')
 			newAtom.CalphaWeightedDensChange(CAweights)
-			newAtom.calculateLinReg(self.numDatasets,'Calpha normalised')
 			newAtom.calculateAdditionalMetrics()
+			newAtom.calculateLinReg(self.numDatasets,'Standard')
+			newAtom.calculateLinReg(self.numDatasets,'Calpha normalised')
 
 			processedList.append(newAtom)
 		self.processedAtomList = processedList
@@ -54,7 +54,7 @@ class processedAtomList(object):
 		self.atomType 	= raw_input("Atom type: ")
 		self.baseType 	= raw_input("Residue/nucleotide type: ")
 		self.residueNum = int(raw_input("Residue number: "))
-		self.densMetric = raw_input("Density metric type: ")
+		self.densityMetric = raw_input("Density metric type: ")
 		self.normalise  = raw_input("Normalisation type: ")
 
 		# find the correct atom specified by above properties
@@ -77,16 +77,7 @@ class processedAtomList(object):
 
 		# determine y values here dependent on density metric type specified 
 		for foundAtom in equivAtoms:
-			if self.densMetric == 'loss':
-				y = foundAtom.maxDensLoss[self.normalise]['values']
-			elif self.densMetric == 'mean':
-				y = foundAtom.meanDensChange[self.normalise]['values']
-			elif self.densMetric == 'gain':
-				y = foundAtom.maxDensGain[self.normalise]['values']
-			elif self.densMetric == 'weighted-loss':
-				y = foundAtom.weightedMaxLoss[self.normalise]['values']
-			elif self.densMetric == 'net':
-				y = foundAtom.netDensChange[self.normalise]['values']
+			y = foundAtom.densMetric[self.densityMetric][self.normalise]['values']
 			try:
 				y
 			except NameError:
@@ -97,8 +88,8 @@ class processedAtomList(object):
 			plt.plot(x,y)
 
 		plt.xlabel('Dataset', fontsize=18)
-		plt.ylabel('{} D{}'.format(self.normalise,self.densMetric), fontsize=18)
-		f.suptitle('{} D{}: {} {} {}'.format(self.normalise,self.densMetric,
+		plt.ylabel('{} D{}'.format(self.normalise,self.densityMetric), fontsize=18)
+		f.suptitle('{} D{}: {} {} {}'.format(self.normalise,self.densityMetric,
 												self.baseType,self.residueNum,
 												self.atomType),fontsize=24)
 
