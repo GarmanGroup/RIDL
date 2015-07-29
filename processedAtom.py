@@ -47,9 +47,9 @@ class processedAtom(multiPDB):
 		boundChains = list(string.ascii_lowercase.upper())[11:22]
 		rnaChains = list(string.ascii_lowercase.upper())[22:23]
 		if self.chaintype in unboundChains:
-			return 'bound protein'
-		elif self.chaintype in boundChains:
 			return 'unbound protein'
+		elif self.chaintype in boundChains:
+			return 'bound protein'
 		elif self.chaintype in rnaChains:
 			return 'rna'
 
