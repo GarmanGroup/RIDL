@@ -4,6 +4,9 @@
 
 import numpy as np
 from scipy import stats
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy import stats
 
 class specificDamageRank(object):
 	def __init__(self, residueName = "", atomType = "", densMetric = "", boundOrUnbound = "",
@@ -106,24 +109,32 @@ class specificDamageRanking(object):
 																res.boundOrUnbound,str(res.densSlope)[:6],
 																str(res.slopeError)[:6])
 
-	def compareDamageRanks(self):
-		# for two different density change metrics, compare the rankings for correlations
-		import seaborn as sns
-		import matplotlib.pyplot as plt
+	def printComparisonPlots(self):
+		# run the compareDamageRanks method multiple times to compare multiple pairs of density metrics
 
-		metric1 = raw_input("Metric type ('loss','gain','mean','net'): ")
-		normalised1 = bool(int(raw_input("Normalised? (True = 1 or False = 0): ")))
-		self.densMetric = metric1
-		self.normalised = normalised1
-		label1 = '{} D{}'.format(self.normaliseType(),metric1)
+		metrics = ['loss','gain','mean','net']
+		norms = [0,1]
+		linFitSummary = ""
+		for i in range(0,len(metrics)):
+			for j in range(i,len(metrics)):
+				for k in range(0,len(norms)):
+					for l in range(k,len(norms)):
+						if not (i == j and k == l):
+							linFitSummary += self.compareDamageRanks(metrics[i],norms[k],metrics[j],norms[l])
+		print linFitSummary
+
+	def compareDamageRanks(self,met1,norm1,met2,norm2):
+		# for two different density change metrics, compare the rankings for correlations
+
+		self.densMetric = met1
+		self.normalised = bool(norm1)
+		label1 = '{} D{}'.format(self.normaliseType(),met1)
 		self.calculateRanks()
 		ranking1 = self.specificDamageRanks
 
-		metric2 = raw_input("Metric type ('loss','gain','mean','net'): ")
-		normalised2 = bool(int(raw_input("Normalised? (True = 1 or False = 0): ")))
-		self.densMetric = metric2
-		self.normalised = normalised2
-		label2 = '{} D{}'.format(self.normaliseType(),metric2)
+		self.densMetric = met2
+		self.normalised = bool(norm2)
+		label2 = '{} D{}'.format(self.normaliseType(),met2)
 		self.calculateRanks()
 		ranking2 = self.specificDamageRanks
 
@@ -145,8 +156,11 @@ class specificDamageRanking(object):
 		plt.ylabel('{} ranking'.format(label2), fontsize=18)
 		f.suptitle('{} vs {} rankings'.format(label1,label2),fontsize=30)
 		plt.setp(f.axes)
-		plt.show()
+		f.savefig('{}VS{}Rankings.png'.format(label1.replace(" ", ""),label2.replace(" ", "")))
 
-
+		# calculate linear fitting for correlation scatter plot
+		slope, intercept, r_value, p_value, std_err = stats.linregress(ranks1, ranks2)
+		linFitSummary = '{} vs {} rankings'.format(label1,label2)+ ' R2: '+"{0:.2f}".format(r_value**2) +' p-value: '+"{0:.2f}\n".format(p_value)
+		return linFitSummary 
 
 
