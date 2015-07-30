@@ -2968,5 +2968,62 @@ def findSolventAccessibilities(atomList):
 			solvAccessDict[key][subkey]['std'] = np.std(solvAccessDict[key][subkey]['values'])
 			print '{} {} mean: {} std: {}'.format(key,subkey,solvAccessDict[key][subkey]['mean'],solvAccessDict[key][subkey]['std'])
 			print solvAccessDict[key][subkey]['values']
+	return solvAccessDict
 
+def findSolvAccessDamageCorrelation(atomList,densMet):
+	# this function determines whether there is a correlation between damage and solvent accessibility
+	# to acidic residues within the RNA binding interfaces around the TRAP ring
+
+	# get full list of atoms to include
+	atomIdentifiers = [(resNum,atomType,boundType) for resNum in (36,39,42) for atomType in ('OE1','OE2','OD1','OD2') for boundType in ('unbound','bound')]
+
+	# Create a figure instance
+	sns.set_palette("deep", desat=.6)
+	sns.set_context(rc={"figure.figsize": (12, 12)})
+	f = plt.figure()
+	ax = plt.subplot(1,1,1)
+
+	# colours for plot defined here
+	i = 0
+	for ind in atomIdentifiers:
+		for atom in atomList:
+			if atom.residuenum == ind[0] and atom.atomtype == ind[1]:
+				i+=1
+				break
+	jet = cm = plt.get_cmap('jet') 
+	cNorm  = colors.Normalize(vmin=0, vmax=i)
+	scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
+
+	atomValues = {}
+	counter = -1
+	scatterPlots = []
+	for ind in atomIdentifiers:
+		atomValues['Solvent Access'] = []
+		atomValues[densMet] = []
+		for atom in atomList:
+			if atom.residuenum == ind[0] and atom.atomtype == ind[1] and atom.boundOrUnbound() =="{} protein".format(ind[2]):
+				atomValues['Solvent Access'].append(atom.findSolventAccessibility('TRAPRNA1_areaimol1.pdb'))
+				atomValues[densMet].append(atom.densMetric[densMet]['Standard']['lin reg']['slope'])
+		
+		if len(atomValues['Solvent Access']) != 0:
+			counter += 1
+			if ind[2] == 'unbound':
+				scatterPlot = plt.scatter(atomValues['Solvent Access'], atomValues[densMet], s=100, c=scalarMap.to_rgba(counter),label=ind,marker=str('o'))
+			elif ind[2] == 'bound':
+				scatterPlot = plt.scatter(atomValues['Solvent Access'], atomValues[densMet], s=100, c=scalarMap.to_rgba(counter),label=ind,marker=str('^'))
+			scatterPlots.append(scatterPlot)
+
+	plt.xlabel('Solvent Accessibility', fontsize=18)
+	plt.ylabel('D{} slope'.format(densMet), fontsize=18)
+	f.suptitle('Solvent Access vs D{}'.format(densMet),fontsize=30)
+
+	# Shrink current axis by 20%
+	box = ax.get_position()
+	ax.set_position([box.x0, box.y0, box.width * 0.75, box.height])
+
+	# Put a legend to the right of the current axis
+	ax.legend(handles=scatterPlots,loc='center left', bbox_to_anchor=(1, 0.5),fontsize=18)
+
+	plt.setp(f.axes)
+	f.savefig('SolventAccessVsD{}.png'.format(densMet))
 
