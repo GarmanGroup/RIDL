@@ -2136,8 +2136,6 @@ def GLUASPdensHist(atomsbychain_present,j,densmet):
 	h.savefig('var2MetricVdatasetGLUCD_ASPCG_%s_%s.png' %(str(j),densmet))
 
 
-
-
 def densitychange_v_dataset_linfit(atomsbychain_present,atomtype,resitype,
 							resinum,densmet):
 	# function to plot density change as function of dataset number
@@ -2253,7 +2251,7 @@ def hotellingTsquareTest(pdbmulti,atomtypes,basetypes,residuenums):
 	# print 'Max density loss metric used...'
 
 	# set the number of datasets needed to be included
-	p = 10
+	p = 9
 	# print 'First %s datasets included...' %(str(p))
 	# print 'Running test...'
 
@@ -2265,7 +2263,7 @@ def hotellingTsquareTest(pdbmulti,atomtypes,basetypes,residuenums):
 			atom.basetype in basetypes and
 			atom.residuenum in residuenums):
 			col = []
-			for dens in atom.meandensity[0:p]:
+			for dens in atom.mindensity[0:p]:
 				col.append([dens])
 			if atom.chaintype in nonRNAbound:
 				keptAtoms_unbound.append(col)
@@ -2322,16 +2320,22 @@ def hotellingTsquareTest(pdbmulti,atomtypes,basetypes,residuenums):
 
 def hotellingTsquareTest_batch(pdbmulti):
 	# run multiple hotellingTsquareTests above in one go
-	atomtypes = [['CA'],['CB'],['CG'],['CD'],['OE1'],['OE2']]
-	basetypes = [['GLU']]
-	residuenums = [[16],[36],[42],[50],[71],[73]]
+
+	# for Glu atoms, use the following:
+	# atomtypes = [['CA'],['CB'],['CG'],['CD'],['OE1'],['OE2']]
+	# basetypes = [['GLU']]
+	# residuenums = [[16],[36],[42],[50],[71],[73]]
+
+	# for Asp atoms, use the following:
+	atomtypes = [['CA'],['CB'],['CG'],['OD1'],['OD2']]
+	basetypes = [['ASP']]
+	residuenums = [[8],[17],[29],[39]]
+
 	for residuenum in residuenums:
 		for basetype in basetypes:
 			for atomtype in atomtypes:
 				F,p_value,reject = hotellingTsquareTest(pdbmulti,atomtype,basetype,residuenum)
 				print '| %s-%s-%s | F-value: %s | p-value: %s | reject?: %s |' %(str(residuenum[0]),basetype[0],atomtype[0],str(F[0][0]),str(p_value[0][0]),reject)
-
-
 
 def RNAdensitychange_v_dataset_errorbars_4subplots(atomsbychain_present,atomtype):
 	# function to plot density change as function of dataset number
@@ -3058,5 +3062,129 @@ def findSolvAccessDamageCorrelationChange(atomList,densMet):
 	f.suptitle('Solvent Access Change vs D{} Change'.format(densMet),fontsize=30)
 	plt.setp(f.axes)
 	f.savefig('SolventAccessChangeVsD{}Change.png'.format(densMet))
+
+
+
+def GLUASPDnetCorrel(PDBmulti,i,xWhat,yWhat,fitType,xDensMet,xNormType,yDensMet,yNormType):
+	# this function is designed to determine a correlation between the extent of damage for
+	# both carboxyl group side chain oxygens and carbon. The function plots a scatter plot of 
+	# xWhat damage vs yWhat damage for each dataset damage level. xWhat and yWhat specify what
+	# x and y scatter axes should be - takes values O1,O2,C (corresponding to GLUOE1/ASPOD1,
+	# GLUOE2/ASPOE2, GLUCD/ASPCG). The density metric here is specified by xDensMet and yDensMet. 
+	# Function can plot 2 separate types of correlation plots ([fitType == 'values', i = dataset
+	# number] to plot for a distinct dataset number, and [fitType == 'lin reg', i = 'slope').
+	# xNormType and yNormType specify whether the x and y axis density metrics should be normalised
+	# or not (takes values 'Standard' or 'Calpha normalised')
+
+	# first find all GLU/ASP carboxyl side chain oxy atoms
+	keptAtoms = []
+	for atom in PDBmulti:
+		if atom.basetype in ('GLU','ASP'):
+			if atom.atomtype in ('OE1','OE2','OD1','OD2'):
+				keptAtoms.append(atom)
+
+	# next find all GLU/ASP carboxyl side chain end carbon atoms
+	for atom in PDBmulti:
+		if atom.basetype in ('GLU') and atom.atomtype == 'CD':
+			keptAtoms.append(atom)
+		elif atom.basetype in ('ASP') and atom.atomtype == 'CG':
+			keptAtoms.append(atom)
+
+	# next create a gluOE1, gluOE2 and gluCD list such that GLU OE1 atoms in gluOE1 list
+	# match to GLU OE2 atoms in gluOE2 list and GLU CD atoms in gluCD list
+	gluOE1,gluOE2,gluCD=[],[],[]
+	for atom in keptAtoms:
+		if atom.basetype in 'GLU':
+			if atom.atomtype in ('OE1'):
+				gluOE1.append(atom)
+				for otheratom in keptAtoms:
+					if (otheratom.chaintype == atom.chaintype and
+						otheratom.residuenum == atom.residuenum): 
+						if otheratom.atomtype == 'OE2':
+							gluOE2.append(otheratom)
+						elif otheratom.atomtype == 'CD':
+							gluCD.append(otheratom)
+	# check that three lists are same length 
+	if (len(gluOE2) != len(gluOE1)) or (len(gluOE2) != len(gluCD)):
+		print 'something went wrong!'
+		sys.exit()
+
+	# same again for the ASP OD1, OD2 and CG atoms
+	aspOD1,aspOD2,aspCG=[],[],[]
+	for atom in keptAtoms:
+		if atom.basetype in 'ASP':
+			if atom.atomtype in ('OD1'):
+				aspOD1.append(atom)
+				for otheratom in keptAtoms:
+					if (otheratom.chaintype == atom.chaintype and
+						otheratom.residuenum == atom.residuenum): 
+						if otheratom.atomtype == 'OD2':
+							aspOD2.append(otheratom)
+						elif otheratom.atomtype == 'CG':
+							aspCG.append(otheratom)
+	# check that three lists are same length 
+	if (len(aspOD2) != len(aspOD1)) or (len(aspOD2) != len(aspCG)):
+		print 'something went wrong!'
+		sys.exit()
+
+	# Create a figure instance
+	sns.set_palette("deep", desat=.6)
+	sns.set_context(rc={"figure.figsize": (16, 16)})
+	f = plt.figure()
+
+	# want to create x and y lists to plot in scatter plot, GLU first
+	if xWhat == 'O1':
+		x = [atom.densMetric[xDensMet][xNormType][fitType][i] for atom in gluOE1]
+	elif xWhat == 'O2':
+		x = [atom.densMetric[xDensMet][xNormType][fitType][i] for atom in gluOE2]
+	elif xWhat == 'C':
+		x = [atom.densMetric[xDensMet][xNormType][fitType][i] for atom in gluCD]
+	if yWhat == 'O1':
+		y = [atom.densMetric[yDensMet][yNormType][fitType][i] for atom in gluOE1]
+	elif yWhat == 'O2':
+		y = [atom.densMetric[yDensMet][yNormType][fitType][i] for atom in gluOE2]
+	elif yWhat == 'C':
+		y = [atom.densMetric[yDensMet][yNormType][fitType][i] for atom in gluCD]
+
+	gluScatter = plt.scatter(x, y, s=100, c='#d64525', alpha=0.5)
+
+	# calculate linear regression for GLU points here
+	slope, intercept, r_valueGLU, p_value, std_err = stats.linregress(x, y)
+	# x2 = range(np.floor(min(x)),np.ceil(max(x))+1)
+	x2 = [min(x), min(x)+ (max(x) - min(x))/2, max(x)]
+	y2 = slope*np.array(x2) + np.array(intercept)
+	plt.plot(x2, y2, '-',color='#d64525',linewidth=3)
+
+	# want to create x and y lists to plot in scatter plot, ASP next
+	if xWhat == 'O1':
+		x = [atom.densMetric[xDensMet][xNormType][fitType][i] for atom in aspOD1]
+	elif xWhat == 'O2':
+		x = [atom.densMetric[xDensMet][xNormType][fitType][i] for atom in aspOD2]
+	elif xWhat == 'C':
+		x = [atom.densMetric[xDensMet][xNormType][fitType][i] for atom in aspCG]
+	if yWhat == 'O1':
+		y = [atom.densMetric[yDensMet][yNormType][fitType][i] for atom in aspOD1]
+	elif yWhat == 'O2':
+		y = [atom.densMetric[yDensMet][yNormType][fitType][i] for atom in aspOD2]
+	elif yWhat == 'C':
+		y = [atom.densMetric[yDensMet][yNormType][fitType][i] for atom in aspCG]
+
+	aspScatter = plt.scatter(x, y, s=100, c='#35b9ac', alpha=0.5,marker='d')
+
+	# calculate linear regression for ASP points here
+	slope, intercept, r_valueASP, p_value, std_err = stats.linregress(x, y)
+	x2 = [min(x), min(x)+ (max(x) - min(x))/2, max(x)]
+	y2 = slope*np.array(x2) + np.array(intercept)
+	plt.plot(x2, y2, '-',color='#35b9ac',linewidth=3)
+
+	plt.legend([gluScatter,aspScatter],['GLU, R^2: '+str("{0:.2f}".format(r_valueGLU**2)),
+										'ASP, R^2: '+str("{0:.2f}".format(r_valueASP**2))],
+			   loc=4, borderaxespad=0.,fontsize=24)
+
+	plt.xlabel('{} {} D{}'.format(xWhat,xNormType,xDensMet),fontsize=24)
+	plt.ylabel('{} {} D{}'.format(yWhat,yNormType,yDensMet),fontsize=24)
+	f.suptitle('GLU/ASP {} {} D{} vs {} {} D{} {}'.format(xWhat,xNormType,xDensMet,yWhat,yNormType,yDensMet,str(i)),fontsize=24)
+	plt.setp(f.axes)
+	f.savefig('GLUASP_{}_{}D{}_vs_{}_{}D{}_{}.png'.format(xWhat,xNormType.replace(" ",""),xDensMet,yWhat,yNormType.replace(" ",""),yDensMet,str(i)))
 
 
