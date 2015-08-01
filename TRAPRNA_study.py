@@ -2997,12 +2997,13 @@ def findSolvAccessDamageCorrelation(atomList,densMet):
 	atomValues = {}
 	counter = -1
 	scatterPlots = []
+	atomDict = {}
 	for ind in atomIdentifiers:
 		atomValues['Solvent Access'] = []
 		atomValues[densMet] = []
 		for atom in atomList:
 			if atom.residuenum == ind[0] and atom.atomtype == ind[1] and atom.boundOrUnbound() =="{} protein".format(ind[2]):
-				atomValues['Solvent Access'].append(atom.findSolventAccessibility('TRAPRNA1_areaimol1.pdb'))
+				atomValues['Solvent Access'].append(float(atom.findSolventAccessibility('TRAPRNA1_areaimol1.pdb')))
 				atomValues[densMet].append(atom.densMetric[densMet]['Standard']['lin reg']['slope'])
 		
 		if len(atomValues['Solvent Access']) != 0:
@@ -3012,6 +3013,10 @@ def findSolvAccessDamageCorrelation(atomList,densMet):
 			elif ind[2] == 'bound':
 				scatterPlot = plt.scatter(atomValues['Solvent Access'], atomValues[densMet], s=100, c=scalarMap.to_rgba(counter),label=ind,marker=str('^'))
 			scatterPlots.append(scatterPlot)
+
+			atomDict[ind] = {}
+			atomDict[ind]['Solvent Access'] = np.median(atomValues['Solvent Access'])
+			atomDict[ind][densMet] = np.median(atomValues[densMet])
 
 	plt.xlabel('Solvent Accessibility', fontsize=18)
 	plt.ylabel('D{} slope'.format(densMet), fontsize=18)
@@ -3026,4 +3031,32 @@ def findSolvAccessDamageCorrelation(atomList,densMet):
 
 	plt.setp(f.axes)
 	f.savefig('SolventAccessVsD{}.png'.format(densMet))
+
+	return atomDict
+
+def findSolvAccessDamageCorrelationChange(atomList,densMet):
+
+	atomChangeDict = {}
+	for keyType in ('Solvent Access',densMet):
+		atomChangeDict['{} Change'.format(keyType)] = []
+	atomDict = findSolvAccessDamageCorrelation(atomList,densMet)
+	for key in atomDict.keys():
+		for otherkey in atomDict.keys():
+			if (key[0:2] == otherkey[0:2] and key[2] == 'unbound' and otherkey[2] == 'bound'):
+				atomChangeDict['{} Change'.format('Solvent Access')].append((atomDict[key]['Solvent Access'] - atomDict[otherkey]['Solvent Access'])/(atomDict[key]['Solvent Access']+1)) 
+				atomChangeDict['{} Change'.format((densMet))].append((atomDict[key][densMet] - atomDict[otherkey][densMet])) 
+
+				print '{} solvAcc change: {}'.format(key[0:2],atomChangeDict['Solvent Access Change'])
+	# Create a figure instance
+	sns.set_palette("deep", desat=.6)
+	sns.set_context(rc={"figure.figsize": (12, 12)})
+	f = plt.figure()
+	ax = plt.subplot(1,1,1)
+	scatterPlot = plt.scatter(atomChangeDict['Solvent Access Change'], atomChangeDict['{} Change'.format(densMet)], s=100)
+	plt.xlabel('Solvent Accessibility Change', fontsize=18)
+	plt.ylabel('D{} Slope Change'.format(densMet), fontsize=18)
+	f.suptitle('Solvent Access Change vs D{} Change'.format(densMet),fontsize=30)
+	plt.setp(f.axes)
+	f.savefig('SolventAccessChangeVsD{}Change.png'.format(densMet))
+
 
