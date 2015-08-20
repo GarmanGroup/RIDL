@@ -33,12 +33,14 @@ class processedAtom(multiPDB):
 		# these attributes are dictionaries and will contain values for multiple
 		# variations of the density change metrics
 		self.densMetric	= {}
-		for metricType in ('loss','gain','mean'):
+		for metricType in ('loss','gain','mean','bfactor','bdamage'):
 			self.densMetric[metricType] = {}
 			self.densMetric[metricType]['Standard'] = {}
 		self.densMetric['loss']['Standard']['values'] = self.mindensity
 		self.densMetric['gain']['Standard']['values'] = self.maxdensity
 		self.densMetric['mean']['Standard']['values'] = self.meandensity
+		self.densMetric['bfactor']['Standard']['values'] = self.Bfactorchange
+		self.densMetric['bdamage']['Standard']['values'] = self.bdamchange
 
 	def boundOrUnbound(self):
 		# for the TRAP-RNA study, determine whether an atom is a member of an RNA- bound or
@@ -62,7 +64,7 @@ class processedAtom(multiPDB):
 		x = np.array(range(2,numDatasets+1))
 
 		# calculate lin reg for max dens loss metric
-		for metricType in ('loss','gain','mean','net'):
+		for metricType in ('loss','gain','mean','net','bfactor','bdamage'):
 			# check each metric key is defined and skip if not
 			try:
 				self.densMetric[metricType]
