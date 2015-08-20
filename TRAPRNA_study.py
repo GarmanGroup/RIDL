@@ -2243,17 +2243,17 @@ def hotellingTsquareTest(pdbmulti,atomtypes,basetypes,residuenums):
 	keptAtoms_unbound = []
 	keptAtoms_bound = []
 
-	# print '---------------------------------------------------'
-	# print "Hotelling's T-square Test"
-	# print 'Residue type: %s' %(str(basetypes))
-	# print 'Residue number: %s' %(str(residuenums))
-	# print 'Atom type: %s' %(str(atomtypes))
-	# print 'Max density loss metric used...'
+	print '---------------------------------------------------'
+	print "Hotelling's T-square Test"
+	print 'Residue type: %s' %(str(basetypes))
+	print 'Residue number: %s' %(str(residuenums))
+	print 'Atom type: %s' %(str(atomtypes))
+	print 'Max density loss metric used...'
 
 	# set the number of datasets needed to be included
 	p = 9
-	# print 'First %s datasets included...' %(str(p))
-	# print 'Running test...'
+	print 'First %s datasets included...' %(str(p))
+	print 'Running test...'
 
 	# find the correct atoms to be included from each chain
 	nonRNAbound = ['A','B','C','D','E','F','G','H','I','J','K']
@@ -2268,7 +2268,7 @@ def hotellingTsquareTest(pdbmulti,atomtypes,basetypes,residuenums):
 			if atom.chaintype in nonRNAbound:
 				keptAtoms_unbound.append(col)
 			elif atom.chaintype in RNAbound:
-				keptAtoms_bound.append(col)
+				keptAtoms_bound.append(col)		
 
 	# check that atom found in all chains
 	if (len(keptAtoms_unbound) != 11 or len(keptAtoms_bound) != 11):
@@ -2291,31 +2291,29 @@ def hotellingTsquareTest(pdbmulti,atomtypes,basetypes,residuenums):
 
 	# now calculate the Hotelling's two-sample T-squared statistic:
 	tSquared = (float(nx*ny)/(nx+ny))*np.dot(np.transpose(unbound_mean-bound_mean),np.dot(np.linalg.inv(W),(unbound_mean-bound_mean)))
-	# print 'tSquared is as follows:'
-	# print tSquared
+	print 'tSquared is as follows: {}'.format(tSquared)
 
 	# now calculate the related F test statistic from F distribution:
 	F = (float(nx+ny-p-1)/((nx+ny-2)*p))*tSquared
-	# print 'F-value is as follows:'
-	# print F
+	print 'F-value is as follows: {}'.format(F)
 
 	# generate a p-value for the given F test statistic
 	alpha = 0.05 
 	df1 = p
 	df2 = nx+ny-1-p
 	p_value = 1-stats.f.cdf(F, df1, df2)
-	# print 'p-value is as follows:'
-	# print p_value
+	print 'p-value is as follows: {}'.format(p_value)
+
 	reject = 'notsureyet'
 	if p_value < alpha:
-		# print 'p_value < %s' %(str(alpha))
-		# print '---> reject null hypothesis that means are equal'
+		print 'p_value < %s' %(str(alpha))
+		print '---> reject null hypothesis that means are equal'
 		reject = 'YES'
 	else:
-		# print 'p_value > %s' %(str(alpha))
-		# print '---> cannot reject null hypothesis that means are equal'
+		print 'p_value > %s' %(str(alpha))
+		print '---> cannot reject null hypothesis that means are equal'
 		reject = 'NO'
-	# print '---------------------------------------------------'
+	print '---------------------------------------------------'
 	return F,p_value,reject
 
 def hotellingTsquareTest_batch(pdbmulti):
@@ -2979,10 +2977,11 @@ def findSolvAccessDamageCorrelation(atomList,densMet):
 	# to acidic residues within the RNA binding interfaces around the TRAP ring
 
 	# get full list of atoms to include
-	atomIdentifiers = [(resNum,atomType,boundType) for resNum in (36,39,42) for atomType in ('OE1','OE2','OD1','OD2') for boundType in ('unbound','bound')]
+	atomIdentifiers = [(resNum,boundType) for resNum in (36,42) for boundType in ('unbound','bound')]
+	atomIdentifiers += [(resNum,boundType) for resNum in [39] for boundType in ('unbound','bound')]
 
 	# Create a figure instance
-	sns.set_palette("deep", desat=.6)
+	sns.set_style("white")
 	sns.set_context(rc={"figure.figsize": (12, 12)})
 	f = plt.figure()
 	ax = plt.subplot(1,1,1)
@@ -3002,19 +3001,22 @@ def findSolvAccessDamageCorrelation(atomList,densMet):
 	counter = -1
 	scatterPlots = []
 	atomDict = {}
+	atomValues['Identity'] = []
 	for ind in atomIdentifiers:
+		print '{} values as follows:'.format(ind)
+		atomValues['Identity'].append(ind)
 		atomValues['Solvent Access'] = []
 		atomValues[densMet] = []
 		for atom in atomList:
-			if atom.residuenum == ind[0] and atom.atomtype == ind[1] and atom.boundOrUnbound() =="{} protein".format(ind[2]):
+			if atom.residuenum == ind[0] and atom.atomtype in ('OE1','OE2','OD1','OD2') and atom.boundOrUnbound() =="{} protein".format(ind[1]):
 				atomValues['Solvent Access'].append(float(atom.findSolventAccessibility('TRAPRNA1_areaimol1.pdb')))
 				atomValues[densMet].append(atom.densMetric[densMet]['Standard']['lin reg']['slope'])
-		
+				print atomValues[densMet][-1]
 		if len(atomValues['Solvent Access']) != 0:
 			counter += 1
-			if ind[2] == 'unbound':
+			if ind[1] == 'unbound':
 				scatterPlot = plt.scatter(atomValues['Solvent Access'], atomValues[densMet], s=100, c=scalarMap.to_rgba(counter),label=ind,marker=str('o'))
-			elif ind[2] == 'bound':
+			elif ind[1] == 'bound':
 				scatterPlot = plt.scatter(atomValues['Solvent Access'], atomValues[densMet], s=100, c=scalarMap.to_rgba(counter),label=ind,marker=str('^'))
 			scatterPlots.append(scatterPlot)
 
@@ -3036,21 +3038,22 @@ def findSolvAccessDamageCorrelation(atomList,densMet):
 	plt.setp(f.axes)
 	f.savefig('SolventAccessVsD{}.png'.format(densMet))
 
-	return atomDict
+	return atomDict,atomValues
 
 def findSolvAccessDamageCorrelationChange(atomList,densMet):
 
 	atomChangeDict = {}
 	for keyType in ('Solvent Access',densMet):
 		atomChangeDict['{} Change'.format(keyType)] = []
-	atomDict = findSolvAccessDamageCorrelation(atomList,densMet)
+	atomDict,atomValues = findSolvAccessDamageCorrelation(atomList,densMet)
 	for key in atomDict.keys():
 		for otherkey in atomDict.keys():
-			if (key[0:2] == otherkey[0:2] and key[2] == 'unbound' and otherkey[2] == 'bound'):
-				atomChangeDict['{} Change'.format('Solvent Access')].append((atomDict[key]['Solvent Access'] - atomDict[otherkey]['Solvent Access'])/(atomDict[key]['Solvent Access']+1)) 
-				atomChangeDict['{} Change'.format((densMet))].append((atomDict[key][densMet] - atomDict[otherkey][densMet])) 
+			if (key[0:1] == otherkey[0:1] and key[1] == 'unbound' and otherkey[1] == 'bound'):
+				atomChangeDict['{} Change'.format('Solvent Access')].append(np.abs(atomDict[key]['Solvent Access'] - atomDict[otherkey]['Solvent Access'])/np.mean([atomDict[key]['Solvent Access'],atomDict[otherkey]['Solvent Access']])) 
+				atomChangeDict['{} Change'.format((densMet))].append(np.abs(atomDict[key][densMet] - atomDict[otherkey][densMet])) 
 
-				print '{} solvAcc change: {}'.format(key[0:2],atomChangeDict['Solvent Access Change'])
+				print '{} unbound solvAcc: {}, bound solvAcc: {}... weighted solvAcc change: {}'.format(key[0:1],atomDict[key]['Solvent Access'],atomDict[otherkey]['Solvent Access'],atomChangeDict['Solvent Access Change'][-1])
+				print '..... unbound dens slope: {}, bound dens slope: {}... weighted densmet slope: {}'.format(atomDict[key][densMet],atomDict[otherkey][densMet],atomChangeDict['{} Change'.format(densMet)][-1])
 	# Create a figure instance
 	sns.set_palette("deep", desat=.6)
 	sns.set_context(rc={"figure.figsize": (12, 12)})
@@ -3063,7 +3066,45 @@ def findSolvAccessDamageCorrelationChange(atomList,densMet):
 	plt.setp(f.axes)
 	f.savefig('SolventAccessChangeVsD{}Change.png'.format(densMet))
 
+def findSolvAccessDamageCorrelationChange2(atomList,densMet):
 
+	# get full list of atoms to include
+	# atomIdentifiers = [(resNum,atomType) for resNum in [36] for atomType in ('OE1','OE2')]
+	atomIdentifiers = [(resNum,atomType) for resNum in [39] for atomType in ('OD1','OD2')]
+
+	solvChangeList = []
+	densChangeList = []
+	for ind in atomIdentifiers:
+		atomList.atomType 	= ind[1]
+		atomList.residueNum = ind[0]
+		if atomList.residueNum in (36,42):
+			atomList.baseType 	= 'GLU'
+		elif atomList.residueNum in [39]:
+			atomList.baseType 	= 'ASP'
+		atomList.getEquivalentAtoms(True)
+		counter = 0
+		for atom in atomList.equivAtoms:
+			counter + 1
+			for otheratom in atomList.equivAtoms[counter:]:
+				if atom != otheratom:
+					if atom.boundOrUnbound() == 'unbound protein' and otheratom.boundOrUnbound() == 'bound protein':
+						print '{} vs {}'.format(atom.chaintype,otheratom.chaintype)
+						solvChange = (float(atom.findSolventAccessibility('TRAPRNA1_areaimol1.pdb')) - float(otheratom.findSolventAccessibility('TRAPRNA1_areaimol1.pdb')))/float(atom.findSolventAccessibility('TRAPRNA1_areaimol1.pdb'))
+						densChange = atom.densMetric[densMet]['Standard']['lin reg']['slope'] - otheratom.densMetric[densMet]['Standard']['lin reg']['slope']
+						solvChangeList.append(solvChange)
+						densChangeList.append(densChange)
+
+	# Create a figure instance
+	sns.set_palette("deep", desat=.6)
+	sns.set_context(rc={"figure.figsize": (12, 12)})
+	f = plt.figure()
+	ax = plt.subplot(1,1,1)
+	scatterPlot = plt.scatter(solvChangeList,densChangeList, s=100)
+	plt.xlabel('Solvent Accessibility Change', fontsize=18)
+	plt.ylabel('D{} Slope Change'.format(densMet), fontsize=18)
+	f.suptitle('Solvent Access Change vs D{} Change'.format(densMet),fontsize=30)
+	plt.setp(f.axes)
+	f.savefig('SolventAccessChangeVsD{}Change.png'.format(densMet))
 
 def GLUASPDnetCorrel(PDBmulti,i,xWhat,yWhat,fitType,xDensMet,xNormType,yDensMet,yNormType):
 	# this function is designed to determine a correlation between the extent of damage for
@@ -3186,5 +3227,178 @@ def GLUASPDnetCorrel(PDBmulti,i,xWhat,yWhat,fitType,xDensMet,xNormType,yDensMet,
 	f.suptitle('GLU/ASP {} {} D{} vs {} {} D{} {}'.format(xWhat,xNormType,xDensMet,yWhat,yNormType,yDensMet,str(i)),fontsize=24)
 	plt.setp(f.axes)
 	f.savefig('GLUASP_{}_{}D{}_vs_{}_{}D{}_{}.png'.format(xWhat,xNormType.replace(" ",""),xDensMet,yWhat,yNormType.replace(" ",""),yDensMet,str(i)))
+
+def glu50tyr62Correlation(atomList,densMet,metType,valType):
+	# this function is designed to determine whether there exists a correlation between glu 50 (bound) damage
+	# and Tyr 62 (unbound) damage - since these two residues are hydrogen bonded.
+	damageDict = {}
+	damageDict['Glu 50'] = []
+	damageDict['Tyr 62'] = []
+	tyr62ChainOrder = ['A','B','C','D','E','F','G','H','I','J','K']
+	glu50ChainOrder = ['U','T','S','R','Q','P','O','N','M','L','V']
+	for atom in atomList:
+		if atom.atomtype in ['OE2'] and atom.residuenum == 50 and atom.boundOrUnbound() == 'bound protein':
+			for otheratom in atomList:
+				if otheratom.atomtype in ['OH'] and otheratom.residuenum == 62 and otheratom.boundOrUnbound() == 'unbound protein':
+					if glu50ChainOrder.index(atom.chaintype) == tyr62ChainOrder.index(otheratom.chaintype):
+						damageDict['Glu 50'].append(atom.densMetric[densMet]['Standard'][metType][valType])
+						damageDict['Tyr 62'].append(otheratom.densMetric[densMet]['Standard'][metType][valType])
+						break
+
+	# Create a figure instance
+	sns.set_palette("deep", desat=.6)
+	sns.set_context(rc={"figure.figsize": (16, 16)})
+	f = plt.figure()
+	plt.scatter(damageDict['Glu 50'], damageDict['Tyr 62'], s=100, c='#35b9ac')
+	plt.xlabel('Glu 50 OE2 D{} {} {}'.format(densMet,metType,valType),fontsize=24)
+	plt.ylabel('Tyr 62 OH D{} {} {}'.format(densMet,metType,valType),fontsize=24)
+	f.suptitle('Glu 50 OE2 vs Tyr 62 OH D{} {} {}'.format(densMet,metType,valType),fontsize=24)
+	plt.setp(f.axes)
+	f.savefig('Glu50OE2vsTyr62OH_D{}_{}_{}.png'.format(densMet,metType,valType))
+
+
+def asp39G1distCorrelation(atomList,densMet,metType,valType):
+	# this function is designed to determine whether there exists a correlation between G1 N2 density change
+	# and the distance between asp39 side-chain oxygens
+
+	# Create a figure instance
+	sns.set_palette("deep", desat=.6)
+	sns.set_context(rc={"figure.figsize": (16, 16)})
+	f = plt.figure()
+
+	plotDict = {}
+	plotDict['CO2 damage'] = []
+	plotDict['G:N1 damage'] = []
+	plotDict['distance'] = []
+	for atom in atomList:
+		if atom.atomtype in ['N1'] and atom.residuenum%5 == 1 and atom.boundOrUnbound() == 'rna':
+			atomPosition = np.array([atom.X_coord,atom.Y_coord,atom.Z_coord])
+			plotDict['G:N1 damage'].append(atom.densMetric[densMet]['Standard'][metType][valType])
+			distList = []
+			searchedAtoms = []
+			for otheratom in atomList:
+				if otheratom.atomtype in ['OD1'] and otheratom.residuenum == 39 and otheratom.boundOrUnbound() == 'bound protein':
+					otheratomPosition = np.array([otheratom.X_coord,otheratom.Y_coord,otheratom.Z_coord])
+					distList.append(np.linalg.norm(atomPosition-otheratomPosition))
+					searchedAtoms.append(otheratom)
+			plotDict['distance'].append(min(distList))
+			plotDict['CO2 damage'].append(searchedAtoms[distList.index(min(distList))].densMetric[densMet]['Standard'][metType][valType]) 
+
+	plt.scatter(plotDict['distance'], plotDict['CO2 damage'], s=200, c='red')
+
+	plotDict['CO2 damage'] = []
+	plotDict['G:N1 damage'] = []
+	plotDict['distance'] = []
+	for atom in atomList:
+		if atom.atomtype in ['N1'] and atom.residuenum%5 == 3 and atom.boundOrUnbound() == 'rna':
+			atomPosition = np.array([atom.X_coord,atom.Y_coord,atom.Z_coord])
+			plotDict['G:N1 damage'].append(atom.densMetric[densMet]['Standard'][metType][valType])
+			distList = []
+			searchedAtoms = []
+			for otheratom in atomList:
+				if otheratom.atomtype in ['OE2'] and otheratom.residuenum == 36 and otheratom.boundOrUnbound() == 'bound protein':
+					otheratomPosition = np.array([otheratom.X_coord,otheratom.Y_coord,otheratom.Z_coord])
+					distList.append(np.linalg.norm(atomPosition-otheratomPosition))
+					searchedAtoms.append(otheratom)
+			plotDict['distance'].append(min(distList))
+			plotDict['CO2 damage'].append(searchedAtoms[distList.index(min(distList))].densMetric[densMet]['Standard'][metType][valType]) 
+
+	plt.scatter(plotDict['distance'], plotDict['CO2 damage'], s=200, c='green')
+
+	plt.xlabel('G1:N1 distance',fontsize=24)
+	plt.ylabel('Closest oxygen D{} {} {}'.format(densMet,metType,valType),fontsize=24)
+	f.suptitle('CO2 damage vs carboxyl proximity: D{} {} {}'.format(densMet,metType,valType),fontsize=24)
+	plt.setp(f.axes)
+	f.savefig('CO2DamagevCarboxylProximityD{}{}{}.png'.format(densMet,metType,valType))
+
+
+def gluAspBfactorChangeOnRNABinding(atomList,densMet,percent):
+	# determine the change in Bfactor upon RNA binding - which residues are most effected?
+
+	# Create a figure instance
+	sns.set(style="white", context="talk")
+	sns.set_context(rc={"figure.figsize": (12, 12)})
+	sns.despine()
+	f = plt.figure()
+	ax = plt.subplot(1,1,1)
+
+	gluList = [(aType,'GLU',rType) for aType in ['CD','OE1','OE2'] for rType in [16,42,50,71,73]]
+	aspList = [(aType,'ASP',rType) for aType in ['CG','OD1','OD2'] for rType in [8,17,29,39]]
+	# find all glu and asp side-chain carboxyl atoms
+
+	counter = -1
+	colourList =['#00aedb','#d11141']
+	for idSet in (gluList+aspList,[(aType,'GLU',36) for aType in ['CD','OE1','OE2']]):
+		atomDict = {}
+		atomDict['bfactor'],atomDict['slope'] = [],[]
+		atomDict['percent bfactor'],atomDict['percent slope'] = [],[]
+		counter += 1
+		for id in idSet:
+			atomList.atomType = id[0]
+			atomList.baseType = id[1]
+			atomList.residueNum = id[2]
+			atomList.getEquivalentAtoms(True)
+			foundAtoms = atomList.equivAtoms
+			unboundList_bfac,boundList_bfac=[],[]
+			unboundList_dens,boundList_dens=[],[]
+
+			# sort atoms into bound and unbound groupings
+			for atom in foundAtoms:
+				if atom.boundOrUnbound() == 'unbound protein':
+					unboundList_bfac.append(float(atom.Bfactor[0]))
+					unboundList_dens.append(atom.densMetric[densMet]['Standard']['lin reg']['slope'])
+				elif atom.boundOrUnbound() == 'bound protein':
+					boundList_bfac.append(float(atom.Bfactor[0]))
+					boundList_dens.append(atom.densMetric[densMet]['Standard']['lin reg']['slope'])
+
+			atomDict['bfactor'].append(np.mean(unboundList_bfac) - np.mean(boundList_bfac))
+			atomDict['percent bfactor'].append(atomDict['bfactor'][-1]/np.mean(unboundList_bfac))
+			atomDict['slope'].append(np.mean(unboundList_dens) - np.mean(boundList_dens))
+			atomDict['percent slope'].append(atomDict['slope'][-1]/np.mean(unboundList_dens))
+
+		if percent == True:
+			scatterPlot = plt.scatter(atomDict['percent bfactor'], atomDict['percent slope'], s=200,c=colourList[counter])
+
+			# linearly fit to the non-glu36 points
+			if counter == 0:
+				slope, intercept, r_value, p_value, std_err = stats.linregress(atomDict['percent bfactor'],atomDict['percent slope'])
+				x = [min(atomDict['percent bfactor'])*1.1,max(atomDict['percent bfactor'])*1.1]
+				y = slope*np.array(x) + np.array(intercept)
+				plt.plot(x, y, '-',color='#4b86b4',linewidth=4)
+				print 'R^2: {} pval: {} stdErr: {}'.format(r_value**2,p_value,std_err)
+
+		else:
+			scatterPlot = plt.scatter(atomDict['bfactor'], atomDict['slope'], s=200,c=colourList[counter])
+
+			# linearly fit to the non-glu36 points
+			if counter == 0:
+				slope, intercept, r_value, p_value, std_err = stats.linregress(atomDict['bfactor'],atomDict['slope'])
+				x = [min(atomDict['bfactor'])*1.1,max(atomDict['bfactor'])*1.1]
+				y = slope*np.array(x) + np.array(intercept)
+				plt.plot(x, y, '-',color='#4b86b4',linewidth=4)
+				print 'R^2: {} pval: {} stdErr: {}'.format(r_value**2,p_value,std_err)
+
+	if percent == True:
+		plt.xlabel('Percent Bfactor Change', fontsize=24)
+		plt.ylabel('Percent D{} Slope Change'.format(densMet), fontsize=24)
+		f.suptitle('Bfactor change vs D{} Change'.format(densMet),fontsize=30)
+		plt.setp(f.axes)
+		f.savefig('PERCENTbfacChangeVsD{}Change.png'.format(densMet))
+	else:
+		plt.xlabel('Bfactor Change', fontsize=24)
+		plt.ylabel('D{} Slope Change'.format(densMet), fontsize=24)
+		f.suptitle('Bfactor change vs D{} Change'.format(densMet),fontsize=30)
+		plt.setp(f.axes)
+		f.savefig('bfacChangeVsD{}Change.png'.format(densMet))
+
+
+
+
+
+
+
+
+
+
 
 
