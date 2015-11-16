@@ -5,101 +5,90 @@ Created on Wed Jan  7 00:14:01 2015
 @author: charlie
 """
 import struct
-from classHolder import electron_map_info
+from classHolder import MapInfo
 import os
 import sys
 
-###----------------###----------------###----------------###----------------###
-###############################################################################      
-# A class for .map file voxel
 class voxel_density:
+    # A class for .map file voxel
     def __init__(self,x=0,y=0,z=0,density=0,atmnum=[],atm_dist=[]):
-        self.x = x
-        self.y = y
-        self.z = z
-        self.density = density
-        self.atmnum = atmnum
-        self.atm_dist = atm_dist
-        #self.vxl_num = vxl_num
-###############################################################################
-###----------------###----------------###----------------###----------------###
+        self.x          = x
+        self.y          = y
+        self.z          = z
+        self.density    = density
+        self.atmnum     = atmnum
+        self.atm_dist   = atm_dist
 
+def readMap(where,pdbname,mapfilename,maptype,atom_indices):
 
-
- 
-###----------------###----------------###----------------###----------------###
-###############################################################################
-def densmap2class(where,pdbname,mapfilename,maptype,atom_indices):
-
-    # append to log file for this eTrack run
-    logfile = open(where+'output/'+pdbname+'_log.txt','a')
+    # append to log file for this eTrack run 
+    logfileName = '{}output/{}_log.txt'.format(where,pdbname)
+    logfile = open(logfileName,'a')
     
     # define 'rho' electron map object
-    rho = electron_map_info()
+    rho = MapInfo()
 
-    # open electron density .map file here 
-    binarymapfile = open(where+mapfilename,'rb')
+    # open electron density .map file here (bmf for binary map file)
+    bmf = open(where+mapfilename,'rb')
     
-    # start adding header information into electron_map_info class format. 
+    # start adding header information into MapInfo class format. 
     # Note the unpacking of a struct for each byte, read as a long 'l'
-    rho.nx = struct.unpack('=l',binarymapfile.read(4))[0]
-    rho.ny = struct.unpack('=l',binarymapfile.read(4))[0]
-    rho.nz = struct.unpack('=l',binarymapfile.read(4))[0]
-    rho.type = struct.unpack('=l',binarymapfile.read(4))[0]
-    print 'Num. Col, Row, Sec: '
-    print '%s %s %s' %(rho.nx,rho.ny,rho.nz)
-    logfile.write('Num. Col, Row, Sec: %s %s %s\n' %(rho.nx,rho.ny,rho.nz))
-    
-    rho.start1 = struct.unpack('=l',binarymapfile.read(4))[0] 
-    rho.start2 = struct.unpack('=l',binarymapfile.read(4))[0] 
-    rho.start3 = struct.unpack('=l',binarymapfile.read(4))[0] 
-    print 'Start positions: '
-    print '%s %s %s' %(rho.start1,rho.start2,rho.start3)
-    logfile.write('Start positions: %s %s %s\n' %(rho.start1,rho.start2,rho.start3))
+    for n in ('nx','ny','nz'):
+        rho.nxyz[n]   = struct.unpack('=l',bmf.read(4))[0]
 
-    rho.gridsamp1 = struct.unpack('=l',binarymapfile.read(4))[0] 
-    rho.gridsamp2 = struct.unpack('=l',binarymapfile.read(4))[0] 
-    rho.gridsamp3 = struct.unpack('=l',binarymapfile.read(4))[0]
+    print 'Num. Col, Row, Sec: '
+    print '{} {} {}'.format(*rho.nxyz.values())
+    logfile.write('Num. Col, Row, Sec: {} {} {}\n'.format(*rho.nxyz.values()))
+    
+    rho.type = struct.unpack('=l',bmf.read(4))[0]
+
+    for s in ('1','2','3'):
+        rho.start[s] = struct.unpack('=l',bmf.read(4))[0] 
+
+    print 'Start positions: '
+    print '{} {} {}'.format(*rho.start.values())
+    logfile.write('Start positions: {} {} {}\n'.format(*rho.start.values()))
+
+    for g in ('1','2','3'):
+        rho.gridsamp[g] = struct.unpack('=l',bmf.read(4))[0] 
+
     print 'Grid sampling:'
-    print '%s %s %s' %(rho.gridsamp1,rho.gridsamp2,rho.gridsamp3)
-    logfile.write('Grid sampling: %s %s %s\n' %(rho.gridsamp1,rho.gridsamp2,rho.gridsamp3))
+    print '{} {} {}'.format(*rho.gridsamp.values())
+    logfile.write('Grid sampling: {} {} {}\n'.format(*rho.gridsamp.values()))
 
     # for cell dimensions, stored in header file as float not long 
     # integer so must account for this
-    rho.celldim_a = struct.unpack('f',binarymapfile.read(4))[0]
-    rho.celldim_b = struct.unpack('f',binarymapfile.read(4))[0]
-    rho.celldim_c = struct.unpack('f',binarymapfile.read(4))[0]
-    rho.celldim_alpha = struct.unpack('f',binarymapfile.read(4))[0]
-    rho.celldim_beta = struct.unpack('f',binarymapfile.read(4))[0]
-    rho.celldim_gamma = struct.unpack('f',binarymapfile.read(4))[0]
+    for d in ('a','b','c','alpha','beta','gamma'):
+        rho.celldims[d]       = struct.unpack('f',bmf.read(4))[0]
+
     print 'Cell dimensions:'
-    print '%s %s %s' %(rho.celldim_a,rho.celldim_b,rho.celldim_c)
-    print '%s %s %s' %(rho.celldim_alpha,rho.celldim_beta,rho.celldim_gamma)
-    logfile.write('Cell dimensions: %s %s %s %s %s %s\n' %(rho.celldim_a,rho.celldim_b,rho.celldim_c,rho.celldim_alpha,rho.celldim_beta,rho.celldim_gamma))
+    print '{} {} {}'.format(*rho.celldims.values()[0:3])
+    print '{} {} {}'.format(*rho.celldims.values()[3:6])
+    logfile.write('Cell dimensions: {} {} {} {} {} {}\n'.format(*rho.celldims.values()))
 
-    rho.fast_axis = struct.unpack('=l',binarymapfile.read(4))[0] 
-    rho.med_axis = struct.unpack('=l',binarymapfile.read(4))[0] 
-    rho.slow_axis = struct.unpack('=l',binarymapfile.read(4))[0] 
+    for a in ('fast','med','slow'):
+        rho.axis[a]   = struct.unpack('=l',bmf.read(4))[0] 
+
     print 'Fast,med,slow axes: '
-    print '%s %s %s' %(rho.fast_axis,rho.med_axis,rho.slow_axis)
-    logfile.write('Fast,med,slow axes: %s %s %s\n' %(rho.fast_axis,rho.med_axis,rho.slow_axis))
+    print '{} {} {}'.format(*rho.axis.values())
+    logfile.write('Fast,med,slow axes: {} {} {}\n'.format(*rho.axis.values()))
 
-    rho.mindensity = struct.unpack('f',binarymapfile.read(4))[0] 
-    rho.maxdensity = struct.unpack('f',binarymapfile.read(4))[0] 
-    rho.meandensity = struct.unpack('f',binarymapfile.read(4))[0]
+    for d in ('min','max','mean'):
+        rho.density[d]  = struct.unpack('f',bmf.read(4))[0] 
+        
     print 'Density values: '
-    print '%s %s %s' %(rho.mindensity,rho.maxdensity,rho.meandensity)
-    logfile.write('Density values: %s %s %s\n' %(rho.mindensity,rho.maxdensity,rho.meandensity))
+    print '{} {} {}'.format(*rho.density.values())
+    logfile.write('Density values: {} {} {}\n'.format(*rho.density.values()))
 
     # next find .map file size, to calculate the last nx*ny*nz bytes of 
     # file (corresponding to the position of the 3D electron density 
     # array). Note factor of 4 is included since 4-byte floats used for 
     # electron density array values.
     filesize = os.path.getsize(where+mapfilename)
-    densitystart = filesize - 4*(rho.nx*rho.ny*rho.nz)
+    densitystart = filesize - 4*(reduce(lambda x, y: x*y, rho.nxyz.values()))
     
     # next seek start of electron density data
-    binarymapfile.seek(densitystart,0)
+    bmf.seek(densitystart,0)
     
     # if electron density written in shorts (I don't think it will be 
     # but best to have this case)
@@ -112,7 +101,7 @@ def densmap2class(where,pdbname,mapfilename,maptype,atom_indices):
         density = []
        
         while True:
-            data = binarymapfile.read(struct_len)
+            data = bmf.read(struct_len)
             if not data: break
             s = struct.unpack(struct_fmt,data)[0]
             density.append(s)    
@@ -130,7 +119,7 @@ def densmap2class(where,pdbname,mapfilename,maptype,atom_indices):
             appendindex = atom_indices.append
             counter = -1
             while True:
-                data = binarymapfile.read(struct_len)
+                data = bmf.read(struct_len)
                 if not data: break
                 s = struct.unpack(struct_fmt,data)[0]
                 counter += 1
@@ -145,11 +134,11 @@ def densmap2class(where,pdbname,mapfilename,maptype,atom_indices):
         elif maptype in ('density_map'):
             for i in range(0,len(atom_indices)):
                 if i != 0:
-                    binarymapfile.read(struct_len*(atom_indices[i]-atom_indices[i-1] - 1))
+                    bmf.read(struct_len*(atom_indices[i]-atom_indices[i-1] - 1))
                 else:
-                    binarymapfile.read(struct_len*(atom_indices[0]))
+                    bmf.read(struct_len*(atom_indices[0]))
                     
-                data = binarymapfile.read(struct_len)
+                data = bmf.read(struct_len)
                 s = struct.unpack(struct_fmt,data)[0]
                 appenddens(s)
                 
@@ -158,7 +147,7 @@ def densmap2class(where,pdbname,mapfilename,maptype,atom_indices):
             sys.exit()
          
     logfile.close()           
-    binarymapfile.close()
+    bmf.close()
     
     # as a check that file has been read correctly, check that the min 
     # and max electron density stated in .map file header correspond to 
@@ -169,13 +158,11 @@ def densmap2class(where,pdbname,mapfilename,maptype,atom_indices):
     # For density map, cannot currently perform a check, since there is no 
     # guarantee that the max and min voxel values may be non atom voxels and
     # thus removed
-    if maptype in ('atom_map'):        
-        if max(density) == rho.maxdensity:
+    if maptype in ('atom_map'):      
+        if max(density) == rho.density['max']:
             print 'calculated max voxel value match value stated in file header'
         else:
-            print 'calculated max voxel value does NOT match value stated in file header'
-            print 'have now calculated max voxel value to be: %s'\
-            %str(max(density))
+            print 'calculated max voxel value:{} does NOT match value stated in file header:{}'.format(max(density),rho.density['max'])
             sys.exit()
     
     # if each voxel value is an atom number, then want to convert to integer
@@ -194,8 +181,6 @@ def densmap2class(where,pdbname,mapfilename,maptype,atom_indices):
     else:
         return rho
         
-###----------------###----------------###----------------###----------------###        
-
 
 ###----------------###----------------###----------------###----------------###
 ###############################################################################
