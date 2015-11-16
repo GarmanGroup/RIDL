@@ -33,14 +33,19 @@ class processedAtom(multiPDB):
 		# these attributes are dictionaries and will contain values for multiple
 		# variations of the density change metrics
 		self.densMetric	= {}
-		for metricType in ('loss','gain','mean','bfactor','bdamage'):
+		for metricType in ('loss','gain','mean','bfactor','bdamage','|loss|','median','median-simple','max-simple'):
 			self.densMetric[metricType] = {}
 			self.densMetric[metricType]['Standard'] = {}
 		self.densMetric['loss']['Standard']['values'] = self.mindensity
 		self.densMetric['gain']['Standard']['values'] = self.maxdensity
 		self.densMetric['mean']['Standard']['values'] = self.meandensity
+		self.densMetric['median']['Standard']['values'] = self.mediandensity
 		self.densMetric['bfactor']['Standard']['values'] = self.Bfactorchange
 		self.densMetric['bdamage']['Standard']['values'] = self.bdamchange
+		self.densMetric['|loss|']['Standard']['values'] = [-val for val in self.mindensity]
+
+		self.densMetric['median-simple']['Standard']['values'] = np.array(self.mediandensity)/self.mediandensity[0]
+		self.densMetric['max-simple']['Standard']['values'] = np.array(self.maxdensity)/self.maxdensity[0]
 
 	def boundOrUnbound(self):
 		# for the TRAP-RNA study, determine whether an atom is a member of an RNA- bound or
@@ -54,6 +59,8 @@ class processedAtom(multiPDB):
 			return 'bound protein'
 		elif self.chaintype in rnaChains:
 			return 'rna'
+		else:
+			return 'something else'
 
 	def calculateLinReg(self,numDatasets,type):
 		# Calculates linear regression for the density change metrics and
@@ -70,8 +77,12 @@ class processedAtom(multiPDB):
 				self.densMetric[metricType]
 			except KeyError:
 				continue
+			# this ensures metrics not included if empty list
+			if len(self.densMetric[metricType]['Standard']['values']) == 0:
+				continue
+
 			self.densMetric[metricType][type]['lin reg'] = {}
-			y = np.array(self.densMetric[metricType][type]['values'][0:numDatasets-1])
+			y = np.array(self.densMetric[metricType][type]['values'][0:len(x)])
 			slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
 
 			self.densMetric[metricType][type]['lin reg']['slope'] 		= slope
@@ -146,8 +157,6 @@ class processedAtom(multiPDB):
 					self.solventAccess = str(line[60:66].strip()) 
 					return self.solventAccess
 		openFile.close()
-
-
 
 
 
