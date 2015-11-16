@@ -3,7 +3,7 @@
 from deleteListIndices import multi_delete 
 from map2VoxelClassList import readMap
 import sys   
-from PDBFileManipulation import PDBtoCLASSARRAY_v2 as pdb2list
+from PDBFileManipulation import PDBtoList
 from densityAnalysisPlots import edens_scatter
 from residueFormatter import densper_resatom_NOresidueclass,densper_res
 import numpy as np
@@ -65,7 +65,7 @@ class maps2DensMetrics():
 
         # next read in the pdb structure file:
         # run function to fill PDBarray list with atom objects from structure
-        self.PDBarray = pdb2list('{}{}.pdb'.format(self.where,self.pdbname),[])
+        self.PDBarray = PDBtoList('{}{}.pdb'.format(self.where,self.pdbname),[])
         self.success()
         self.stopTimer()
 
