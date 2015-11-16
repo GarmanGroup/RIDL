@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from convertMaps2PkldObjLists import maps2pkldobjs
+from readAtomMap import maps2DensMetrics
 from savevariables import retrieve_objectlist,save_objectlist
 from PDBFileManipulation import multiARRAY_diffatomnumbers
 from topDamageHits import topNdamsites_resibarplotter,topNdamsites_chainbarplotter,topNdamsites_printer
@@ -48,12 +48,15 @@ class eTrack(object):
 				continue
 			elif 'where' in line.split()[0]:
 				self.where 					= line.split()[1]
+				self.outputDir = '{}output/'.format(self.where)
+				self.outputPlotDir = '{}plots/'.format(self.outputDir)
+				self.outputCombPlotDir = '{}combinedDatasets'.format(self.outputPlotDir)
 			elif 'damageset_name' in line.split()[0]:
 				self.seriesname 			= line.split()[1]
 			elif 'damageset_num' in line.split()[0]:
 				damageset_nums 				= line.split()[1]
 			elif 'PKLFILE' in line.split()[0]:
-				pklfiles.append(line.split()[1])
+				pklfiles.append(self.where+'output/'+line.split()[1])
 			elif 'initialPDB' in line.split()[0]:
 				self.initialPDB 			= line.split()[1]
 			elif 'topN' in line.split()[0]:
@@ -61,7 +64,7 @@ class eTrack(object):
 			elif 'densmet' in line.split()[0]:
 				self.graph_analysis_densmet = line.split()[1]
 			elif 'PKLMULTIFILE' in line.split()[0]:
-				self.PDBmultipklname 		= line.split()[1]
+				self.PDBmultipklname 		= self.where+line.split()[1]
 
 		# add pkl file names as attribute if specified in input file
 		if len(pklfiles) != 0:
@@ -78,22 +81,27 @@ class eTrack(object):
 	def map_processing(self):
 
 		# want to create the following additional subdirectories directories
-		where2 = self.where + 'output/'
-		if not os.path.exists(where2):
-		    os.makedirs(where2)
+		where2 = '{}output/'.format(self.where)
+		if not os.path.exists(self.outputDir):
+		    os.makedirs(self.outputDir)
 
-		where3 = where2 + 'plots/'
-		if not os.path.exists(where3):
-		    os.makedirs(where3)
+		if not os.path.exists(self.outputPlotDir):
+		    os.makedirs(self.outputPlotDir)
 
-		pkl_filenames = []
+		pklFileNames = []
 		for dataset in self.pdbname:
-			mapfilname1 	= dataset + '_atoms.map'
-			mapfilname2 	= dataset + '_density.map'
-			pkl_filename 	= maps2pkldobjs(self.where,dataset,mapfilname1,mapfilname2)
-			pkl_filenames.append(pkl_filename)
+			# derive per-atom density metrics from maps
+			mapfilname1 		= '{}_atoms.map'.format(dataset)
+			mapfilname2 		= '{}_density.map'.format(dataset)
+			maps2DensMets 	= maps2DensMetrics(self.where,dataset,mapfilname1,'atom_map',mapfilname2,'density_map')
+   			maps2DensMets.maps2atmdensity()
 
-		self.pklfiles = pkl_filenames
+			# move pkl file to working output directory
+			pklFileName = maps2DensMets.pklFileName
+			os.system('mv {} {}{}'.format(pklFileName,self.outputDir,pklFileName))
+			pklFileNames.append(self.outputDir+pklFileName)
+
+		self.pklfiles = pklFileNames
 
 	def post_processing(self):
 
@@ -104,14 +112,14 @@ class eTrack(object):
 
 		initialPDBlist = pdb2list(self.where+self.initialPDB,[])
 
-		# determine the number of surrounding atoms for each atom in structure
-		numsurroundatoms_calculate(self.where+self.initialPDB,initialPDBlist,10)
+		# # determine the number of surrounding atoms for each atom in structure
+		# numsurroundatoms_calculate(self.where+self.initialPDB,initialPDBlist,10)
 
-		# plot a scatter plot of # neighbouring atoms vs protons
-		numneighbours_scatter(self.where,initialPDBlist,self.seriesname)
+		# # plot a scatter plot of # neighbouring atoms vs protons
+		# numneighbours_scatter(self.where,initialPDBlist,self.seriesname)
 
-		# determine Bdamage metric for initial PDB structure
-		bdamage_calculate(initialPDBlist)
+		# # determine Bdamage metric for initial PDB structure
+		# bdamage_calculate(initialPDBlist)
 
 		# retrieve object lists of atoms for each damage set
 		print '•••••••••••••••••••••••••••••••'
@@ -121,12 +129,12 @@ class eTrack(object):
 			print '\nDamage file number {}:'.format(len(data_list)+1)
 			PDB_ret = retrieve_objectlist(pkl_filename)
 
-			# extract number of surrounding atoms for each atom in later structure
-			# from initial structure
-			numsurroundatms_extract(initialPDBlist,PDB_ret)
+			# # extract number of surrounding atoms for each atom in later structure
+			# # from initial structure
+			# numsurroundatms_extract(initialPDBlist,PDB_ret)
 
-			# determine Bdamage metric for later PDB structures
-			bdamage_calculate(PDB_ret)
+			# # determine Bdamage metric for later PDB structures
+			# bdamage_calculate(PDB_ret)
 
 			# add new retrieved damage set list to data_list
 			data_list.append(PDB_ret)
@@ -138,23 +146,14 @@ class eTrack(object):
 		# determine Bfactor change between later datasets and initial 
 		find_Bchange(initialPDBlist,self.PDBmulti,'Bfactor')
 
-		# determine Bdamage change between later datasets and initial 
-		find_Bchange(initialPDBlist,self.PDBmulti,'Bdamage')
+		# # determine Bdamage change between later datasets and initial 
+		# find_Bchange(initialPDBlist,self.PDBmulti,'Bdamage')
 
 		# write atom numbers and density metrics to simple text files - one for 
 		# each density metric separately
-		where = self.where + 'output/'	    
-		objlist2txt(self.PDBmulti,where,'mean')
-		objlist2txt(self.PDBmulti,where,'min')
-		objlist2txt(self.PDBmulti,where,'max')
-		objlist2txt(self.PDBmulti,where,'median')
-		objlist2txt(self.PDBmulti,where,'std')
-		objlist2txt(self.PDBmulti,where,'rsd')
-		objlist2txt(self.PDBmulti,where,'mode')
-		objlist2txt(self.PDBmulti,where,'min90tile')
-		objlist2txt(self.PDBmulti,where,'max90tile')
-		objlist2txt(self.PDBmulti,where,'min95tile')
-		objlist2txt(self.PDBmulti,where,'max95tile')
+		for densMet in ('mean','min','max','median','std','rsd','mode',
+						'min90tile','max90tile','min95tile','max95tile'):
+			objlist2txt(self.PDBmulti,self.outputDir,densMet)
 
 	def PDBmulti_retrieve(self):
 		# retrieve the PDBmulti list from the pickle list
@@ -163,9 +162,8 @@ class eTrack(object):
 	def graph_analysis(self):
 		
 		# location of output plots (make folder if doesn't exist)
-		where = self.where + 'output/plots/combineddatasets/'
-		if not os.path.exists(where):
-		    os.makedirs(where)
+		if not os.path.exists(self.outputCombPlotDir):
+		    os.makedirs(self.outputCombPlotDir)
 
 		# extract number of top damage sites N and density metric
 		N 		= self.graph_analysis_topN
@@ -176,14 +174,14 @@ class eTrack(object):
 		initialPDBname = self.where + self.initialPDB
 
 		# determine top N damage sites:
-		topNdamsites_resibarplotter(self.PDBmulti,N,where,densmet,'NOTnormalised')
-		topNdamsites_resibarplotter(self.PDBmulti,N,where,densmet,'normalised')
-		topNdamsites_chainbarplotter(self.PDBmulti,N,where,densmet)
-		topNdamsites_printer(self.PDBmulti,N,where,densmet,initialPDBname)
+		for normType in ('NOTnormalised','normalised'):
+			topNdamsites_resibarplotter(self.PDBmulti,N,self.outputCombPlotDir,densmet,normType)
+		topNdamsites_chainbarplotter(self.PDBmulti,N,self.outputCombPlotDir,densmet)
+		topNdamsites_printer(self.PDBmulti,N,self.outputCombPlotDir,densmet,initialPDBname)
 
-		# plot graphs of Bfactor change and Bdamage change against atom number
-		bdamchange_v_atomnum(where,self.PDBmulti)
-		bdamBfac_change_v_atomnum(where,self.PDBmulti)
+		# # plot graphs of Bfactor change and Bdamage change against atom number
+		# bdamchange_v_atomnum(where,self.PDBmulti)
+		# bdamBfac_change_v_atomnum(where,self.PDBmulti)
 
 	def runPipeline(self,map_process,post_process,retrieve_PDBmulti,graphs,inputfilename):
 		# the following function reads in the above functions one by one in a scripted 
@@ -219,8 +217,11 @@ class eTrack(object):
 			self.post_processing()
 
 			# save PDBmulti as pkl file
-			self.PDBmultipklname = save_objectlist(self.PDBmulti,self.seriesname)
+			PDBmultipklname = save_objectlist(self.PDBmulti,self.seriesname)
+			os.system('mv {} {}{}'.format(PDBmultipklname,self.where +'output/',PDBmultipklname))
+			self.PDBmultipklname = self.where +'output/'+ PDBmultipklname
 			del self.PDBmulti
+
 		else: 
 			print 'Post processing job not chosen...'
 		print '---------------------------------------------------------------'	
@@ -231,7 +232,7 @@ class eTrack(object):
 			print '||===========================================================||'
 			self.PDBmulti_retrieve()
 			if graphs != 'y':
-				return
+				return 
 		else:
 			print 'PDBmulti retrieval from pkl file not chosen...'
 
