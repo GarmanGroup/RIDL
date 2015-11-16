@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Jan 13 11:28:50 2015
 
-@author: charlie
-"""
 from deleteListIndices import multi_delete 
 from map2VoxelClassList import readMap
 import sys   
@@ -12,7 +8,7 @@ from densityAnalysisPlots import edens_scatter
 from residueFormatter import densper_resatom_NOresidueclass,densper_res
 import numpy as np
 from itertools import izip as zip, count
-from densAndAtomMaps2VxlList import combinevxl_atmanddensvals,combinevxl_atmanddensvals_gen
+from densAndAtomMaps2VxlList import combinevxl_atmanddensvals
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm
 import math
 from progbar import progress
@@ -32,11 +28,12 @@ class vxls_of_atm():
         self.atmnum = atmnum
 
 class maps2DensMetrics():
-    def __init__(self,where,pdbname,mapfilname1,maptype1,mapfilname2,maptype2):
+    def __init__(self,where,pdbname,mapfilname1,maptype1,mapfilname2,maptype2,plot):
         self.where = where # output directory
         self.pdbname = pdbname
         self.map1 = {'filename':mapfilname1,'type':maptype1}
         self.map2 = {'filename':mapfilname2,'type':maptype2}
+        self.plot = plot
 
     def maps2atmdensity(self):
         print '\n================================================'
@@ -59,7 +56,9 @@ class maps2DensMetrics():
         self.assignVoxels2Atoms()
         self.plotDensHistPlots()
         self.calculateDensMetrics()
-        self.plotDensScatterPlots()
+        if self.plot == True:
+            self.plotDensScatterPlots()
+            self.plotPerResidueBoxPlots()
         self.pickleAtomList()
 
     def readPDBfile(self):
@@ -136,29 +135,14 @@ class maps2DensMetrics():
         self.fillerLine()
         print 'Checking that maps have same dimensions and sampling properties...' 
         self.startTimer()
-        # Check that the maps have the same dimensions, grid sampling etc.
-        # Note that for the cell dimensions, 3dp is take only since unpredictable
-        # fluctuations between the .mtz (and thus .map) and pdb recorded
-        # cell dimensions have been observed in trial datasets
-        if ('%.3f' %self.atmmap.celldim_a != '%.3f' %self.densmap.celldim_a or
-            '%.3f' %self.atmmap.celldim_b != '%.3f' %self.densmap.celldim_b or
-            '%.3f' %self.atmmap.celldim_c != '%.3f' %self.densmap.celldim_c or
-            self.atmmap.celldim_alpha != self.densmap.celldim_alpha or
-            self.atmmap.celldim_beta != self.densmap.celldim_beta or 
-            self.atmmap.celldim_gamma != self.densmap.celldim_gamma or
-            self.atmmap.fast_axis != self.densmap.fast_axis or
-            self.atmmap.med_axis != self.densmap.med_axis or
-            self.atmmap.slow_axis != self.densmap.slow_axis or
-            self.atmmap.gridsamp1 != self.densmap.gridsamp1 or
-            self.atmmap.gridsamp2 != self.densmap.gridsamp2 or 
-            self.atmmap.gridsamp3 != self.densmap.gridsamp3 or
-            self.atmmap.nx != self.densmap.nx or
-            self.atmmap.ny != self.densmap.ny or
-            self.atmmap.nz != self.densmap.nz or
-            self.atmmap.start1 != self.densmap.start1 or
-            self.atmmap.start2 != self.densmap.start2 or
-            self.atmmap.start3 != self.densmap.start3 or
+        # Check that the maps have the same dimensions, grid sampling,..
+        if (self.atmmap.axis != self.densmap.axis or
+            self.atmmap.celldims != self.densmap.celldims or
+            self.atmmap.gridsamp != self.densmap.gridsamp or 
+            self.atmmap.start != self.densmap.start or
+            self.atmmap.nxyz != self.densmap.nxyz or
             self.atmmap.type != self.densmap.type):
+        
             print 'Incompatible map properties --> terminating script'
             logfile.write('Incompatible map properties --> terminating script\n')
             sys.exit()
@@ -268,6 +252,7 @@ class maps2DensMetrics():
         for pVars in plotVars:
             edens_scatter(self.where,pVars,self.PDBarray,self.pdbname)
 
+    def plotPerResidueBoxPlots(self):
         # perform residue analysis for datatset, outputting boxplots for each atom specific
         # to each residue, and also a combined boxplot across all residues in structures.
         for densMet in ('mean','min','max'):
