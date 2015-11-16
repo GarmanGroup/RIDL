@@ -19,7 +19,7 @@ class eTrack(object):
 
 	def __init__(self, where = "", pdbname = [], pklfiles = [], initialPDB = "",
 				 graph_analysis_topN = 0, graph_analysis_densmet = "",
-				 seriesname = "", PDBmultipklname = ""):
+				 seriesname = "", PDBmultipklname = "",plot = False):
 
 		self.where 					= where
 		self.pdbname 				= pdbname
@@ -29,6 +29,7 @@ class eTrack(object):
 		self.graph_analysis_densmet = graph_analysis_densmet
 		self.seriesname 			= seriesname
 		self.PDBmultipklname 		= PDBmultipklname
+		self.plot 					= plot
 
 	def readInputFile(self,inputfilename):
 		# this function reads in the input file e_Track_input.txt, which 
@@ -65,6 +66,8 @@ class eTrack(object):
 				self.graph_analysis_densmet = line.split()[1]
 			elif 'PKLMULTIFILE' in line.split()[0]:
 				self.PDBmultipklname 		= self.where+line.split()[1]
+			elif 'plotGraphs' in line.split()[0]:
+				self.plot 					= True
 
 		# add pkl file names as attribute if specified in input file
 		if len(pklfiles) != 0:
@@ -93,7 +96,7 @@ class eTrack(object):
 			# derive per-atom density metrics from maps
 			mapfilname1 		= '{}_atoms.map'.format(dataset)
 			mapfilname2 		= '{}_density.map'.format(dataset)
-			maps2DensMets 	= maps2DensMetrics(self.where,dataset,mapfilname1,'atom_map',mapfilname2,'density_map')
+			maps2DensMets 	= maps2DensMetrics(self.where,dataset,mapfilname1,'atom_map',mapfilname2,'density_map',self.plot)
    			maps2DensMets.maps2atmdensity()
 
 			# move pkl file to working output directory
