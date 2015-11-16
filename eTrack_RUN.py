@@ -8,8 +8,6 @@ import os
 from PDBMulti2Txt import objlist2txt
 from findMetricChange import find_Bchange
 from PDBFileManipulation import PDBtoCLASSARRAY_v2 as pdb2list
-from BDamageCalculator import numsurroundatoms_calculate,bdamage_calculate,numsurroundatms_extract
-from BDamChangeVsAtomnum import bdamBfac_change_v_atomnum,bdamchange_v_atomnum
 from densityAnalysisPlots import numneighbours_scatter
 import shutil
  
