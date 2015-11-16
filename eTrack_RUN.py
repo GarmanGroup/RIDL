@@ -2,14 +2,13 @@
 
 from readAtomMap import maps2DensMetrics
 from savevariables import retrieve_objectlist,save_objectlist
-from PDBFileManipulation import multiARRAY_diffatomnumbers
+from PDBFileManipulation import getMultiDoseAtomList
 from topDamageHits import topNdamsites_resibarplotter,topNdamsites_chainbarplotter,topNdamsites_printer
 import os
 from PDBMulti2Txt import objlist2txt
 from findMetricChange import find_Bchange
-from PDBFileManipulation import PDBtoCLASSARRAY_v2 as pdb2list
+from PDBFileManipulation import PDBtoList
 from densityAnalysisPlots import numneighbours_scatter
-import shutil
  
 class eTrack(object):
 	# A class for retrieving the eTrack input text file information and running 
@@ -17,7 +16,7 @@ class eTrack(object):
 
 	def __init__(self, where = "", pdbname = [], pklfiles = [], initialPDB = "",
 				 graph_analysis_topN = 0, graph_analysis_densmet = "",
-				 seriesname = "", PDBmultipklname = "",plot = False):
+				 seriesname = "", PDBmultipklname = "",plot = False,doses=[]):
 
 		self.where 					= where
 		self.pdbname 				= pdbname
@@ -28,6 +27,7 @@ class eTrack(object):
 		self.seriesname 			= seriesname
 		self.PDBmultipklname 		= PDBmultipklname
 		self.plot 					= plot
+		self.doses 					= doses
 
 	def runPipeline(self,map_process,post_process,retrieve_PDBmulti,graphs,inputfilename):
 		# the following function reads in the above functions one by one in a scripted 
@@ -106,6 +106,8 @@ class eTrack(object):
 				self.PDBmultipklname 		= self.where+line.split()[1]
 			elif 'plotGraphs' in line.split()[0]:
 				self.plot 					= True
+			elif 'doses' in line.split()[0]:
+				self.doses = line.split()[1].split(',')
 
 		# check that an output directory has been found and make subdirectories if present
 		if os.path.isdir(self.where) == False:
@@ -159,7 +161,7 @@ class eTrack(object):
 
 		# next read in the pdb structure file as list of atom objects
 		print 'Reading in initial pdb file...'
-		initialPDBlist = pdb2list(self.where+self.initialPDB,[])
+		initialPDBlist = PDBtoList(self.where+self.initialPDB,[])
 
 		# retrieve object lists of atoms for each damage set
 		self.fillerLine()
@@ -175,14 +177,14 @@ class eTrack(object):
 		# create a list of atom objects with attributes as lists varying over 
 		# dose range, only including atoms present in ALL damage datasets
 		print 'New list of atoms over full dose range calculated...'
-		self.PDBmulti = multiARRAY_diffatomnumbers(data_list)
+		self.PDBmulti = getMultiDoseAtomList(data_list)
 
 		# determine Bfactor change between later datasets and initial 
 		find_Bchange(initialPDBlist,self.PDBmulti,'Bfactor')
 
 		# write atom numbers and density metrics to simple text files - one for 
 		# each density metric separately
-		for densMet in ('mean','min','max','median','std','rsd','mode',
+		for densMet in ('mean','min','max','median','std','rsd',
 						'min90tile','max90tile','min95tile','max95tile'):
 			print 'Writing .txt file for per-atom density metric: {}'.format(densMet)
 			objlist2txt(self.PDBmulti,self.outputDir,densMet)
