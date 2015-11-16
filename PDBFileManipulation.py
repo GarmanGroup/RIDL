@@ -55,61 +55,7 @@ def getMultiDoseAtomList(data_list):
                 ' Will only include atoms common to ALL structures...'
     elif len(data_list) == 1:
         print 'Single dataset detected...'
-    
-    # find the reference point atom in each dataset that will be used to
-    # normalise the density metrics later on
-    print '------------------------------------------------'
-    print 'Locating reference point atom in all datasets...'
 
-    # generate a random reference atom in the first dataset and check that
-    # present in all later datasets
-    found = 'NO'
-    while found == 'NO':
-        randnum = randint(0,len(data_list[0]))
-        randatm = data_list[0][randnum]
-
-        counter = 0
-        for dataset in data_list:
-            for atom in dataset:
-                if (atom.atomtype == randatm.atomtype and
-                   atom.basetype == randatm.basetype and
-                   atom.chaintype == randatm.chaintype and
-                   atom.residuenum == randatm.residuenum):
-                    counter += 1
-
-        if counter == len(data_list):
-            found = 'YES'
-            print 'Found random atom present in all datasets to use as reference'+\
-                  ' atom:\n---> %s %s %s %s' %(str(randatm.atomtype),
-                    str(randatm.basetype),str(randatm.chaintype),str(randatm.residuenum))
-
-
-    refpoint_mean,refpoint_median,refpoint_min,refpoint_max,refpoint_std = [],[],[],[],[]
-    counter = 0
-    for dataset in data_list:
-        counter += 1
-        for atom in dataset:       
-            if (atom.atomtype == randatm.atomtype and
-                atom.basetype == randatm.basetype and
-                atom.chaintype == randatm.chaintype and
-                atom.residuenum == randatm.residuenum):
-                    
-                refpoint_mean.append(atom.meandensity)
-                refpoint_median.append(atom.mediandensity)
-                refpoint_min.append(atom.mindensity)
-                refpoint_max.append(atom.maxdensity)
-                refpoint_std.append(atom.stddensity)
-                print 'Reference atom found in dataset %s' %str(counter)
-                print 'Atom number: %s' %str(atom.atomnum)
-    
-    # check that referenced atom found in all datasets
-    if len(refpoint_mean) != len(data_list):        
-        print 'Cannot find reference point atom in all datasets'
-        print '---> terminating script...'
-        sys.exit()
-    else:
-        print '---> success!'
-   
     PDBdoses = []
     notincludedatmcounter = 0
     
@@ -139,9 +85,7 @@ def getMultiDoseAtomList(data_list):
         max90tile_comb = [atom.max90tile]
         min95tile_comb = [atom.min95tile]
         max95tile_comb = [atom.max95tile]
-        modedensity_comb = [atom.modedensity]
         rsddensity_comb = [atom.rsddensity]
-        dipstat_comb = [atom.dipstat]
         range_comb = [atom.rangedensity]
         bdam_comb = [atom.bdam]
         numvoxels_comb = [atom.numvoxels]
@@ -171,9 +115,7 @@ def getMultiDoseAtomList(data_list):
                     max90tile_comb.append(otheratom.max90tile)
                     min95tile_comb.append(otheratom.min95tile)
                     max95tile_comb.append(otheratom.max95tile)
-                    modedensity_comb.append(otheratom.modedensity)
                     rsddensity_comb.append(otheratom.rsddensity)
-                    dipstat_comb.append(otheratom.dipstat)
                     range_comb.append(otheratom.rangedensity)
                     bdam_comb.append(otheratom.bdam)
                     numvoxels_comb.append(otheratom.numvoxels)
@@ -207,13 +149,6 @@ def getMultiDoseAtomList(data_list):
             y.atomidentifier = atom.atomidentifier
             y.numsurroundatoms = atom.numsurroundatoms
             y.numsurroundprotons = atom.numsurroundprotons
-            
-            # # calculate the normalised mean,median,max,min for each dataset
-            # y.meandensity_norm = map(truediv, meandensity_comb, refpoint_mean)
-            # y.mediandensity_norm = map(truediv, mediandensity_comb, refpoint_median)
-            # y.mindensity_norm = map(truediv, mindensity_comb, refpoint_min)
-            # y.maxdensity_norm = map(truediv, maxdensity_comb, refpoint_max)
-            # y.stddensity_norm = map(truediv,stddensity_comb, refpoint_std)
 
             y.Bfactor = Bfactor_comb 
             y.Occupancy = Occupancy_comb
@@ -226,9 +161,7 @@ def getMultiDoseAtomList(data_list):
             y.max90tile = max90tile_comb
             y.min95tile = min95tile_comb
             y.max95tile = max95tile_comb
-            y.modedensity = modedensity_comb
             y.rsddensity = rsddensity_comb
-            y.dipstat = dipstat_comb
             y.rangedensity = range_comb
             y.bdam = bdam_comb
             y.numvoxels = numvoxels_comb
