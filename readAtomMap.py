@@ -8,7 +8,6 @@ from densityAnalysisPlots import edens_scatter
 from residueFormatter import densper_resatom_NOresidueclass,densper_res
 import numpy as np
 from itertools import izip as zip, count
-from densAndAtomMaps2VxlList import combinevxl_atmanddensvals
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm
 import math
 from progbar import progress
@@ -36,11 +35,7 @@ class maps2DensMetrics():
         self.plot = plot
 
     def maps2atmdensity(self):
-        print '\n================================================'
-        print '------------------------------------------------'
-        print '|||              eTrack run                  |||'
-        print '------------------------------------------------'
-        print '================================================\n'
+        self.printTitle()
 
         # write a log file for this eTrack run
         logfile = open('{}output/{}_log.txt'.format(self.where,self.pdbname),'w')
@@ -53,7 +48,6 @@ class maps2DensMetrics():
         self.readDensityMap()
         self.checkMapCompatibility()
         self.createVoxelList()
-        self.assignVoxels2Atoms()
         self.plotDensHistPlots()
         self.calculateDensMetrics()
         if self.plot == True:
@@ -142,7 +136,7 @@ class maps2DensMetrics():
             self.atmmap.start != self.densmap.start or
             self.atmmap.nxyz != self.densmap.nxyz or
             self.atmmap.type != self.densmap.type):
-        
+
             print 'Incompatible map properties --> terminating script'
             logfile.write('Incompatible map properties --> terminating script\n')
             sys.exit()
@@ -158,42 +152,17 @@ class maps2DensMetrics():
         logfile.close()
 
     def createVoxelList(self):
-        # create list of voxel objects in class voxel_density 
+        # create dictionary of voxels with atom numbers as keys 
         self.startTimer()
         self.fillerLine()
         print 'Combining voxel density and atom values...'
-        self.vxlList = combinevxl_atmanddensvals(self.atmmap.vxls_val,self.densmap.vxls_val)
-        
+        vxl_list = {atm:[] for atm in self.atmmap.vxls_val}
+        for atm,dens in zip(self.atmmap.vxls_val,self.densmap.vxls_val):
+            vxl_list[atm].append(dens)
+        self.vxlsPerAtom = vxl_list
+
         # delete atmmap and densmap now to save memory
         self.densmap,self.atmmap =[],[]
-        self.stopTimer()
-
-    def assignVoxels2Atoms(self):
-        # next assign voxels to atom objects in PDBarray list
-        self.startTimer()
-        self.fillerLine()
-        print 'Assigning voxels to corresponding atoms...'
-        # first order voxels by atom number
-        self.vxlList.sort(key=lambda x: x.atmnum)
-        
-        # initialise list of voxels for each atom before can append voxels. Note 
-        # that voxels are saved in list attribute of local vxls_of_atom class objects
-        self.PDBarray.sort(key=lambda x: x.atomnum)   
-        self.stopTimer()
-
-        self.startTimer()
-        self.vxlsPerAtom = {}
-        for atm in self.PDBarray:
-          self.vxlsPerAtom[atm.atomnum] = []
-        self.stopTimer()
-
-        # assign voxels to each atom within a dictionary
-        self.startTimer()
-        for vxl in self.vxlList:
-          self.vxlsPerAtom[vxl.atmnum].append(vxl)
-
-        # can remove vxlList variable now to save memory
-        self.vxlList = []   
         self.stopTimer()
  
     def plotDensHistPlots(self):
@@ -206,39 +175,32 @@ class maps2DensMetrics():
         # max, min, mean, median, standard deviation, 90-tile min,
         # 90-tile max, 95-tile min, 95-tile max, mode (why not!), 
         # relative standard deviation (rsd = std/mean)
-        self.startTimer()
         self.fillerLine()
+        self.startTimer()
         print 'Calculating electron density statistics per atom...'
         for atom in self.PDBarray:
-            if len(self.vxlsPerAtom[atom.atomnum]) != 0:
-                atomVxls = [vxl.density for vxl in self.vxlsPerAtom[atom.atomnum]]
-                atom.meandensity = np.mean(atomVxls)
-                atom.mediandensity = np.median(atomVxls)
-                atom.mindensity = min(atomVxls)
-                atom.maxdensity = max(atomVxls)
-                atom.stddensity = np.std(atomVxls)
-                atom.min90tile = np.percentile(atomVxls,10)
-                atom.max90tile = np.percentile(atomVxls,90)
-                atom.min95tile = np.percentile(atomVxls,5)
-                atom.max95tile = np.percentile(atomVxls,95)
-                atom.modedensity = max(set(atomVxls), key=atomVxls.count)
-                atom.rsddensity = float(atom.stddensity)/atom.meandensity
-                atom.rangedensity = np.linalg.norm(atom.maxdensity - atom.mindensity)
-                atom.numvoxels = len(atomVxls)
+            atomVxls = self.vxlsPerAtom[atom.atomnum]
+            if len(atomVxls) != 0:
+                atom.meandensity    = np.mean(atomVxls)
+                atom.mediandensity  = np.median(atomVxls)
+                atom.mindensity     = min(atomVxls)
+                atom.maxdensity     = max(atomVxls)
+                atom.stddensity     = np.std(atomVxls)
+                atom.min90tile      = np.percentile(atomVxls,10)
+                atom.max90tile      = np.percentile(atomVxls,90)
+                atom.min95tile      = np.percentile(atomVxls,5)
+                atom.max95tile      = np.percentile(atomVxls,95)
+                atom.numvoxels      = len(atomVxls)
         
-        # check that the last step has worked
-        # (may not be necessary to have but good to check when testing!)
-        for atom in self.PDBarray:
-            for vxl in self.vxlsPerAtom[atom.atomnum]:
-                if atom.atomnum != vxl.atmnum:
-                    print 'error!'
-                    return
-         
         self.success()
         self.stopTimer()
 
         # delete the vxlsPerAtom list now to save memory
         del self.vxlsPerAtom
+
+        # get additional metrics per atom
+        for atom in self.PDBarray:
+            atom.getAdditionalMetrics()
 
     def plotDensScatterPlots(self):
         # plot scatter plots for density metrics 
@@ -247,7 +209,7 @@ class maps2DensMetrics():
         print 'Plotting scatter plots for electron density statistics...'
         plotVars = (['mean','max'],['mean','median'],['mean','min'],['min','max'],
                     ['mean','std'],['std','rsd'],['min','min90tile'],['max','max90tile'],
-                    ['min90tile','min95tile'],['max90tile','max95tile'],['mean','mode'],
+                    ['min90tile','min95tile'],['max90tile','max95tile'],
                     ['std','range'],['mean','range'])
         for pVars in plotVars:
             edens_scatter(self.where,pVars,self.PDBarray,self.pdbname)
@@ -274,7 +236,7 @@ class maps2DensMetrics():
 
     def stopTimer(self):
         elapsedTime = time.time() - self.timeStart
-        print elapsedTime
+        print 'section time: {}'.format(elapsedTime)
         sys.stdout.flush()
 
     def success(self):
@@ -282,6 +244,13 @@ class maps2DensMetrics():
 
     def fillerLine(self):
         print '\n------------------------------------------------'
+
+    def printTitle(self):
+        print '\n================================================'
+        print '------------------------------------------------'
+        print '|||              eTrack run                  |||'
+        print '------------------------------------------------'
+        print '================================================\n'
 
 
 
