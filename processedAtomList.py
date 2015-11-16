@@ -8,11 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 import operator
+import os
+from confidenceIntervalCalculator import mean_confidence_interval
 
 class processedAtomList(object):
 	# class for list of atom objects defined by processedAtom class
 
-	def __init__(self,unprocessedAtomList=[],numDatasets=0,doseList=[]):
+	def __init__(self,unprocessedAtomList,numDatasets,doseList):
 		self.unprocessedAtomList = unprocessedAtomList
 		self.numDatasets = numDatasets # number of datasets to perform linear regression over
 		self.doseList = doseList # list of (DWD)doses for each dataset
@@ -87,6 +89,26 @@ class processedAtomList(object):
 			return
 		else:
 			self.equivAtoms = equivAtoms
+
+	def getMetricValForEquivAtoms(self,densMet,normType):
+		# this method uses the above method to find a set of equivalent atoms within TRAP
+		# then writes the density values specified by densMet and normType to a 
+		# csv file for each dose
+		self.atomType 	= raw_input("Atom type: ")
+		self.baseType 	= raw_input("Residue/nucleotide type: ")
+		self.residueNum = int(raw_input("Residue number: "))
+		fileName = '{}{}{}_{}{}.csv'.format(self.baseType,self.residueNum,self.atomType,densMet,normType)
+		csvOut = open(fileName,'w')
+		self.getEquivalentAtoms(True)
+		csvOut.write(','.join(range(self.equivAtoms[0].densMetric[densMet][normType]['values'])))
+		csvOut.write(',Slope\n')
+		for atom in self.equivAtoms:
+			densVals = atom.densMetric[densMet][normType]['values']
+			densSlope = atom.densMetric[densMet][normType]['lin reg']
+			csvOut.write(','.join(densVals))
+			csvOut.write(',{}'.format(densSlope))
+			csvOut.write('\n')
+		csvOut.close()
 
 	def calculateSigDiffsForList(self,densMet,normType,valType):
 		# this method calculated the Hotelling T-squared test statistic for all
@@ -191,12 +213,17 @@ class processedAtomList(object):
 		
 		plt.show()
 
-	def densMetricErrorbarGraphs(self,auto):
+	def densMetricErrorbarGraphs(self,auto,where,metricTypes,confInt):
 		# function to plot density change as function of dataset number
 		# for a specific atom in the structure, with the mean value over 
 		# all protein chains plotted, along with error bars for the 22 
 		# equivalent atoms present. specify auto=False to specify atom type
 		# on the command line
+		# 'where' specifies where to plot, if doesn't exist, makes directory in
+		# current directory
+		# metricTypes takes values 1 or 2 if auto == True
+		# If 'confInt' is True then error bars are 95% confidence intervals, 
+		# otherwise, 1 SD used at each dose
 
 		# get equivalent atoms of specified type (command line input to specify)
 		self.getEquivalentAtoms(auto)
@@ -212,7 +239,7 @@ class processedAtomList(object):
 
 		# define x range here (damage set numbers or doses if specified)
 		if self.doseList == []:
-			x = range(2,len(self.equivAtoms[0].meandensity)+2)[0:9]
+			x = range(2,len(self.equivAtoms[0].meandensity)+2)[0:10]
 			x_label = 'Damage set'
 		else:
 			x = self.doseList
@@ -222,15 +249,31 @@ class processedAtomList(object):
 		# Currently two distinct options given below
 		densMets1 = ['loss','net','mean','gain']
 		densMets2 = ['loss','net','mean','gain','bfactor','bdamage']
-		print 'Which metrics would you like to plot...'
-		userInput = raw_input("1 or 2?: ")
-		if userInput == str(1):
-			densMets = densMets1
-			normTypes = ['Standard','Calpha normalised']
-		else:
-			densMets = densMets2
-			normTypes = ['Standard']
+		densMets3 = ['|loss|','loss','net','mean','gain','bfactor']
+		densMets4 = ['max-simple','median-simple','gain','median','mean','loss']
 
+		if auto == False:
+			print 'Which metrics would you like to plot...'
+			userInput = raw_input("1 or 2?: ")
+			if userInput == str(1):
+				densMets = densMets1
+				normTypes = ['Standard','Calpha normalised']
+			else:
+				densMets = densMets2
+				normTypes = ['Standard']
+		if auto == True:
+			if metricTypes == 1:
+				densMets = densMets1
+				normTypes = ['Standard','Calpha normalised']
+			elif metricTypes == 2:
+				densMets = densMets2
+				normTypes = ['Standard']
+			elif metricTypes == 3:
+				densMets = densMets3
+				normTypes = ['Standard']
+			elif metricTypes == 4:
+				densMets = densMets4
+				normTypes = ['Standard']
 		i = 0
 		HotellingTsquareDict = {}
 		for densMet in densMets:
@@ -243,11 +286,12 @@ class processedAtomList(object):
 				if protein == True:
 					for boundType in ('unbound','bound'):
 						yValue[boundType] = {}
-						for valType in ('mean','std'):
+						for valType in ('mean','std','95ConfInt'):
 							yValue[boundType][valType] = []
 						for j in range(0,len(x)):
 							yValue[boundType]['mean'].append(np.mean([atom.densMetric[densMet][normType]['values'][j] for atom in self.equivAtoms if atom.boundOrUnbound() == '{} protein'.format(boundType)]))
 							yValue[boundType]['std'].append(np.std([atom.densMetric[densMet][normType]['values'][j] for atom in self.equivAtoms if atom.boundOrUnbound() == '{} protein'.format(boundType)]))
+							yValue[boundType]['95ConfInt'].append(mean_confidence_interval([atom.densMetric[densMet][normType]['values'][j] for atom in self.equivAtoms if atom.boundOrUnbound() == '{} protein'.format(boundType)]))
 
 				# for RNA atoms, just create a list of density values
 				if protein == False:
@@ -263,9 +307,14 @@ class processedAtomList(object):
 						yValue['RNA 2']['std'].append(np.std([atom.densMetric[densMet][normType]['values'][j] for atom in self.equivAtoms if atom.residuenum%5 != self.residueNum]))
 
 				ax = plt.subplot(2,3,i)
+				ax.set_xlim([0, 29])
 				if protein == True:
-					plt.errorbar(x,yValue['unbound']['mean'],yerr=yValue['unbound']['std'], fmt='-o',capthick=2,color='#99ccff',label='unbound')
-					plt.errorbar(x,yValue['bound']['mean'],yerr=yValue['bound']['std'],fmt='-o',capthick=2,color='#f47835',label='bound')
+					if confInt == True:
+						plt.errorbar(x,yValue['unbound']['mean'],yerr=yValue['unbound']['95ConfInt'], fmt='-o',capthick=2,color='#99ccff',label='Non-bound')
+						plt.errorbar(x,yValue['bound']['mean'],yerr=yValue['bound']['95ConfInt'],fmt='-o',capthick=2,color='#f47835',label='Bound')
+					else:
+						plt.errorbar(x,yValue['unbound']['mean'],yerr=yValue['unbound']['std'], fmt='-o',capthick=2,color='#99ccff',label='Non-bound')
+						plt.errorbar(x,yValue['bound']['mean'],yerr=yValue['bound']['std'],fmt='-o',capthick=2,color='#f47835',label='Bound')
 				else:
 					try:
 						plt.errorbar(x,yValue['RNA 1']['mean'],yerr=yValue['RNA 1']['std'], fmt='-o',capthick=2,color='r',label='G1')
@@ -281,26 +330,35 @@ class processedAtomList(object):
 				else:
 					plt.ylabel('{} D{} change'.format(normType,densMet))
 
-				# perform Hotelling T-squared test if protein atoms
-				if protein == True:
-					keyVal = '{} D{}'.format(normType,densMet)
-					HotellingTsquareDict[keyVal] = {}
-					F,p_value,reject = self.hotellingTsquareTest(densMet,normType) # run Hotelling's T squared test to distinguish between bound and unbound TRAP rings
-					HotellingTsquareDict[keyVal]['F value'] = F 
-					HotellingTsquareDict[keyVal]['p value'] = p_value 
-					HotellingTsquareDict[keyVal]['reject?'] = reject 
+				# # perform Hotelling T-squared test if protein atoms
+				# if protein == True:
+				# 	keyVal = '{} D{}'.format(normType,densMet)
+				# 	HotellingTsquareDict[keyVal] = {}
+				# 	F,p_value,reject = self.hotellingTsquareTest(densMet,normType) # run Hotelling's T squared test to distinguish between bound and unbound TRAP rings
+				# 	HotellingTsquareDict[keyVal]['F value'] = F 
+				# 	HotellingTsquareDict[keyVal]['p value'] = p_value 
+				# 	HotellingTsquareDict[keyVal]['reject?'] = reject 
 
 		plt.subplots_adjust(top=0.90)
 		f.subplots_adjust(hspace=0.4)
 		f.subplots_adjust(wspace=0.5)
 
 		f.suptitle('damage metrics vs damage set: {} {} {}'.format(atom.basetype,atom.residuenum,atom.atomtype),fontsize=20)
-		f.savefig('densMetSubplots/6DamageSubplots_{}_{}_{}.png'.format(atom.basetype,atom.residuenum,atom.atomtype))
-		
-		# print the results of Hotelling T-square test
-		if protein == True:
-			for key in HotellingTsquareDict.keys():
-				print '{}: F value: {} p value: {} --> reject?: {}'.format(key,HotellingTsquareDict[key]['F value'],HotellingTsquareDict[key]['p value'],HotellingTsquareDict[key]['reject?'])
+
+		# check if directory exists to save graphs to and make if not:
+		if not os.path.exists(where):
+			os.makedirs(where)
+
+    	# save graphs to directly specified by 'where'
+		if confInt == True:
+			f.savefig('{}/6DamageSubplots_{}_{}_{}_95confIntErrorbars.png'.format(where,atom.basetype,atom.residuenum,atom.atomtype))
+		else:
+			f.savefig('{}/6DamageSubplots_{}_{}_{}_SDerrorbars.png'.format(where,atom.basetype,atom.residuenum,atom.atomtype))
+
+		# # print the results of Hotelling T-square test
+		# if protein == True:
+		# 	for key in HotellingTsquareDict.keys():
+		# 		print '{}: F value: {} p value: {} --> reject?: {}'.format(key,HotellingTsquareDict[key]['F value'],HotellingTsquareDict[key]['p value'],HotellingTsquareDict[key]['reject?'])
 
 	def studentTsquareTest(self,densMet,normType):
 		# calculates Student T-test if only lin reg slopes tested between unbound and bound atoms
