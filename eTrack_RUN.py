@@ -49,9 +49,9 @@ class eTrack(object):
 				continue
 			elif 'where' in line.split()[0]:
 				self.where 					= line.split()[1]
-				self.outputDir = '{}output/'.format(self.where)
-				self.outputPlotDir = '{}plots/'.format(self.outputDir)
-				self.outputCombPlotDir = '{}combinedDatasets'.format(self.outputPlotDir)
+				self.outputDir 				= '{}output/'.format(self.where)
+				self.outputPlotDir 			= '{}plots/'.format(self.outputDir)
+				self.outputCombPlotDir 		= '{}combinedDatasets'.format(self.outputPlotDir)
 			elif 'damageset_name' in line.split()[0]:
 				self.seriesname 			= line.split()[1]
 			elif 'damageset_num' in line.split()[0]:
