@@ -9,6 +9,8 @@ import matplotlib.cm as cmx
 from scipy import stats
 from matplotlib.mlab import PCA
 from mpl_toolkits.mplot3d import Axes3D
+from retrieveAtomList import retrieveAtomList
+from confidenceIntervalCalculator import mean_confidence_interval
 
 def TRAPRNA_heterostudy(PDBmulti,datasetnum,atomtypes,resitypes):
 	# function to plot violin plots for the TRAP-RNA case study
@@ -2751,23 +2753,30 @@ def ResTypeDamageErrorBara(pdbmulti,res1,atomtypes1,res2,atomtypes2,normalise):
 	else:
 		f.savefig('maxdenslossVdwd_%svs%s.png' %(str(res1)+str(atomtypes1),str(res2)+str(atomtypes2)))
 
-def gluAspDamageRateComparison(pdbmulti,formatted):
+def gluAspDamageRateComparison(pdbmulti,formatted,split):
 	# this function determines the density loss rates for each glu and asp atom of interest (carboxyl side chain)
 	# and determines whether there is a significant difference of that of glu and asp in the TRAP population
-	# keyword formatted used to distinguish between the pdbmulti list of objects and atomsbychain_present list of 
+	# keyword 'formatted' used to distinguish between the pdbmulti list of objects and atomsbychain_present list of 
 	# objects, which is grouped into lists of equivalent atoms (different chains)
+	# 'split' keyword used to keep unbound and bound TRAP rings separate (true) or treat as one entity (false) - only
+	# available for case of formatted = False
 
 	p = 10 # number of damage datasets to include in analysis
 
 	# Create a figure instance
-	sns.set_palette("deep", desat=.6)
-	sns.set_context(rc={"figure.figsize": (16, 16)})
+	sns.set(style="white", context="talk")
+	sns.set_context(rc={"figure.figsize": (16, 16), "ytick.labelsize":32})
 	f = plt.figure()
 
 	nonRNAbound = ['A','B','C','D','E','F','G','H','I','J','K']
 	keptAtoms = {}
-	keptAtoms['Bound Glu'],keptAtoms['Unbound Glu'] = {},{}
-	keptAtoms['Bound Asp'],keptAtoms['Unbound Asp'] = {},{}
+	if split == True:
+		keys = ['Bound Glu','Unbound Glu','Bound Asp','Unbound Asp']
+	elif split == False:
+		keys = ['Glu','Asp']
+	for key in keys:
+		keptAtoms[key] = {}
+
 	for key in keptAtoms.keys():
 		keptAtoms[key]['slope'] = []	
 		keptAtoms[key]['r_squared'] = []	
@@ -2777,24 +2786,33 @@ def gluAspDamageRateComparison(pdbmulti,formatted):
 
 	if formatted == False:
 		for atom in pdbmulti:
-			if atom.basetype in ('GLU') and atom.atomtype == 'CD':
-				if atom.chaintype in nonRNAbound:
-					key = 'Unbound Glu'
+
+			if split == True: # for case where unbound and bound rings treated separately
+				if atom.basetype in ('GLU') and atom.atomtype == 'CD':
+					if atom.chaintype in nonRNAbound:
+						key = 'Unbound Glu'
+					else:
+						key = 'Bound Glu'
+				elif atom.basetype in ('ASP') and atom.atomtype == 'CG':
+					if atom.chaintype in nonRNAbound:
+						key = 'Unbound Asp'
+					else:
+						key = 'Bound Asp'
 				else:
-					key = 'Bound Glu'
-			elif atom.basetype in ('ASP') and atom.atomtype == 'CG':
-				if atom.chaintype in nonRNAbound:
-					key = 'Unbound Asp'
+					continue
+			elif split == False: # for case where unbound and bound rings treated as one
+				if atom.basetype in ('GLU') and atom.atomtype == 'CD':
+					key = 'Glu'
+				elif atom.basetype in ('ASP') and atom.atomtype == 'CG':
+					key = 'Asp' 
 				else:
-					key = 'Bound Asp'
-			else:
-				continue
+					continue
 
 			# for each set of atoms glu/asp bound/unbound calculate the rate of density loss for each atom in set
 			y = np.array(atom.mindensity[0:p-1])
 			x = np.array(range(2,p+1))
 			slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
-			keptAtoms[key]['slope'].append(slope)
+			keptAtoms[key]['slope'].append(abs(slope))
 			keptAtoms[key]['intercept'].append(intercept)
 			keptAtoms[key]['r_squared'].append(r_value**2)
 			keptAtoms[key]['p_value'].append(p_value)
@@ -2854,7 +2872,7 @@ def gluAspDamageRateComparison(pdbmulti,formatted):
 
 		print 'r-squared:'
 		print 'mean: {}: {}'.format(key,np.mean(keptAtoms[key]['r_squared']))
-		print 'mean: {}: {}'.format(key,np.std(keptAtoms[key]['r_squared']))
+		print 'std: {}: {}'.format(key,np.std(keptAtoms[key]['r_squared']))
 
 		print 'intercept:'
 		print 'mean: {}: {}'.format(key,np.mean(keptAtoms[key]['intercept']))
@@ -2865,21 +2883,24 @@ def gluAspDamageRateComparison(pdbmulti,formatted):
 
 	# x axis is discrete number of different equivalent atom groups
 	ax = plt.subplot(1, 1, 1)
-	width=0.35
+	width=0.8
 	x = np.arange(len(keptAtoms))
 	ax.bar(x,categories_means,width,
 						 yerr=categories_stds,color='#6897bb',
-						 error_kw=dict(elinewidth=2,ecolor='#31698a'))
+						 error_kw=dict(elinewidth=4,ecolor='k'))
 	xTickNames = [key for key in keptAtoms.keys()]
 
-	# Custom x-label,y-label  
+	# Custom x-label,y-label
+	sns.set(style="ticks")
+	sns.despine()
+	plt.setp(ax.patches,linewidth=5)  
 	ax.set_xlim(-width,len(x)+width)           
-	plt.xlabel('Residue type', fontsize=24)
-	plt.ylabel('Max density loss slope (e/A^3)', fontsize=24)
-	ax.set_xticks(x+width)
+	plt.xlabel('Residue type', fontsize=40)
+	plt.ylabel('|Dloss| (e/A^3)', fontsize=30)
+	ax.set_xticks(x+(width/2))
 	xtickNames = ax.set_xticklabels(xTickNames)
-	plt.setp(xtickNames, rotation=0, fontsize=18)
-	f.suptitle('Max density loss slope for glu/asp',fontsize=26)
+	plt.setp(xtickNames, rotation=0, fontsize=32)
+	f.suptitle('Max density loss slope for glu/asp',fontsize=40)
 	f.savefig('maxdenslossSlopeBarplot.png')
 
 def RNAphosphateBaseCorrelation(pdbmulti,datasetnum):
@@ -3257,60 +3278,90 @@ def glu50tyr62Correlation(atomList,densMet,metType,valType):
 	f.savefig('Glu50OE2vsTyr62OH_D{}_{}_{}.png'.format(densMet,metType,valType))
 
 
-def asp39G1distCorrelation(atomList,densMet,metType,valType):
+def asp39G1distCorrelation(atomList,densMet,metType,valType,O_C_difference):
 	# this function is designed to determine whether there exists a correlation between G1 N2 density change
-	# and the distance between asp39 side-chain oxygens
+	# and the distance between asp39 side-chain oxygens. If 'O_C_difference' is True then Dloss difference between
+	# O and C atoms in side-chain carboxyl groups plotted, otherwise O Dloss plotted only
 
 	# Create a figure instance
 	sns.set_palette("deep", desat=.6)
 	sns.set_context(rc={"figure.figsize": (16, 16)})
 	f = plt.figure()
+	ax = plt.subplot(1,1,1)
 
-	plotDict = {}
-	plotDict['CO2 damage'] = []
-	plotDict['G:N1 damage'] = []
-	plotDict['distance'] = []
-	for atom in atomList:
-		if atom.atomtype in ['N1'] and atom.residuenum%5 == 1 and atom.boundOrUnbound() == 'rna':
-			atomPosition = np.array([atom.X_coord,atom.Y_coord,atom.Z_coord])
-			plotDict['G:N1 damage'].append(atom.densMetric[densMet]['Standard'][metType][valType])
-			distList = []
-			searchedAtoms = []
-			for otheratom in atomList:
-				if otheratom.atomtype in ['OD1'] and otheratom.residuenum == 39 and otheratom.boundOrUnbound() == 'bound protein':
-					otheratomPosition = np.array([otheratom.X_coord,otheratom.Y_coord,otheratom.Z_coord])
-					distList.append(np.linalg.norm(atomPosition-otheratomPosition))
-					searchedAtoms.append(otheratom)
-			plotDict['distance'].append(min(distList))
-			plotDict['CO2 damage'].append(searchedAtoms[distList.index(min(distList))].densMetric[densMet]['Standard'][metType][valType]) 
+	atomresinum = [1,1,3,3]
+	atomtype = ['N1','N2','N1','N2']
+	otheratomtype = ['OD1','OD2','OE2','OE1']
+	otheratomresinum = [39,39,36,36]
+	otherotheratomtype = ['CG','CG','CD','CD']
+	plotcolor = ['red','orange','green','blue']
+	combinedlists = {'x':[],'y':[]}
+	for i in range(0,4):
+		plotDict = {'CO2 damage':[],'G:N1 damage':[],'distance':[],'O minus C damage':[]}
+		for atom in atomList:
+			if atom.atomtype == atomtype[i] and atom.residuenum%5 == atomresinum[i] and atom.boundOrUnbound() == 'rna':
+				atomPosition = np.array([atom.X_coord,atom.Y_coord,atom.Z_coord])
+				plotDict['G:N1 damage'].append(atom.densMetric[densMet]['Standard'][metType][valType])
+				distList = []
+				searchedAtoms = []
+				for otheratom in atomList:
+					if otheratom.atomtype == otheratomtype[i] and otheratom.residuenum == otheratomresinum[i] and otheratom.boundOrUnbound() == 'bound protein':
+						otheratomPosition = np.array([otheratom.X_coord,otheratom.Y_coord,otheratom.Z_coord])
+						distList.append(np.linalg.norm(atomPosition-otheratomPosition))
+						searchedAtoms.append(otheratom)
+				plotDict['distance'].append(min(distList))
+				plotDict['CO2 damage'].append(searchedAtoms[distList.index(min(distList))].densMetric[densMet]['Standard'][metType][valType]) 
+				
+				# calculate the difference in Dloss between the oxygen and carbon in located Asp39 CO2 group
+				if O_C_difference == True:
+					for otherotheratom in atomList:
+						if otherotheratom.atomtype == otherotheratomtype[i] and otherotheratom.residuenum == otheratomresinum[i] and otherotheratom.chaintype == searchedAtoms[distList.index(min(distList))].chaintype:
+							densMetDifference = searchedAtoms[distList.index(min(distList))].densMetric[densMet]['Standard'][metType][valType] - otherotheratom.densMetric[densMet]['Standard'][metType][valType]
+							plotDict['O minus C damage'].append(densMetDifference)
+		if O_C_difference == True: 
+			yKey = 'O minus C damage'
+			yLabel = 'Closest oxygen D{} difference {} {}'.format(densMet,metType,valType)
+		else:
+			yKey = 'CO2 damage'
+			yLabel = 'Closest oxygen D{} {} {}'.format(densMet,metType,valType)
+		plt.scatter(plotDict['distance'], plotDict[yKey], s=200, c=plotcolor[i])
+		combinedlists['x'].append(plotDict['distance'])
+		combinedlists['y'].append(plotDict[yKey])
 
-	plt.scatter(plotDict['distance'], plotDict['CO2 damage'], s=200, c='red')
-
-	plotDict['CO2 damage'] = []
-	plotDict['G:N1 damage'] = []
-	plotDict['distance'] = []
-	for atom in atomList:
-		if atom.atomtype in ['N1'] and atom.residuenum%5 == 3 and atom.boundOrUnbound() == 'rna':
-			atomPosition = np.array([atom.X_coord,atom.Y_coord,atom.Z_coord])
-			plotDict['G:N1 damage'].append(atom.densMetric[densMet]['Standard'][metType][valType])
-			distList = []
-			searchedAtoms = []
-			for otheratom in atomList:
-				if otheratom.atomtype in ['OE2'] and otheratom.residuenum == 36 and otheratom.boundOrUnbound() == 'bound protein':
-					otheratomPosition = np.array([otheratom.X_coord,otheratom.Y_coord,otheratom.Z_coord])
-					distList.append(np.linalg.norm(atomPosition-otheratomPosition))
-					searchedAtoms.append(otheratom)
-			plotDict['distance'].append(min(distList))
-			plotDict['CO2 damage'].append(searchedAtoms[distList.index(min(distList))].densMetric[densMet]['Standard'][metType][valType]) 
-
-	plt.scatter(plotDict['distance'], plotDict['CO2 damage'], s=200, c='green')
+	# calculate linear regression values here
+	xlist_1d = [x for sublist in combinedlists['x'] for x in sublist]
+	ylist_1d = [x for sublist in combinedlists['y'] for x in sublist]
+	slope, intercept, r_value, p_value, std_err = stats.linregress(xlist_1d, ylist_1d)
+	x2 = [min(xlist_1d), min(xlist_1d)+ (max(xlist_1d) - min(xlist_1d))/2, max(xlist_1d)]
+	y2 = slope*np.array(x2) + np.array(intercept)
+	plt.plot(x2, y2, '-',color='grey',linewidth=3)
 
 	plt.xlabel('G1:N1 distance',fontsize=24)
-	plt.ylabel('Closest oxygen D{} {} {}'.format(densMet,metType,valType),fontsize=24)
+	plt.ylabel(yLabel,fontsize=24)
+	ax.tick_params(axis='x', labelsize=30)
+	ax.tick_params(axis='y', labelsize=30)
 	f.suptitle('CO2 damage vs carboxyl proximity: D{} {} {}'.format(densMet,metType,valType),fontsize=24)
 	plt.setp(f.axes)
-	f.savefig('CO2DamagevCarboxylProximityD{}{}{}.png'.format(densMet,metType,valType))
+	f.savefig('CO2DamagevCarboxylProximityD{}{}{}_{}.png'.format(densMet,metType,valType,O_C_difference))
 
+	# output linear regression summary
+	print '\n***\nLin regression summary:\nSlope: {}\nIntercept: {}\n R-squared: {}\n P-value: {}\nStd Error: {}'.format(slope,intercept,r_value**2,p_value,std_err)
+	return slope,r_value
+
+def batchRun_asp39G1distCorrelation(atomList):
+
+	summaryDict = {}
+	for densMet in ['loss','bfactor']:
+		summaryDict[densMet] = {'slope':[],'r_squared':[]}
+		for i in range(0,9):
+			slope,r_value = asp39G1distCorrelation(atomList,densMet,'values',i,False)
+			summaryDict[densMet]['slope'].append(slope)
+			summaryDict[densMet]['r_squared'].append(r_value**2)
+
+	for key in summaryDict.keys():
+		print '\n***\nD{} metric: '.format(key)	
+		print 'Slope: {}'.format(','.join([str(val) for val in summaryDict[key]['slope']]))
+		print 'R-squared: {}'.format(','.join([str(val) for val in summaryDict[key]['r_squared']]))
 
 def gluAspBfactorChangeOnRNABinding(atomList,densMet,percent):
 	# determine the change in Bfactor upon RNA binding - which residues are most effected?
@@ -3392,12 +3443,308 @@ def gluAspBfactorChangeOnRNABinding(atomList,densMet,percent):
 		f.savefig('bfacChangeVsD{}Change.png'.format(densMet))
 
 
+def meanOfDensitiesPerComponent():
+	# small function to calculate the mean of the Dloss metric for all protein
+	# RNA and solvent atoms separately and observe if they are different for each dose 
+	atoms = retrieveAtomList()
+	densDict = {'protein':[],'RNA':[],'solvent':[]}
+	for i in range(0,10):
+		print '***\nFor damage set {}:'.format(i)
+		for atom in atoms.processedAtomList:
+			density = atom.densMetric['loss']['Standard']['values'][i]
+			if atom.chaintype not in ['W','Y']:
+				densDict['protein'].append(density)
+			elif atom.chaintype in ['W']:
+				densDict['RNA'].append(density)
+			elif atom.chaintype in ['Y']:
+				densDict['solvent'].append(density)
+		# calculate mean of densities, as well as std
+		for key in densDict.keys():
+			meanOfDensities = np.mean(densDict[key])
+			stdOfDensities = np.std(densDict[key])
+			print '{} ---> mean: {} std: {}'.format(key,meanOfDensities,stdOfDensities)
+
+
+def asp39G1_glu36G3dist(atomList):
+	# this function is designed to determine calculate the min atom distance between glu36 and G3 and also
+	# asp39 and G1
+
+	distPairs = [[39,'OD1',1,'N1'],[39,'OD2',1,'N2'],[39,'OD1',1,'N2'],[39,'OD2',1,'N1'],
+			     [36,'OE1',3,'N1'],[36,'OE2',3,'N2'],[36,'OE1',3,'N2'],[36,'OE2',3,'N1']]
+
+	for distPair in distPairs:
+		distPairList = []
+		for atom in atomList:
+			if atom.atomtype == distPair[3] and atom.residuenum%5 == distPair[2] and atom.boundOrUnbound() == 'rna':
+				atomPosition = np.array([atom.X_coord,atom.Y_coord,atom.Z_coord])
+				distList = []
+				searchedAtoms = []
+				for otheratom in atomList:
+					if otheratom.atomtype == distPair[1] and otheratom.residuenum == distPair[0] and otheratom.boundOrUnbound() == 'bound protein':
+						otheratomPosition = np.array([otheratom.X_coord,otheratom.Y_coord,otheratom.Z_coord])
+						distList.append(np.linalg.norm(atomPosition-otheratomPosition))
+						searchedAtoms.append(otheratom)
+				if distPair[0] == 39:
+					print 'asp39-G1 {}-{} distance: {}'.format(distPair[1],distPair[3],min(distList))
+				elif distPair[0] == 36:
+					print 'glu36-G3 {}-{} distance: {}'.format(distPair[1],distPair[3],min(distList))
+				distPairList.append(min(distList))
+		print 'Average distance: {}\n***'.format(np.mean(distPairList))
 
 
 
+def nonboundVboundDensityStats(PDBmulti):
+	# calculate basic density summary stats for bound, non-bound and RNA
+
+	densityDict = {'unbound protein':[],'bound protein':[],'rna':[]}
+	for atom in PDBmulti:
+		boundtype = atom.boundOrUnbound()
+		if boundtype != 'something else':
+			densityDict[boundtype].append(atom.densMetric['loss']['Standard']['values'])
+
+	# calculate stats over each component with each dose
+	csvOut = open('boundnonboundstats.csv','w')
+	for i in range(0,10):
+		csvOut.write('DATASET {}\n'.format(i))
+		print 'For dataset {}'.format(i)
+		for key in densityDict.keys():
+			densVals = [dens[i] for dens in densityDict[key]]
+			meanDloss = np.mean(densVals)
+			stdDloss = np.std(densVals)
+			ntile_10 = np.percentile(densVals,10)
+			ntile_90 = np.percentile(densVals,90)
+			confint_95 = mean_confidence_interval(densVals)
+
+			print '\tFor {} component:'.format(key)
+			print '\t\tMean for Dloss: {}'.format(meanDloss)
+			print '\t\tSD for Dloss: {}'.format(stdDloss)
+			print '\t\t10-tile for Dloss: {}'.format(ntile_10)
+			print '\t\t90-tile for Dloss: {}'.format(ntile_90)
+			print '\t\t95CI for Dloss: {}'.format(confint_95)
+
+			csvOut.write('{},{},{}\n'.format(key,meanDloss,confint_95))
+	csvOut.close()
+
+def DlossHistogram(atoms,Dmetric):
+	# plot a histogram of the distribution of Dloss values within a structure
+	# for a given dataset number. Dmetric specifies density metric
+
+	testStatistics = {'unbound protein':[],'bound protein':[],'rna':[]}
+	skewnessDict = {'unbound protein':[],'bound protein':[],'rna':[]}
+	for i in range(0,9):
+		sns.set_palette("deep", desat=.6)
+		sns.set_context(rc={"figure.figsize": (10, 6)})
+		fig = plt.figure()
+
+		counter = -1 
+		colors = ['red','blue','green']
+		for boundType in ['unbound protein','bound protein','rna']:
+			counter += 1
+			colorType = colors[counter]
+			datax = [atm.densMetric[Dmetric]['Standard']['values'][i] for atm in atoms.processedAtomList if atm.boundOrUnbound() == boundType]
+			plt.hist(datax, 300, histtype="stepfilled", alpha=.7,color=colorType)
+			print '-------Dataset {}---------'.format(i+2)
+			print "Component '{}' length: {}".format(boundType,len(datax))
+
+			# test for normality in data
+			print 'Testing for normality in dataset: {}'.format(boundType)
+			W,critVal,SigLevel = stats.anderson(datax,dist='norm')
+			print 'Test statistic: {}'.format(W)
+			print 'critical value: {}'.format(critVal)
+			print 'SigLevel: {}'.format(SigLevel)
+			testStatistics[boundType].append(W)
+
+			# calculate dataset skewness
+			skewness = stats.skew(datax)
+			print 'Calculating skewness in dataset: {}'.format(boundType)
+			print 'Skewness: {}'.format(skewness)
+			skewnessDict[boundType].append(skewness)
+
+		plt.xlabel('D{} value'.format(Dmetric))
+		plt.ylabel('Frequency of atoms')
+		plt.title('Histrogram of D{} value per atom'.format(Dmetric))
+		fig.savefig('D{}PerAtom_{}.png'.format(Dmetric,i))
+
+	# plot line graph of dataset number against test statistics and skewness
+	for i in range(0,2):
+		if i == 0:
+			test = testStatistics
+			yLabel = 'A-D test statistic'
+			title = 'Anderson-Darling test stat for D{}'.format(Dmetric)
+			fileName = 'AndDarlStat_D{}.png'.format(Dmetric)
+		else:
+			test = skewnessDict
+			yLabel = 'Skewness'
+			title = 'Skewness for D{}'.format(Dmetric)
+			fileName = 'Skewness_D{}.png'.format(Dmetric)
+
+		sns.set_palette("deep", desat=.6)
+		sns.set_context(rc={"figure.figsize": (10, 6)})
+		fig = plt.figure()
+		ax = plt.subplot(1,1,1)
+		for key in test.keys():
+			if key == 'unbound protein':
+				label = 'Non-bound TRAP'
+			elif key == 'bound protein':
+				label = 'Bound TRAP'
+			elif key == 'rna':
+				label = 'RNA'
+			plt.plot(range(2,11),test[key],label=label)
+			ax.legend(loc='best')
+			plt.xlabel('Dataset', fontsize=18)
+			plt.ylabel(yLabel, fontsize=18)
+			plt.title(title)
+			fig.savefig(fileName)
 
 
+def DlossHistogram_RNAcomponents(atoms,Dmetric):
+	# plot a histogram of the distribution of Dloss values within a structure
+	# for a given dataset number. Dmetric specifies density metric
 
+	testStatistics = {'base':[],'sugar':[],'phosphate':[]}
+	for i in range(0,9):
+		sns.set_palette("deep", desat=.6)
+		sns.set_context(rc={"figure.figsize": (10, 6)})
+		fig = plt.figure()
+
+		counter = -1 
+		colors = ['red','blue','green']
+		datax = {}
+		for rnaType in ['base','sugar','phosphate']:
+
+			if rnaType == 'phosphate':
+				atomtypes = ['P','OP1','OP2']
+			elif rnaType == 'sugar':
+				atomtypes = ["C5'","C4'","C3'","C2'","O2'","C1'","O4'","O5'","O3'"]
+			elif rnaType == 'base':
+				atomtypes = ['P','OP1','OP2'] + ["C5'","C4'","C3'","C2'","O2'","C1'","O4'","O5'","O3'"]
+
+			counter += 1
+			colorType = colors[counter]
+			datax[rnaType] = []
+			if rnaType in ('sugar','phosphate'):
+				for atm in atoms.processedAtomList:
+					if atm.atomtype in atomtypes and atm.chaintype == 'W':
+						datax[rnaType].append(atm.densMetric[Dmetric]['Standard']['values'][i])
+			elif rnaType in ('base'):
+				for atm in atoms.processedAtomList:
+					if atm.atomtype not in atomtypes and atm.chaintype == 'W':
+						datax[rnaType].append(atm.densMetric[Dmetric]['Standard']['values'][i])
+			plt.hist(datax[rnaType], 300, histtype="stepfilled", alpha=.7,color=colorType)
+
+			# test for normality in data
+			print 'Testing for normality in dataset: {}'.format(rnaType)
+			W,critVal,SigLevel = stats.anderson(datax[rnaType],dist='norm')
+			print 'Test statistic: {}'.format(W)
+			print 'critical value: {}'.format(critVal)
+			print 'SigLevel: {}'.format(SigLevel)
+			testStatistics[rnaType].append(W)
+
+		plt.xlabel('D{} value'.format(Dmetric))
+		plt.ylabel('Frequency of atoms')
+		plt.title('Histrogram of D{} value per atom'.format(Dmetric))
+		fig.savefig('RNAatoms_D{}PerAtom_{}.png'.format(Dmetric,i))
+
+	# plot line graph of dataset number against test statistics
+	sns.set_palette("deep", desat=.6)
+	sns.set_context(rc={"figure.figsize": (10, 6)})
+	fig = plt.figure()
+	ax = plt.subplot(1,1,1)
+	for key in testStatistics.keys():
+		plt.plot(range(2,11),testStatistics[key],label=key)
+		ax.legend(loc='best')
+		plt.xlabel('Dataset', fontsize=18)
+		plt.ylabel('A-D test statistic'.format(Dmetric), fontsize=18)
+		plt.title('Anderson-Darling test stat for D{}'.format(Dmetric))
+		fig.savefig('RNAatoms_AndDarlStat_D{}.png'.format(Dmetric))
+
+
+def DlossHistogram_RNAcomponents2(atoms,Dmetric,rnaType):
+	# plot a histogram of the distribution of Dloss values within a structure
+	# for a given dataset number. Dmetric specifies density metric
+
+	testStatistics = {'G1':[],'A2':[],'G3':[],'U4':[]}
+	for i in range(0,9):
+		sns.set_palette("deep", desat=.6)
+		sns.set_context(rc={"figure.figsize": (10, 6)})
+		fig = plt.figure()
+
+		counter = -1 
+		colors = ['red','blue','green','yellow']
+		datax = {}
+		for nucleotideType in ['G1','A2','G3','U4']:
+
+			if rnaType == 'phosphate':
+				atomtypes = ['P','OP1','OP2']
+			elif rnaType == 'sugar':
+				atomtypes = ["C5'","C4'","C3'","C2'","O2'","C1'","O4'","O5'","O3'"]
+			elif rnaType == 'base':
+				atomtypes = ['P','OP1','OP2'] + ["C5'","C4'","C3'","C2'","O2'","C1'","O4'","O5'","O3'"]
+
+			counter += 1
+			colorType = colors[counter]
+			datax[nucleotideType] = []
+			if rnaType in ('sugar','phosphate'):
+				for atm in atoms.processedAtomList:
+					if atm.atomtype in atomtypes and atm.chaintype == 'W' and atm.residuenum%5 == int(nucleotideType[1]):
+						datax[nucleotideType].append(atm.densMetric[Dmetric]['Standard']['values'][i])
+			elif rnaType in ('base'):
+				for atm in atoms.processedAtomList:
+					if atm.atomtype not in atomtypes and atm.chaintype == 'W' and atm.residuenum%5 == int(nucleotideType[1]):
+						datax[nucleotideType].append(atm.densMetric[Dmetric]['Standard']['values'][i])
+			plt.hist(datax[nucleotideType], 300, histtype="stepfilled", alpha=.7,color=colorType)
+
+			# test for normality in data
+			print 'Testing for normality in dataset: {}'.format(nucleotideType)
+			W,critVal,SigLevel = stats.anderson(datax[nucleotideType],dist='norm')
+			print 'Test statistic: {}'.format(W)
+			print 'critical value: {}'.format(critVal)
+			print 'SigLevel: {}'.format(SigLevel)
+			testStatistics[nucleotideType].append(W)
+
+		plt.xlabel('D{} value'.format(Dmetric))
+		plt.ylabel('Frequency of atoms')
+		plt.title('Histrogram of D{} value per atom'.format(Dmetric))
+		fig.savefig('RNAatoms_D{}PerAtom_{}.png'.format(Dmetric,i))
+
+	# plot line graph of dataset number against test statistics
+	sns.set_palette("deep", desat=.6)
+	sns.set_context(rc={"figure.figsize": (10, 6)})
+	fig = plt.figure()
+	ax = plt.subplot(1,1,1)
+	for key in testStatistics.keys():
+		plt.plot(range(2,11),testStatistics[key],label=key)
+		ax.legend(loc='best')
+		plt.xlabel('Dataset', fontsize=18)
+		plt.ylabel('A-D test statistic'.format(Dmetric), fontsize=18)
+		plt.title('Anderson-Darling test stat for D{}'.format(Dmetric))
+		fig.savefig('RNAatoms_AndDarlStat_D{}.png'.format(Dmetric))
+
+
+def glu36OE2toG3O6Dist(PDBmulti):
+	# function to calculate distances from Glu36 OE2 atom to O6 oxygen of 
+	# G3 nucleotide - is it less than 3 Angstrom?
+	RNAbound =    ['L','M','N','O','P','Q','R','S','T','U','V']
+
+	# calculate Glu36OE2-G3O6 and ASP39OD1-G1O6 distances for each protein chain of bound TRAP
+	for choice in ([36,'OE2'],[39,'OD1']):
+		distDict = {}
+		for atom in PDBmulti:
+			distList = []
+			if atom.chaintype in RNAbound and atom.residuenum == choice[0] and atom.atomtype == choice[1]:
+				for otheratom in PDBmulti:
+					if otheratom.chaintype == 'W' and otheratom.atomtype == 'O6':
+						atomPosition = np.array([atom.X_coord,atom.Y_coord,atom.Z_coord])
+						otheratomPosition = np.array([otheratom.X_coord,otheratom.Y_coord,otheratom.Z_coord])
+						distList.append(np.linalg.norm(atomPosition-otheratomPosition))
+				distDict[atom.chaintype] = min(distList)
+		
+		# provide summary info here
+		print 'Residue {}, atom {}'.format(choice[0],choice[1])
+		print 'Min distance: {}'.format(min(distDict.values()))
+		print 'Max distance: {}'.format(max(distDict.values()))
+		print 'Mean distance: {}'.format(np.mean(distDict.values()))
+		print 'Std for distances: {}\n'.format(np.std(distDict.values()))
 
 
 
