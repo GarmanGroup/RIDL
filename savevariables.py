@@ -26,13 +26,9 @@ def retrieve_objectlist(filename):
     # this function retrieves a list of objects from a file, given name
     # of form filename = str(len(PDBlist))+'_'+str(pdbname)+'_data.pkl'
     print 'Retrieving dataset from .pkl file...'
+    
     #to determine number of atoms saved to file from file name:
-    num_atoms = ''
-    for letter in filename:
-        if letter not in ('_'):
-            num_atoms = num_atoms + letter
-        else:
-            break
+    num_atoms = (filename.split('/')[-1]).split('_')[0]
     print '\nNumber of atoms in file: ' + str(num_atoms)
         
     #to retrieve list from file to new list:
