@@ -74,12 +74,22 @@ def residue_violinplotter(where,densitylist_atomorder,atoms_labels,
     # Create a figure instance
     fig = plt.figure()
     
+    # get data in right format to plot
+    densityList,atomList = [],[]
+    count = -1
+
+    for densities in densitylist_atomorder:
+        count += 1
+        densityList = densityList + densities
+        atomList = atomList + [atoms_labels[count]]*len(densities)
+    dataDict = {'Atoms':atomList,'Densities':densityList}
+
     # Create an axes instance
     ax = fig.add_subplot(111)    
-    sns.violinplot(densitylist_atomorder, color="coolwarm_r", lw=2);
+    sns.violinplot(x='Atoms',y='Densities',lw=2,data=dataDict)
     
-    ## Custom x-axis labels
-    ax.set_xticklabels(atoms_labels)
+    # ## Custom x-axis labels
+    # ax.set_xticklabels(atoms_labels)
     
     ## Remove top axes and right axes ticks
     ax.get_xaxis().tick_bottom()
