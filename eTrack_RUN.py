@@ -31,6 +31,51 @@ class eTrack(object):
 		self.PDBmultipklname 		= PDBmultipklname
 		self.plot 					= plot
 
+	def runPipeline(self,map_process,post_process,retrieve_PDBmulti,graphs,inputfilename):
+		# the following function reads in the above functions one by one in a scripted 
+		# pipeline. Takes inputs to specify which parts of above pipeline are to be
+		# included. For each function input specify 'y' if this part is to be performed
+		# and 'n' otherwise.
+		self.titleCaption('eTrack pipeline')
+
+		# first need to run function above to read in input file containing info
+		# on where input files are and where output files should be written
+		print 'Reading input file: {}'.format(str(inputfilename))
+		self.readInputFile(inputfilename)
+
+		if map_process == 'y':
+			self.map_processing()
+		else:
+			print 'Map processing task not chosen...'
+			print 'Input pkl files for post processing chosen from input file:'
+			for file in self.pklfiles:
+				print '\t{}'.format(file)
+		self.fillerLine()
+
+		if post_process == 'y':
+			self.post_processing()
+			# save PDBmulti as pkl file
+			PDBmultipklname = save_objectlist(self.PDBmulti,self.seriesname)
+			os.system('mv {} {}{}'.format(PDBmultipklname,self.where +'output/',PDBmultipklname))
+			self.PDBmultipklname = self.where +'output/'+ PDBmultipklname
+			del self.PDBmulti
+		else: 
+			print 'Post processing job not chosen...'
+		self.fillerLine()
+
+		if retrieve_PDBmulti == 'y':
+			self.PDBmulti_retrieve()
+			if graphs != 'y':
+				return 
+		else:
+			print 'PDBmulti retrieval from pkl file not chosen...'
+
+		if graphs == 'y':
+			self.graph_analysis()
+		else:
+			print 'Graph analysis job not selected...'
+		self.fillerLine()
+
 	def readInputFile(self,inputfilename):
 		# this function reads in the input file e_Track_input.txt, which 
 		# specifies the location of all the relevant input files and where
@@ -40,8 +85,6 @@ class eTrack(object):
 
 		# preallocate pklfiles list for post_processing pipeline step below
 		pklfiles = []
-		# preallocate initial pdb file name 
-		initialPDB = ''
 
 		# read in input file and determine location 'where' and name of input files
 		for line in inputfile.readlines():
@@ -49,9 +92,6 @@ class eTrack(object):
 				continue
 			elif 'where' in line.split()[0]:
 				self.where 					= line.split()[1]
-				self.outputDir 				= '{}output/'.format(self.where)
-				self.outputPlotDir 			= '{}plots/'.format(self.outputDir)
-				self.outputCombPlotDir 		= '{}combinedDatasets'.format(self.outputPlotDir)
 			elif 'damageset_name' in line.split()[0]:
 				self.seriesname 			= line.split()[1]
 			elif 'damageset_num' in line.split()[0]:
@@ -69,6 +109,14 @@ class eTrack(object):
 			elif 'plotGraphs' in line.split()[0]:
 				self.plot 					= True
 
+		# check that an output directory has been found and make subdirectories if present
+		if os.path.isdir(self.where) == False:
+			print 'Input file location: {} does not exist. Please select an appropriate directory'.format(self.where)
+			return
+		self.outputDir 				= '{}output/'.format(self.where)
+		self.outputPlotDir 			= '{}plots/'.format(self.outputDir)
+		self.outputCombPlotDir 		= '{}combinedDatasets'.format(self.outputPlotDir)
+
 		# add pkl file names as attribute if specified in input file
 		if len(pklfiles) != 0:
 			self.pklfiles = pklfiles
@@ -82,6 +130,7 @@ class eTrack(object):
 		self.pdbname = [self.seriesname+num for num in damageset_nums_list]
 
 	def map_processing(self):
+		self.titleCaption('Map Processing')
 
 		# want to create the following additional subdirectories directories
 		where2 = '{}output/'.format(self.where)
@@ -96,7 +145,8 @@ class eTrack(object):
 			# derive per-atom density metrics from maps
 			mapfilname1 		= '{}_atoms.map'.format(dataset)
 			mapfilname2 		= '{}_density.map'.format(dataset)
-			maps2DensMets 	= maps2DensMetrics(self.where,dataset,mapfilname1,'atom_map',mapfilname2,'density_map',self.plot)
+			maps2DensMets 	= maps2DensMetrics(self.where,dataset,mapfilname1,'atom_map',
+											   mapfilname2,'density_map',self.plot)
    			maps2DensMets.maps2atmdensity()
 
 			# move pkl file to working output directory
@@ -107,62 +157,45 @@ class eTrack(object):
 		self.pklfiles = pklFileNames
 
 	def post_processing(self):
+		self.titleCaption('Post Processing')
 
-		print '••••••••••••••••••••••••••••••'
+		# next read in the pdb structure file as list of atom objects
 		print 'Reading in initial pdb file...'
-		# next read in the pdb structure file:
-		# run function to fill PDBarray list with atom objects from structure
-
 		initialPDBlist = pdb2list(self.where+self.initialPDB,[])
 
-		# # determine the number of surrounding atoms for each atom in structure
-		# numsurroundatoms_calculate(self.where+self.initialPDB,initialPDBlist,10)
-
-		# # plot a scatter plot of # neighbouring atoms vs protons
-		# numneighbours_scatter(self.where,initialPDBlist,self.seriesname)
-
-		# # determine Bdamage metric for initial PDB structure
-		# bdamage_calculate(initialPDBlist)
-
 		# retrieve object lists of atoms for each damage set
-		print '•••••••••••••••••••••••••••••••'
+		self.fillerLine()
 		print 'Reading in damaged pkl files...'
 		data_list = []
 		for pkl_filename in self.pklfiles:
-			print '\nDamage file number {}:'.format(len(data_list)+1)
+			print 'Damage file number: {}\n'.format(len(data_list)+1)
 			PDB_ret = retrieve_objectlist(pkl_filename)
-
-			# # extract number of surrounding atoms for each atom in later structure
-			# # from initial structure
-			# numsurroundatms_extract(initialPDBlist,PDB_ret)
-
-			# # determine Bdamage metric for later PDB structures
-			# bdamage_calculate(PDB_ret)
 
 			# add new retrieved damage set list to data_list
 			data_list.append(PDB_ret)
 
 		# create a list of atom objects with attributes as lists varying over 
 		# dose range, only including atoms present in ALL damage datasets
+		print 'New list of atoms over full dose range calculated...'
 		self.PDBmulti = multiARRAY_diffatomnumbers(data_list)
 
 		# determine Bfactor change between later datasets and initial 
 		find_Bchange(initialPDBlist,self.PDBmulti,'Bfactor')
 
-		# # determine Bdamage change between later datasets and initial 
-		# find_Bchange(initialPDBlist,self.PDBmulti,'Bdamage')
-
 		# write atom numbers and density metrics to simple text files - one for 
 		# each density metric separately
 		for densMet in ('mean','min','max','median','std','rsd','mode',
 						'min90tile','max90tile','min95tile','max95tile'):
+			print 'Writing .txt file for per-atom density metric: {}'.format(densMet)
 			objlist2txt(self.PDBmulti,self.outputDir,densMet)
 
 	def PDBmulti_retrieve(self):
+		self.titleCaption('Atom List Retrieval')
 		# retrieve the PDBmulti list from the pickle list
 		self.PDBmulti = retrieve_objectlist(self.PDBmultipklname)
 
 	def graph_analysis(self):
+		self.titleCaption('Graph Analysis')
 		
 		# location of output plots (make folder if doesn't exist)
 		if not os.path.exists(self.outputCombPlotDir):
@@ -182,68 +215,11 @@ class eTrack(object):
 		topNdamsites_chainbarplotter(self.PDBmulti,N,self.outputCombPlotDir,densmet)
 		topNdamsites_printer(self.PDBmulti,N,self.outputCombPlotDir,densmet,initialPDBname)
 
-		# # plot graphs of Bfactor change and Bdamage change against atom number
-		# bdamchange_v_atomnum(where,self.PDBmulti)
-		# bdamBfac_change_v_atomnum(where,self.PDBmulti)
 
-	def runPipeline(self,map_process,post_process,retrieve_PDBmulti,graphs,inputfilename):
-		# the following function reads in the above functions one by one in a scripted 
-		# pipeline. Takes inputs to specify which parts of above pipeline are to be
-		# included. For each function input specify 'y' if this part is to be performed
-		# and 'n' otherwise.
-
-		print '||===========================================================||'
-		print '||                  eTrack pipeline                          ||'
-		print '||===========================================================||'
-
-		# first need to run function above to read in input file containing info
-		# on where input files are and where output files should be written
-		print 'Reading input file: {}'.format(str(inputfilename))
-		self.readInputFile(inputfilename)
-
-		if map_process == 'y':
-			print '\n||===========================================================||'
-			print '||                  	  Map Processing                        ||'
-			print '||===========================================================||'
-			self.map_processing()
-		else:
-			print 'Map processing task not chosen...'
-			print 'Input pkl files for post processing chosen from input file:'
-			for file in self.pklfiles:
-				print '\t{}'.format(file)
+	def fillerLine(self):
 		print '---------------------------------------------------------------'	
 
-		if post_process == 'y':
-			print '\n||===========================================================||'
-			print '||                  	  Post Processing                       ||'
-			print '||===========================================================||'
-			self.post_processing()
+	def titleCaption(self,title):
+		print '||========================== {} ==========================||'.format(title)
 
-			# save PDBmulti as pkl file
-			PDBmultipklname = save_objectlist(self.PDBmulti,self.seriesname)
-			os.system('mv {} {}{}'.format(PDBmultipklname,self.where +'output/',PDBmultipklname))
-			self.PDBmultipklname = self.where +'output/'+ PDBmultipklname
-			del self.PDBmulti
 
-		else: 
-			print 'Post processing job not chosen...'
-		print '---------------------------------------------------------------'	
-
-		if retrieve_PDBmulti == 'y':
-			print '\n||===========================================================||'
-			print '||                  	  PDBmulti retrieval                    ||'
-			print '||===========================================================||'
-			self.PDBmulti_retrieve()
-			if graphs != 'y':
-				return 
-		else:
-			print 'PDBmulti retrieval from pkl file not chosen...'
-
-		if graphs == 'y':
-			print '\n||===========================================================||'
-			print '||                  	  Graph Analysis                        ||'
-			print '||===========================================================||'
-			self.graph_analysis()
-		else:
-			print 'Graph analysis job not selected...'
-		print '---------------------------------------------------------------'	
