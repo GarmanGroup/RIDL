@@ -27,7 +27,7 @@ class residue:
 class StructurePDB(object):
     # A class for coordinate PDB file atom
     def __init__(self,atomnum=0,residuenum=0,atomtype="",basetype="",chaintype="",
-                 X_coord=0,Y_coord=0,Z_coord=0,atomidentifier="",numsurroundatoms=0,
+                 X_coord=0,Y_coord=0,Z_coord=0,atomID="",numsurroundatoms=0,
                  numsurroundprotons=0,vdw_rad=0):
             
         self.atomnum            = atomnum
@@ -38,7 +38,7 @@ class StructurePDB(object):
         self.X_coord            = X_coord
         self.Y_coord            = Y_coord
         self.Z_coord            = Z_coord
-        self.atomidentifier     = atomidentifier
+        self.atomID             = atomID
         self.numsurroundatoms   = numsurroundatoms
         self.numsurroundprotons = numsurroundprotons
         self.vdw_rad            = vdw_rad
@@ -71,7 +71,7 @@ class StructurePDB(object):
         vdw         = 'notyetdefined'
         for line in VDWradfile.readlines():
             a = str(line.split()[1]).lower()
-            b = str(self.atomidentifier).lower()
+            b = str(self.atomID).lower()
             if a == b:
                 # convert VDV radius for element into Angstroms as required:
                 vdw = float(line.split()[5])*(0.01)
@@ -94,14 +94,14 @@ class singlePDB(StructurePDB):
     # StructurePDB subclass for a single pdb file structure
     def __init__(self,atomnum=0,residuenum=0,atomtype="",basetype="",chaintype="",
                  X_coord=0,Y_coord=0,Z_coord=0,Bfactor=0,Occupancy=0,meandensity=0,
-                 maxdensity=0,mindensity=0,mediandensity=0,atomidentifier="",
+                 maxdensity=0,mindensity=0,mediandensity=0,atomID="",
                  numsurroundatoms=0,numsurroundprotons=0,vdw_rad=0,bdam=0,bdamchange=0,
                  Bfactorchange=0,numvoxels=0,stddensity=0,min90tile=0,max90tile=0,
                  min95tile=0,max95tile=0):
                     
         super(singlePDB, self).__init__(
             atomnum,residuenum,atomtype,basetype,chaintype,X_coord,Y_coord,
-            Z_coord,atomidentifier,numsurroundatoms,numsurroundprotons,vdw_rad)
+            Z_coord,atomID,numsurroundatoms,numsurroundprotons,vdw_rad)
             
         self.Bfactor        = Bfactor 
         self.Occupancy      = Occupancy
@@ -136,7 +136,7 @@ class multiPDB(StructurePDB):
     
     def __init__(self,atomnum=0,residuenum=0,atomtype="",basetype="",chaintype="",
                  X_coord=0,Y_coord=0,Z_coord=0,Bfactor=[],Occupancy=[],meandensity=[],
-                 maxdensity=[],mindensity=[],mediandensity=[],atomidentifier="",
+                 maxdensity=[],mindensity=[],mediandensity=[],atomID="",
                  numsurroundatoms=0,numsurroundprotons=0,bdam=[],bdamchange=[],Bfactorchange=[],
                  meandensity_norm=[],maxdensity_norm=[],mindensity_norm=[],
                  mediandensity_norm=[],numvoxels=[],stddensity=[],min90tile=[],max90tile=[],
@@ -144,7 +144,7 @@ class multiPDB(StructurePDB):
             
         super(multiPDB, self).__init__(
             atomnum,residuenum,atomtype,basetype,chaintype,X_coord,Y_coord,
-            Z_coord,atomidentifier,numsurroundatoms,numsurroundprotons)   
+            Z_coord,atomID,numsurroundatoms,numsurroundprotons)   
             
         self.Bfactor            = Bfactor 
         self.Occupancy          = Occupancy
