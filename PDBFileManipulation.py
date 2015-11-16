@@ -10,59 +10,10 @@ from operator import sub,truediv
 from random import randint
 from progbar import progress
 
-###############################################################################
-def PDBtoCLASSARRAY(pdbfilename,PDBarray):
-    #this function inputs a pdb file name and returns an array of pdb objects, 
-    #organised following the StructurePDB class 
-    
-    pdbin = open(str(pdbfilename), "r")
-    lines = pdbin.readlines()
-    print 'Reading PDB file and converting to array of objects'
-    for line in lines:
-        if 'ATOM' in line.split()[0]:
-            y = singlePDB(StructurePDB)
-            y.atomnum = int(line.split()[1])
-            y.atomtype = line.split()[2]
-            y.basetype = line.split()[3]
-            y.chaintype = line.split()[4]
-            y.residuenum = int(line.split()[5])
-            y.X_coord = float(line.split()[6])
-            y.Y_coord = float(line.split()[7])
-            y.Z_coord = float(line.split()[8])
-            
-            #it has been observed that in some cases the occupancy and Bfactor pdb
-            #columns are merged (due to the Bfactor value being over 100). To address
-            #this problem the following splitting is used:
 
-            #Case1: no merging present:
-            try:
-                y.atomidentifier = line.split()[11]
-                y.Occupancy = line.split()[9]
-                y.Bfactor = line.split()[10]
-
-            #Case2: merging present:    
-            except IndexError:
-                #print 'Occupancy and Bfactor columns merged in .pdb file -> splitting them now'
-                y.atomidentifier = line.split()[10]
-                y.Occupancy = str(line.split()[9])[0:4]
-                y.Bfactor = str(line.split()[9])[4:len(line.split()[9])]
-                #print 'Occupancy: ' +str(y.Occupancy) + '; Bfactor: ' + str(y.Bfactor) 
-            
-            PDBarray.append(y)
-        else: 
-            pass
-    pdbin.close()
-    return PDBarray
-###############################################################################
-
-
-
-###############################################################################
-def PDBtoCLASSARRAY_v2(pdbfilename,PDBarray):
+def PDBtoList(pdbfilename,PDBarray):
     # this function inputs a pdb file name and returns an array of pdb objects, 
-    # organised following the StructurePDB class. It is the same as the above 
-    # function (PDBtoCLASSARRAY) but directly uses the PDB official line space
-    # formatting
+    # organised following the StructurePDB class
     
     pdbin = open(str(pdbfilename), "r")
     lines = pdbin.readlines()
@@ -86,170 +37,9 @@ def PDBtoCLASSARRAY_v2(pdbfilename,PDBarray):
             pass
     pdbin.close()
     return PDBarray
-###############################################################################
 
 
-
-###############################################################################
-def multiARRAY(data_list):
-    #this function inputs a list of lists of PDB atom objects (see StructurePDB class)
-    #and formats as an object of the class 'multiPDB'
-     
-    #first check that each PDBarray contains the same number of atoms (consistency check)
-    if len(data_list) > 1:
-        print 'Multiple datasets detected...'
-        for dataset in data_list:
-            if len(dataset.PDBDENSITY) != len(data_list[0].PDBDENSITY):
-                print 'Not all PDB structures have same number of atoms -> stopping script'
-                sys.exit()
-    elif len(data_list) == 1:
-        print 'Single dataset detected...'
-        
-    PDBdoses = []
-    for atom in data_list[0].PDBDENSITY:
-        y = multiPDB()
-        y.atomnum = atom.atomnum
-        y.residuenum = atom.residuenum
-        y.atomtype = atom.atomtype
-        y.basetype = atom.basetype 
-        y.chaintype = atom.chaintype
-        y.X_coord = atom.X_coord
-        y.Y_coord = atom.Y_coord
-        y.Z_coord = atom.Z_coord
-        y.atomidentifier = atom.atomidentifier
-        y.numsurroundatoms = atom.numsurroundatoms
-
-        Bfactor_comb = []
-        Occupancy_comb = []
-        meandensity_comb = []
-        maxdensity_comb = []
-        mindensity_comb = []
-        mediandensity_comb = []
-        bdam_comb = []
-        bdamchange_comb = []
-        Bfactorchange_comb = []
-        
-        for dataset in data_list:
-            Bfactor_comb.append(dataset.PDBDENSITY[int(atom.atomnum)-1].Bfactor)
-            Occupancy_comb.append(dataset.PDBDENSITY[int(atom.atomnum)-1].Occupancy)
-            meandensity_comb.append(dataset.PDBDENSITY[int(atom.atomnum)-1].meandensity)
-            maxdensity_comb.append(dataset.PDBDENSITY[int(atom.atomnum)-1].maxdensity)
-            mindensity_comb.append(dataset.PDBDENSITY[int(atom.atomnum)-1].mindensity)
-            mediandensity_comb.append(dataset.PDBDENSITY[int(atom.atomnum)-1].mediandensity)
-            bdam_comb.append(dataset.PDBDENSITY[int(atom.atomnum)-1].bdam)
-            bdamchange_comb.append(dataset.PDBDENSITY[int(atom.atomnum)-1].bdamchange)
-            Bfactorchange_comb.append(dataset.PDBDENSITY[int(atom.atomnum)-1].Bfactorchange)
-            
-        y.Bfactor = Bfactor_comb 
-        y.Occupancy = Occupancy_comb
-        y.meandensity = meandensity_comb
-        y.maxdensity = maxdensity_comb
-        y.mindensity = mindensity_comb
-        y.mediandensity = mediandensity_comb
-        y.bdam = bdam_comb
-        y.bdamchange = bdamchange_comb
-        y.Bfactorchange = Bfactorchange_comb
-           
-        PDBdoses.append(y)
-    
-    return PDBdoses
-###############################################################################
-
-
-###############################################################################
-def multiARRAY_PDBonly(data_list):
-    # this function inputs a list of lists of PDB atom objects (see 
-    # StructurePDB class)and formats as an object of the class 'multiPDB'. 
-    # Same as function above, but takes in list of atom lists (NOT 
-    # datainfo objects as above)
-     
-    # first check that each PDBarray contains the same number of atoms 
-    # (consistency check)
-    if len(data_list) > 1:
-        print 'Multiple datasets detected...'
-        for dataset in data_list:
-            if len(dataset) != len(data_list[0]):
-                print 'Not all PDB structures have same number of atoms'\
-                '-> stopping script'
-                sys.exit()
-    elif len(data_list) == 1:
-        print 'Single dataset detected...'
-        
-    PDBdoses = []
-    for atom in data_list[0]:
-        y = multiPDB()
-        y.atomnum = atom.atomnum
-        y.residuenum = atom.residuenum
-        y.atomtype = atom.atomtype
-        y.basetype = atom.basetype 
-        y.chaintype = atom.chaintype
-        y.X_coord = atom.X_coord
-        y.Y_coord = atom.Y_coord
-        y.Z_coord = atom.Z_coord
-        y.atomidentifier = atom.atomidentifier
-        y.numsurroundatoms = atom.numsurroundatoms
-
-        Bfactor_comb = []
-        Occupancy_comb = []
-        meandensity_comb = []
-        maxdensity_comb = []
-        mindensity_comb = []
-        mediandensity_comb = []
-        bdam_comb = []
-        bdamchange_comb = []
-        Bfactorchange_comb = []
-        
-        # for each damaged pdb file, find the atom above (from its type,
-        # chain type, residue num etc, and then append the Bfactor etc.
-        # to this atom). Quite slow, but ensures atoms are matched between
-        # datasets if orders of atoms in the list happens to be switched
-        for dataset in data_list:
-            for otheratom in dataset:
-                if (atom.residuenum == otheratom.residuenum and
-                    atom.basetype == otheratom.basetype and
-                    atom.chaintype == otheratom.chaintype and
-                    atom.atomtype == otheratom.atomtype):
-            
-                    Bfactor_comb.append(otheratom.Bfactor)
-                    Occupancy_comb.append(otheratom.Occupancy)
-                    meandensity_comb.append(otheratom.meandensity)
-                    maxdensity_comb.append(otheratom.maxdensity)
-                    mindensity_comb.append(otheratom.mindensity)
-                    mediandensity_comb.append(otheratom.mediandensity)
-                    bdam_comb.append(otheratom.bdam)
-                    bdamchange_comb.append(otheratom.bdamchange)
-                    Bfactorchange_comb.append(otheratom.Bfactorchange)
-        
-        # to check that every dataset has contributed to the list as 
-        # intended. If not, do not append this atom to the list. This 
-        # means that solvent atoms which may be present in only a subset
-        # of the datasets will be removed 
-        if len(Bfactor_comb) != len(data_list):
-            print 'Atom detected not present in all datasets'
-            continue
-        
-        # if atom present in all datasets, give the atom its dose-dependent
-        # attributes as specified below
-        y.Bfactor = Bfactor_comb 
-        y.Occupancy = Occupancy_comb
-        y.meandensity = meandensity_comb
-        y.maxdensity = maxdensity_comb
-        y.mindensity = mindensity_comb
-        y.mediandensity = mediandensity_comb
-        y.bdam = bdam_comb
-        y.bdamchange = bdamchange_comb
-        y.Bfactorchange = Bfactorchange_comb
-           
-        # add this atom to the list   
-        PDBdoses.append(y)
-    
-    return PDBdoses
-###############################################################################
-
-
-
-###############################################################################
-def multiARRAY_diffatomnumbers(data_list):
+def getMultiDoseAtomList(data_list):
     # this function inputs a list of lists of PDB atom objects (see StructurePDB class)
     # and formats as an object of the class 'multiPDB'. It is a variant of the function 
     # above which can also cope with structures containing different numbers of atoms 
@@ -418,12 +208,12 @@ def multiARRAY_diffatomnumbers(data_list):
             y.numsurroundatoms = atom.numsurroundatoms
             y.numsurroundprotons = atom.numsurroundprotons
             
-            # calculate the normalised mean,median,max,min for each dataset
-            y.meandensity_norm = map(truediv, meandensity_comb, refpoint_mean)
-            y.mediandensity_norm = map(truediv, mediandensity_comb, refpoint_median)
-            y.mindensity_norm = map(truediv, mindensity_comb, refpoint_min)
-            y.maxdensity_norm = map(truediv, maxdensity_comb, refpoint_max)
-            y.stddensity_norm = map(truediv,stddensity_comb, refpoint_std)
+            # # calculate the normalised mean,median,max,min for each dataset
+            # y.meandensity_norm = map(truediv, meandensity_comb, refpoint_mean)
+            # y.mediandensity_norm = map(truediv, mediandensity_comb, refpoint_median)
+            # y.mindensity_norm = map(truediv, mindensity_comb, refpoint_min)
+            # y.maxdensity_norm = map(truediv, maxdensity_comb, refpoint_max)
+            # y.stddensity_norm = map(truediv,stddensity_comb, refpoint_std)
 
             y.Bfactor = Bfactor_comb 
             y.Occupancy = Occupancy_comb
