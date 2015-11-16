@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Dec 12 23:39:24 2014
-@author: charlie
-"""
+
 import sys
 from classHolder import StructurePDB,singlePDB,multiPDB
 import numpy as np
@@ -10,34 +7,32 @@ from operator import sub,truediv
 from random import randint
 from progbar import progress
 
-
 def PDBtoList(pdbfilename,PDBarray):
-    # this function inputs a pdb file name and returns an array of pdb objects, 
+    # this function inputs a pdb file name and returns an list of pdb objects, 
     # organised following the StructurePDB class
     
     pdbin = open(str(pdbfilename), "r")
     lines = pdbin.readlines()
-    print 'Reading PDB file and converting to array of objects'
+    print 'Reading PDB file and converting to list of objects'
     for line in lines:
         if ('ATOM' in str(line[0:6])) or ('HETATM' in str(line[0:6])):
-            y = singlePDB(StructurePDB)
-            y.atomnum = int(line[6:11].strip())
-            y.atomtype = str(line[12:16].strip())
-            y.basetype = str(line[17:20].strip())                       
-            y.chaintype = str(line[21])                     
-            y.residuenum = int(line[22:26].strip())             
-            y.X_coord = float(line[30:38].strip())                       
-            y.Y_coord = float(line[38:46].strip())                                             
-            y.Z_coord = float(line[46:54].strip())                                                 
-            y.Occupancy = str(line[54:60].strip())                                                    
-            y.Bfactor = str(line[60:66].strip())
-            y.atomidentifier = str(line[76:78].strip())  
+            y               = singlePDB(StructurePDB)
+            y.atomnum       = int(line[6:11].strip())
+            y.atomtype      = str(line[12:16].strip())
+            y.basetype      = str(line[17:20].strip())                       
+            y.chaintype     = str(line[21])                     
+            y.residuenum    = int(line[22:26].strip())             
+            y.X_coord       = float(line[30:38].strip())                       
+            y.Y_coord       = float(line[38:46].strip())                                             
+            y.Z_coord       = float(line[46:54].strip())                                                 
+            y.Occupancy     = str(line[54:60].strip())                                                    
+            y.Bfactor       = str(line[60:66].strip())
+            y.atomID        = str(line[76:78].strip())  
             PDBarray.append(y)
         else: 
             pass
     pdbin.close()
     return PDBarray
-
 
 def getMultiDoseAtomList(data_list):
     # this function inputs a list of lists of PDB atom objects (see StructurePDB class)
@@ -46,7 +41,7 @@ def getMultiDoseAtomList(data_list):
     # (say if solvent molecules/ligands are included in a subset of the structures). 
     # In this case, the smallest common substructure between all structures will be used
      
-    #first check that each PDBarray contains the same number of atoms (consistency check)
+    # first check that each PDBarray contains the same number of atoms (consistency check)
     if len(data_list) > 1:
         print 'Multiple datasets detected...'
         for dataset in data_list:
@@ -60,36 +55,18 @@ def getMultiDoseAtomList(data_list):
     notincludedatmcounter = 0
     
     print '------------------------------------------------'
-    print 'Locating common atoms to ALL datasets...'
-    print 'SUMMARY:'
-
-    i = 0
-    num_atoms = len(data_list[0])
-
+    print 'Locating common atoms to ALL datasets...:'
+    singDimAttrs = ('atomnum','residuenum','atomtype','basetype',
+                    'chaintype','X_coord','Y_coord','Z_coord')
+    multiDimAttrs = ('Bfactor','Occupancy','meandensity','maxdensity',
+                     'mindensity','mediandensity','Bfactorchange',
+                     'numvoxels','stddensity','min90tile','max90tile',
+                     'min95tile','max95tile','rsddensity','rangedensity')
     for atom in data_list[0]:
-
-        # unessential loading bar add-in
-        i += 1
-        progress(i, num_atoms, suffix='')
-
         atm_counter = 1
-        
-        Bfactor_comb = [atom.Bfactor]
-        Occupancy_comb = [atom.Occupancy]
-        meandensity_comb = [atom.meandensity]
-        maxdensity_comb = [atom.maxdensity]
-        mindensity_comb = [atom.mindensity]
-        mediandensity_comb = [atom.mediandensity]
-        stddensity_comb = [atom.stddensity]
-        min90tile_comb = [atom.min90tile]
-        max90tile_comb = [atom.max90tile]
-        min95tile_comb = [atom.min95tile]
-        max95tile_comb = [atom.max95tile]
-        rsddensity_comb = [atom.rsddensity]
-        range_comb = [atom.rangedensity]
-        bdam_comb = [atom.bdam]
-        numvoxels_comb = [atom.numvoxels]
-        
+        atomDict = {attr:getattr(atom, attr) for attr in singDimAttrs}.copy()
+        atomDict.update({attr:[getattr(atom, attr)] for attr in multiDimAttrs})
+
         # list of index of same atom in each later dataset
         indexindataset = []
 
@@ -103,22 +80,9 @@ def getMultiDoseAtomList(data_list):
                     atom.basetype == otheratom.basetype and 
                     atom.chaintype == otheratom.chaintype):
                     
-                    atm_counter += 1       
-                    Bfactor_comb.append(otheratom.Bfactor)
-                    Occupancy_comb.append(otheratom.Occupancy)
-                    meandensity_comb.append(otheratom.meandensity)
-                    maxdensity_comb.append(otheratom.maxdensity)
-                    mindensity_comb.append(otheratom.mindensity)
-                    mediandensity_comb.append(otheratom.mediandensity)
-                    stddensity_comb.append(otheratom.stddensity)
-                    min90tile_comb.append(otheratom.min90tile)
-                    max90tile_comb.append(otheratom.max90tile)
-                    min95tile_comb.append(otheratom.min95tile)
-                    max95tile_comb.append(otheratom.max95tile)
-                    rsddensity_comb.append(otheratom.rsddensity)
-                    range_comb.append(otheratom.rangedensity)
-                    bdam_comb.append(otheratom.bdam)
-                    numvoxels_comb.append(otheratom.numvoxels)
+                    atm_counter += 1 
+                    for attr in multiDimAttrs:
+                        atomDict[attr].append(getattr(otheratom, attr))
                     indexindataset.append(k)
                     break
 
@@ -130,48 +94,22 @@ def getMultiDoseAtomList(data_list):
                         
         if atm_counter != len(data_list):
             print 'Atom not found in all datasets!'
-            print 'res num: %s, atm type: %s, res type: %s, chain: %s '\
-            %(atom.residuenum,atom.atomtype,atom.basetype,atom.chaintype)
-            print '---> not including atom...'
+            print 'Atom: {} {}{} {}'.format(atom.chaintype,atom.basetype,atom.residuenum,atom.atomtype)
+            print '---> not including atom in atom list...'
             notincludedatmcounter += 1
             continue
-      
+             
         else:                 
             y = multiPDB()
-            y.atomnum = atom.atomnum
-            y.residuenum = atom.residuenum
-            y.atomtype = atom.atomtype
-            y.basetype = atom.basetype 
-            y.chaintype = atom.chaintype
-            y.X_coord = atom.X_coord
-            y.Y_coord = atom.Y_coord
-            y.Z_coord = atom.Z_coord
-            y.atomidentifier = atom.atomidentifier
-            y.numsurroundatoms = atom.numsurroundatoms
-            y.numsurroundprotons = atom.numsurroundprotons
-
-            y.Bfactor = Bfactor_comb 
-            y.Occupancy = Occupancy_comb
-            y.meandensity = meandensity_comb
-            y.maxdensity = maxdensity_comb
-            y.mindensity = mindensity_comb
-            y.mediandensity = mediandensity_comb
-            y.stddensity = stddensity_comb
-            y.min90tile = min90tile_comb
-            y.max90tile = max90tile_comb
-            y.min95tile = min95tile_comb
-            y.max95tile = max95tile_comb
-            y.rsddensity = rsddensity_comb
-            y.rangedensity = range_comb
-            y.bdam = bdam_comb
-            y.numvoxels = numvoxels_comb
-               
+            for attr in singDimAttrs+multiDimAttrs:
+                if attr[0] != '_':
+                    print attr
+                    setattr(y, attr,atomDict[attr])
             PDBdoses.append(y)
     print '\n------------------------------------------------'    
     print 'Number of atoms removed since not in all datasets: %s' %str(notincludedatmcounter)
     print '---> Finished!'
     return PDBdoses
-###############################################################################
 
 
 
