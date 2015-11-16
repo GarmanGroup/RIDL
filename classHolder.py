@@ -5,6 +5,7 @@ Created on Wed Nov 26 01:48:33 2014
 """
 import math
 import sys
+import numpy as np
 
 ###############################################################################
 class residue:
@@ -96,7 +97,7 @@ class singlePDB(StructurePDB):
                  maxdensity=0,mindensity=0,mediandensity=0,atomidentifier="",
                  numsurroundatoms=0,numsurroundprotons=0,vdw_rad=0,bdam=0,bdamchange=0,
                  Bfactorchange=0,numvoxels=0,stddensity=0,min90tile=0,max90tile=0,
-                 min95tile=0,max95tile=0,modedensity=0,rsddensity=0,rangedensity=0):
+                 min95tile=0,max95tile=0):
                     
         super(singlePDB, self).__init__(
             atomnum,residuenum,atomtype,basetype,chaintype,X_coord,Y_coord,
@@ -117,12 +118,16 @@ class singlePDB(StructurePDB):
         self.max90tile      = max90tile
         self.min95tile      = min95tile
         self.max95tile      = max95tile
-        self.modedensity    = modedensity
         self.rsddensity     = rsddensity
         self.rangedensity   = rangedensity
     
     def vdw_bfac(self):
         return 4*(math.sqrt(float(self.Bfactor) + 25))/(2 * math.pi)
+
+    def getAdditionalMetrics(self):
+        self.rsddensity     = float(atom.stddensity)/atom.meandensity
+        self.rangedensity   = np.linalg.norm(atom.maxdensity - atom.mindensity)
+
 ###############################################################################
 
       
@@ -137,7 +142,7 @@ class multiPDB(StructurePDB):
                  numsurroundatoms=0,numsurroundprotons=0,bdam=[],bdamchange=[],Bfactorchange=[],
                  meandensity_norm=[],maxdensity_norm=[],mindensity_norm=[],
                  mediandensity_norm=[],numvoxels=[],stddensity=[],min90tile=[],max90tile=[],
-                 min95tile=[],max95tile=[],modedensity=[],rsddensity=[],rangedensity=[]):
+                 min95tile=[],max95tile=[],rsddensity=[],rangedensity=[]):
             
         super(multiPDB, self).__init__(
             atomnum,residuenum,atomtype,basetype,chaintype,X_coord,Y_coord,
@@ -162,7 +167,6 @@ class multiPDB(StructurePDB):
         self.max90tile          = max90tile
         self.min95tile          = min95tile
         self.max95tile          = max95tile
-        self.modedensity        = modedensity
         self.rsddensity         = rsddensity
         self.rangedensity       = rangedensity
 ###############################################################################
