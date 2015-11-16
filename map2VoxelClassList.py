@@ -4,23 +4,13 @@ Created on Wed Jan  7 00:14:01 2015
 
 @author: charlie
 """
-import struct
+from struct import unpack,calcsize
 from classHolder import MapInfo
 import os
 import sys
-
-class voxel_density:
-    # A class for .map file voxel
-    def __init__(self,x=0,y=0,z=0,density=0,atmnum=[],atm_dist=[]):
-        self.x          = x
-        self.y          = y
-        self.z          = z
-        self.density    = density
-        self.atmnum     = atmnum
-        self.atm_dist   = atm_dist
+import mmap
 
 def readMap(where,pdbname,mapfilename,maptype,atom_indices):
-
     # append to log file for this eTrack run 
     logfileName = '{}output/{}_log.txt'.format(where,pdbname)
     logfile = open(logfileName,'a')
@@ -29,28 +19,31 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
     rho = MapInfo()
 
     # open electron density .map file here (bmf for binary map file)
-    bmf = open(where+mapfilename,'rb')
+    # bmf = open(where+mapfilename,'rb')
+    mapName = where+mapfilename
+    with open( mapName ) as f:
+        bmf = mmap.mmap( f.fileno(), 0, prot = mmap.PROT_READ, flags = mmap.MAP_PRIVATE )
     
     # start adding header information into MapInfo class format. 
     # Note the unpacking of a struct for each byte, read as a long 'l'
     for n in ('nx','ny','nz'):
-        rho.nxyz[n]   = struct.unpack('=l',bmf.read(4))[0]
+        rho.nxyz[n]   = unpack('=l',bmf.read(4))[0]
 
     print 'Num. Col, Row, Sec: '
     print '{} {} {}'.format(*rho.nxyz.values())
     logfile.write('Num. Col, Row, Sec: {} {} {}\n'.format(*rho.nxyz.values()))
     
-    rho.type = struct.unpack('=l',bmf.read(4))[0]
+    rho.type = unpack('=l',bmf.read(4))[0]
 
     for s in ('1','2','3'):
-        rho.start[s] = struct.unpack('=l',bmf.read(4))[0] 
+        rho.start[s] = unpack('=l',bmf.read(4))[0] 
 
     print 'Start positions: '
     print '{} {} {}'.format(*rho.start.values())
     logfile.write('Start positions: {} {} {}\n'.format(*rho.start.values()))
 
     for g in ('1','2','3'):
-        rho.gridsamp[g] = struct.unpack('=l',bmf.read(4))[0] 
+        rho.gridsamp[g] = unpack('=l',bmf.read(4))[0] 
 
     print 'Grid sampling:'
     print '{} {} {}'.format(*rho.gridsamp.values())
@@ -59,7 +52,7 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
     # for cell dimensions, stored in header file as float not long 
     # integer so must account for this
     for d in ('a','b','c','alpha','beta','gamma'):
-        rho.celldims[d]       = struct.unpack('f',bmf.read(4))[0]
+        rho.celldims[d]       = unpack('f',bmf.read(4))[0]
 
     print 'Cell dimensions:'
     print '{} {} {}'.format(*rho.celldims.values()[0:3])
@@ -67,14 +60,14 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
     logfile.write('Cell dimensions: {} {} {} {} {} {}\n'.format(*rho.celldims.values()))
 
     for a in ('fast','med','slow'):
-        rho.axis[a]   = struct.unpack('=l',bmf.read(4))[0] 
+        rho.axis[a]   = unpack('=l',bmf.read(4))[0] 
 
     print 'Fast,med,slow axes: '
     print '{} {} {}'.format(*rho.axis.values())
     logfile.write('Fast,med,slow axes: {} {} {}\n'.format(*rho.axis.values()))
 
     for d in ('min','max','mean'):
-        rho.density[d]  = struct.unpack('f',bmf.read(4))[0] 
+        rho.density[d]  = unpack('f',bmf.read(4))[0] 
         
     print 'Density values: '
     print '{} {} {}'.format(*rho.density.values())
@@ -97,20 +90,20 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
         + 'as int16 ("i2?") - consult .map header in MAPDUMP(CCP4) to check'
   
         struct_fmt = '=i2'
-        struct_len = struct.calcsize(struct_fmt)
+        struct_len = calcsize(struct_fmt)
         density = []
        
         while True:
             data = bmf.read(struct_len)
             if not data: break
-            s = struct.unpack(struct_fmt,data)[0]
+            s = unpack(struct_fmt,data)[0]
             density.append(s)    
-    
+
     # if electron density written in floats (which is to be expected 
     # from FFT-CCP4 outputted .map file of electron density)
     if rho.type is 2:  
         struct_fmt = '=f4'
-        struct_len = struct.calcsize(struct_fmt)
+        struct_len = calcsize(struct_fmt)
         density = []
         appenddens = density.append
         
@@ -121,14 +114,14 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
             while True:
                 data = bmf.read(struct_len)
                 if not data: break
-                s = struct.unpack(struct_fmt,data)[0]
+                s = unpack(struct_fmt,data)[0]
                 counter += 1
                 if int(s) == 0:
                     continue
                 else:    
                     appenddens(s)
                     appendindex(counter)
-        
+
         # efficient way to read through density map file using indices of atoms
         # from atom map file above
         elif maptype in ('density_map'):
@@ -139,13 +132,13 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
                     bmf.read(struct_len*(atom_indices[0]))
                     
                 data = bmf.read(struct_len)
-                s = struct.unpack(struct_fmt,data)[0]
+                s = unpack(struct_fmt,data)[0]
                 appenddens(s)
                 
         else:
             print 'Unknown map type --> terminating script'
             sys.exit()
-         
+
     logfile.close()           
     bmf.close()
     
@@ -175,7 +168,7 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
         sys.exit()
 
     rho.vxls_val = density_final
-    
+
     if maptype in ('atom_map'):
         return rho,atom_indices
     else:
@@ -194,7 +187,7 @@ def densmap2class_readheader(mapfilename):
     
     # start adding header information into electron_map_info class format. 
     # Note the unpacking of a struct for each byte, read as a long 'l'
-    rho.nx = struct.unpack('=l',binarymapfile.read(4))[0]
+    # rho.nx = struct.unpack('=l',binarymapfile.read(4))[0]
     rho.ny = struct.unpack('=l',binarymapfile.read(4))[0]
     rho.nz = struct.unpack('=l',binarymapfile.read(4))[0]
     rho.type = struct.unpack('=l',binarymapfile.read(4))[0]
@@ -271,7 +264,7 @@ def densmap2class_readvoxels(densmapfilename,densitystart):
     struct_len = struct.calcsize(struct_fmt)
             
     vxl_list = []
-    # create list of voxel objects in class voxel_density 
+    # create list of voxel density values
     while True:
         data_dens = binarymapfile_dens.read(struct_len)
 
