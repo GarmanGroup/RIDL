@@ -15,7 +15,7 @@ def find_Bchange(initialPDB,PDBmulti,Bmetric):
 		sys.exit()
 
 	print '------------------------------------------------------------'
-	print 'Determining %s change between initial and later datasets' %(str(Bmetric))
+	print 'Determining {} change between initial and later datasets'.format(str(Bmetric))
 	num_atoms = len(PDBmulti)
 	counter = 0
 
@@ -42,10 +42,10 @@ def find_Bchange(initialPDB,PDBmulti,Bmetric):
 				# determine the Bmetric change between all later datasets
 				# and initial dataset
 				if Bmetric == 'Bdamage':
-					atom.bdamchange = list(np.array(map(float, atom.bdam)) - 
+					atom.densMetric['Bdamagechange'] = list(np.array(map(float, atom.bdam)) - 
 									 np.array([float(otheratom.bdam)]*len(PDBmulti[0].meandensity)))
 				elif Bmetric == 'Bfactor':
-					atom.Bfactorchange = list(np.array(map(float, atom.Bfactor)) - 
+					atom.densMetric['Bfactorchange'] = list(np.array(map(float, atom.Bfactor)) - 
 									 np.array([float(otheratom.Bfactor)]*len(PDBmulti[0].meandensity)))
 				break
 
