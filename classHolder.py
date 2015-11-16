@@ -118,15 +118,13 @@ class singlePDB(StructurePDB):
         self.max90tile      = max90tile
         self.min95tile      = min95tile
         self.max95tile      = max95tile
-        self.rsddensity     = rsddensity
-        self.rangedensity   = rangedensity
     
     def vdw_bfac(self):
         return 4*(math.sqrt(float(self.Bfactor) + 25))/(2 * math.pi)
 
     def getAdditionalMetrics(self):
-        self.rsddensity     = float(atom.stddensity)/atom.meandensity
-        self.rangedensity   = np.linalg.norm(atom.maxdensity - atom.mindensity)
+        self.rsddensity     = float(self.stddensity)/self.meandensity
+        self.rangedensity   = np.linalg.norm(self.maxdensity - self.mindensity)
 
 ###############################################################################
 
