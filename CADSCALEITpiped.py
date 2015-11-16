@@ -97,7 +97,7 @@ class pipeline():
 			self.writeToLog('{}'.format(self.CADinputMtz2))												  
 
 		# run CAD from command line
-		self.commandInput1 	= 	'/Applications/ccp4-6.5/bin/cad '+\
+		self.commandInput1 	= 	'cad '+\
 								'HKLIN1 {} '.format(self.CADinputMtz1)+\
 								'HKLIN2 {} '.format(self.CADinputMtz2)+\
 								'HKLIN3 {} '.format(self.CADinputMtz3)+\
@@ -158,7 +158,7 @@ class pipeline():
 			self.writeToLog('{}'.format(self.SCALEITinputMtz))
 
 		# run SCALEIT from command line
-		self.commandInput1 = '/Applications/ccp4-6.5/bin/scaleit '+\
+		self.commandInput1 = 'scaleit '+\
 						'HKLIN {} '.format(self.SCALEITinputMtz)+\
 						'HKLOUT {}'.format(self.SCALEIToutputMtz)
 		self.commandInput2 = 'title SCALEIT JOB\n'+\
