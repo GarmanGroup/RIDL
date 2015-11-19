@@ -3,6 +3,7 @@ from time import gmtime, strftime
 from CADjob import CADjob
 from SCALEITjob import SCALEITjob
 from logFile import logFile
+from SIGMAAjob import SIGMAAjob
 
 class pipeline():
 	# class to run CAD job to combine F and SIGF columns from
@@ -29,7 +30,14 @@ class pipeline():
 		# read input file
 		success = self.readInputs()	
 		if success is False:
-			return 0	
+			return 1
+
+		# run SIGMAA job
+		sigmaa = SIGMAAjob(self.SIGMAAinputMtz,self.Mtz1LabelName,self.inputPDBfile,self.outputDir,self.pipelineLog)	
+		success = sigmaa.run()
+		if success is False:
+			return 2
+		self.CADinputMtz1 = sigmaa.outputMtz
 
 		# run CAD job 
 		cad = CADjob(self.CADinputMtz1,self.CADinputMtz2,self.CADinputMtz3,
@@ -38,7 +46,7 @@ class pipeline():
 		self.CADoutputMtz,self.outputDir,self.pipelineLog)
 		success = cad.run()
 		if success is False:
-			return 1
+			return 3
 
  		# run SCALEIT job 
 		scaleit = SCALEITjob(self.SCALEITinputMtz,self.SCALEIToutputMtz,
@@ -46,7 +54,10 @@ class pipeline():
 							 self.outputDir,self.pipelineLog)
 		success = scaleit.run()
 		if success is False:
-			return 2
+			return 4
+			
+		# end of pipeline reached	
+		return 0
 
 	def readInputs(self):
 		# open input file and parse inputs for CAD job
@@ -65,7 +76,7 @@ class pipeline():
 			elif line[0] == '#':
 				continue
 			elif line.split()[0] == 'filename1':
-				self.CADinputMtz1 		= line.split()[1]
+				self.SIGMAAinputMtz 	= line.split()[1]
 			elif line.split()[0] == 'labels1':
 				self.Mtz1LabelName 		= line.split()[1]
 			elif line.split()[0] == 'filename2':
@@ -82,6 +93,8 @@ class pipeline():
 				self.Mtz2LabelRename 	= line.split()[1]
 			elif line.split()[0] == 'label3rename':
 				self.Mtz3LabelRename 	= line.split()[1]
+			elif line.split()[0] == 'inputPDBfile':
+				self.inputPDBfile 		= line.split()[1]
 		inputFile.close()
 		return True
 
