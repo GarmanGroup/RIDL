@@ -54,25 +54,25 @@ class combinedAtom(singlePDB):
 			if v1 == 'r_value': v2 = v2**2
 			self.densMetric[densityMetric][type]['lin reg'][v1] = v2
 
-	def CalphaWeightedDensChange(self,CalphaWeights):
-		# calculates the Calpha weighted density metrics, compensating for 
-		# the overall background degregation of the electron density maps 
-		# with increasing dose/dataset number. Since the same CalphaWeights
-		# (per dataset) are applied to all atoms within the structure,
+	def CalphaWeightedDensChange(self,CalphaWeights,metric):
+		# calculates the Calpha weighted density metrics for metric "metric",
+		# compensating for the overall background degregation of the electron 
+		# density maps with increasing dose/dataset number. Since the same 
+		# CalphaWeights (per dataset) are applied to all atoms within the structure,
 		# these are an input (and thus not recalculated for every single atom)
 		# - see the CalphaWeights class for details on how to calculate these
 
 		try:
-			CalphaWeights.weight['loss']
+			CalphaWeights.weight[metric]
 		except AttributeError:
-			print 'Calpha weights not yet calculated.. need to calculate first, see CalphaWeight class'
+			print 'Calpha weights not yet calculated for metric "{}"\n'.format(metric)+\
+				  'Need to calculate first this weight first --> see CalphaWeight class'
 			return
 
-		for metricType in ('loss','gain','mean'):
-			self.densMetric[metricType]['Calpha normalised'] = {}
-			weight = CalphaWeights.weight[metricType]
-			metric = self.densMetric[metricType]['Standard']['values']
-			self.densMetric[metricType]['Calpha normalised']['values'] 	= list(np.divide(metric-weight,weight))
+		self.densMetric[metric]['Calpha normalised'] = {}
+		weight = CalphaWeights.weight[metric]
+		metricVals = self.densMetric[metric]['Standard']['values']
+		self.densMetric[metric]['Calpha normalised']['values'] 	= list(np.divide(metricVals-weight,weight))
 
 	def calculateAdditionalMetrics(self):
 		# calculates addition metrics for each atom. These secondary metrics are 
