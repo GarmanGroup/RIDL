@@ -1,30 +1,31 @@
-# processedAtom class to refine the PDBmulti list of objects with additional 
-# attributes and methods
-
 from classHolder import StructurePDB
 from scipy import stats
 import numpy as np
 import string
 
 class combinedAtom(StructurePDB):
-	# A subclass extension for a collection of multiple different dose pdb file structures as defined by the StructurePDB class. 
-	# This class adds additonal attributes and methods
-	def __init__(self,atomnum=0,residuenum=0,atomtype="",basetype="",chaintype="",
-				 X_coord=0,Y_coord=0,Z_coord=0,Bfactor=[],Occupancy=[],atomidentifier="",
-				 numsurroundatoms=0,numsurroundprotons=0,densMetric={}):
+	# A subclass extension for a collection of multiple different dose pdb file structures as 
+	# defined by the StructurePDB class. This class adds additonal attributes and methods
+	def __init__(self,atomnum = 0,residuenum = 0,atomtype = "",basetype = "",chaintype = "",
+				 X_coord = 0,Y_coord = 0,Z_coord = 0,atomidentifier = "",
+				 numsurroundatoms = 0,numsurroundprotons = 0,densMetric = {}):
 
-		super(combinedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,
-										   X_coord,Y_coord,Z_coord,atomidentifier,numsurroundatoms,
-										   numsurroundprotons)
-		self.getInfo()   
+		super(combinedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,X_coord,
+										   Y_coord,Z_coord,atomidentifier,numsurroundatoms,numsurroundprotons)
 
-	def getInfo(self):
+		self.densMetric = {} # dictionary of density metrics to be filled
+
+	def getDensMetricInfo(self,metric,normType,values):
 		# these attributes are dictionaries and will contain values for multiple
 		# variations of the density change metrics
-		for metricType in ('loss','gain','mean','bfactor','bdamage','|loss|','median'):
-			self.densMetric[metricType] = {}
-			self.densMetric[metricType]['Standard'] = {}
-			self.densMetric[attr]['Standard']['values'] = {}
+		# 'normType' is 'standard' or 'Calpha weighted'
+		try:
+			self.densMetric[metric]
+		except KeyError: 
+			self.densMetric[metric] = {}
+
+		self.densMetric[metric][normType] = {}
+		self.densMetric[metric][normType]['values'] = values
 
 	def calculateLinReg(self,numLinRegDatasets,type,densityMetric):
 		# Calculates linear regression for the density metric 'densityMetric' and
@@ -60,20 +61,21 @@ class combinedAtom(StructurePDB):
 				  'Need to calculate first this weight first --> see CalphaWeight class'
 			return
 
-		self.densMetric[metric]['Calpha normalised'] = {}
 		weight = CalphaWeights.weight[metric]
 		metricVals = self.densMetric[metric]['Standard']['values']
-		self.densMetric[metric]['Calpha normalised']['values'] 	= list(np.divide(metricVals-weight,weight))
+		self.getDensMetricInfo(metric,'Calpha normalised',list(np.divide(metricVals-weight,weight)))
 
-	def getNumDatasets(self):
-		return len(self.densMetric['loss'][normType]['values'])
+	def getNumDatasets(self,*metric):
+		if len(metric) == 0:
+			return len(self.densMetric['loss']['Standard']['values'])
+		else:
+			return len(self.densMetric[metric[0]]['Standard']['values'])
 
 	def calculateNetChangeMetric(self,normType):
 		# the following metric attempts to determine whether there is a net loss, gain or disordering
 		# of density associated with a specific atom
-		self.densMetric['net'] = {}
-		self.densMetric['net'][normType] = {}
-		self.densMetric['net'][normType]['values'] = []
+		self.getDensMetricInfo('net',normType,[])
+
 		for dataset in range(0,self.getNumDatasets()):
 			abs_maxDensLoss = np.abs(self.densMetric['loss'][normType]['values'][dataset]) 
 			abs_maxDensGain = np.abs(self.densMetric['gain'][normType]['values'][dataset]) 
