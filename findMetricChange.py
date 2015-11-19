@@ -3,7 +3,7 @@ import numpy as np
 from progbar import progress
 import sys
 
-def find_Bchange(initialPDB,PDBmulti,Bmetric):
+def findBchange(initialPDB,multiDoseList,Bmetric):
 	# function to determine the Bfactor/Bdamage (specified by Bmetric)
 	# change between the initial and later datasets --> becomes an 
 	# object attribute for the later datasets
@@ -16,41 +16,37 @@ def find_Bchange(initialPDB,PDBmulti,Bmetric):
 
 	print '------------------------------------------------------------'
 	print 'Determining {} change between initial and later datasets'.format(str(Bmetric))
-	num_atoms = len(PDBmulti)
+	num_atoms = len(multiDoseList)
 	counter = 0
 
 	# ensure atom list ordered by number of atom in structure (atomnum)
-	PDBmulti.sort(key=lambda x: x.atomnum)
+	multiDoseList.sort(key=lambda x: x.atomnum)
 	initialPDB.sort(key=lambda x: x.atomnum)
 
 	initpdbindices = range(0,len(initialPDB))
-	for atom in PDBmulti:
+	numDatasets = len(multiDoseList[0].densMetric[Bmetric]['Standard']['values'])
+	for atom in multiDoseList:
 
 		# unessential loading bar add-in
 		counter += 1
 		progress(counter, num_atoms, suffix='')
 
+	    Inds = ('residuenum','atomtype','basetype','chaintype')
+	    atomIndentifier = [getattr(atom, attr) for attr in Inds]
 		k = -1
 		for atomindex in initpdbindices:
 			k += 1
 			otheratom = initialPDB[atomindex]
-			if (atom.atomtype == otheratom.atomtype and
-			   atom.basetype == otheratom.basetype and
-			   atom.chaintype == otheratom.chaintype and
-			   atom.residuenum == otheratom.residuenum):
 
-				# determine the Bmetric change between all later datasets
-				# and initial dataset
-				if Bmetric == 'Bdamage':
-					atom.densMetric['Bdamagechange'] = list(np.array(map(float, atom.bdam)) - 
-									 np.array([float(otheratom.bdam)]*len(PDBmulti[0].meandensity)))
-				elif Bmetric == 'Bfactor':
-					atom.densMetric['Bfactorchange'] = list(np.array(map(float, atom.Bfactor)) - 
-									 np.array([float(otheratom.Bfactor)]*len(PDBmulti[0].meandensity)))
+	        if atomIndentifier == [getattr(otheratom, att) for att in Inds]:        
+				# determine the Bmetric change between all later datasets and initial dataset
+				BmetricChange = Bmetric+'Change'
+				laterVals = np.array(map(float, atom.densMetric[Bmetric]['Standard']['values']))
+				initialVal = np.array([float(otheratom.densMetric[Bmetric]['Standard']['values'])]*numDatasets)
+				atom.densMetric[BmetricChange] = list(laterVals - initialVal)
 				break
 
 		initpdbindices.pop(k)        
-
 	print '\n---> success...'
 
 
