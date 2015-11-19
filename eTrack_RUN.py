@@ -6,7 +6,6 @@ from PDBFileManipulation import getMultiDoseAtomList
 from topDamageHits import topNdamsites_resibarplotter,topNdamsites_chainbarplotter,topNdamsites_printer
 import os
 from PDBMulti2Txt import objlist2txt
-from findMetricChange import find_Bchange
 from PDBFileManipulation import PDBtoList
 from densityAnalysisPlots import numneighbours_scatter
 from combinedAtomList import combinedAtomList
