@@ -24,15 +24,13 @@ class pipeline():
 		self.SCALEIToutputMtz 	= self.outputDir+'/SCALEITcombined.mtz'
 		self.txtInputFile 		= 'Inputs.txt'
 
-		# these are indicators that specific jobs have been performed
-		self.inputFileRead 		= False
-		self.CADbeenRun 		= False
-
 		self.pipelineLog 		= logFile(self.outputDir+'/runLog.txt')
 
 	def runPipeline(self):
 		# read input file
-		self.readInputs()		
+		success = self.readInputs()	
+		if success is False:
+			return 0	
 
 		# run CAD job 
 		cad = CADjob(self.CADinputMtz1,self.CADinputMtz2,self.CADinputMtz3,
@@ -40,12 +38,16 @@ class pipeline():
 				 	 self.Mtz1LabelRename,self.Mtz2LabelRename,self.Mtz3LabelRename,
 				 	 self.CADoutputMtz,self.outputDir,self.pipelineLog)
 		cad.run()
+		if cad.jobSuccess is False:
+			return 1
 
  		# run SCALEIT job 
 		scaleit = SCALEITjob(self.SCALEITinputMtz,self.SCALEIToutputMtz,
 							 self.Mtz1LabelRename,self.Mtz2LabelRename,
 							 self.outputDir,self.pipelineLog)
 		scaleit.run()
+		if scaleit.jobSuccess is False:
+			return 2
 
 	def readInputs(self):
 		# open input file and parse inputs for CAD job
@@ -53,7 +55,8 @@ class pipeline():
 
 		# if Input.txt not found, flag error
 		if self.checkFileExists(self.txtInputFile) is False:
-			return
+			print 'Required input file {} not found..'.format(self.txtInputFile)
+			return False
 
 		# parse input file
 		inputFile = open(self.txtInputFile,'r')
@@ -81,7 +84,7 @@ class pipeline():
 			elif line.split()[0] == 'label3rename':
 				self.Mtz3LabelRename 	= line.split()[1]
 		inputFile.close()
-		self.inputFileRead = True
+		return True
 
 	def checkFileExists(self,filename):
 		# method to check if file exists
