@@ -172,7 +172,7 @@ class pipeline():
 		if (sfallMap.gridsamp1 != fftMap.gridsamp1 or
 			sfallMap.gridsamp2 != fftMap.gridsamp2 or
 			sfallMap.gridsamp3 != fftMap.gridsamp3):
-		self.runLog.writeToLog('Incompatible grid sampling found...')
+			self.runLog.writeToLog('Incompatible grid sampling found...')
 			return False
 
 		if (sfallMap.fastaxis != fftMap.fastaxis or
