@@ -100,25 +100,29 @@ class combinedAtomList(object):
 	    print '---> Finished!'
 	    self.atomList = PDBdoses
 
+	def getNumAtoms(self):
+		return len(self.atomList)
+
 	def calcBfactorChange(self):
 		# calculate Bfactor change between initial and each later dataset
 		findBchange(self.initialPDBList,self.atomList,'Bfactor')
 
-	def calcAdditionalMetrics(self):
+	def calcAdditionalMetrics(self,metric):
 		# calculate the Calpha weights for each dataset (see CalphaWeight class for details)
+		# for metric "metric" (loss, gain, mean etc.)
 		print 'Calculating Calpha weights at each dataset...'
 		CAweights = CalphaWeight(self.atomList)
-		CAweights.calculateWeights()
+		CAweights.calculateWeights(metric)
 
 		# loop over all atoms in list and calculate additional metrics for each atom in atomList
 		counter = 0
-		num_atoms = len(self.atomList)
+		numAtoms = self.getNumAtoms()
 		for atom in self.atomList:
 			counter += 1
-			progress(counter, num_atoms, suffix='') # unessential loading bar add-in
-			atom.CalphaWeightedDensChange(CAweights)
-			atom.calculateAdditionalMetrics()
-			atom.calculateLinReg(self.numLigRegDatasets,'Standard')
+			progress(counter, numAtoms, suffix='') # unessential loading bar add-in
+			atom.CalphaWeightedDensChange(CAweights,metric)
+			atom.calculateLinReg(self.numLigRegDatasets,'Standard',metric)
+			atom.calculateNetChangeMetric('Standard')
 
 	def graphMetric(self):
 		# produce a graph of selected metric against dataset number for a specified atom
