@@ -1,14 +1,14 @@
 # processedAtom class to refine the PDBmulti list of objects with additional 
 # attributes and methods
 
-from classHolder import multiPDB
+from classHolder import singlePDB
 from scipy import stats
 import numpy as np
 import string
 
-class combinedAtom(multiPDB):
-	# A subclass extension for a collection of multiple different dose pdb file structures as defined by the multiPDB class. This class adds additonal 
-	# attributes and methods
+class combinedAtom(singlePDB):
+	# A subclass extension for a collection of multiple different dose pdb file structures as defined by the singlePDB class. 
+	# This class adds additonal attributes and methods
 	def __init__(self,atomnum=0,residuenum=0,atomtype="",basetype="",chaintype="",
 				 X_coord=0,Y_coord=0,Z_coord=0,Bfactor=[],Occupancy=[],meandensity=[],
 				 maxdensity=[],mindensity=[],mediandensity=[],atomidentifier="",
@@ -17,13 +17,11 @@ class combinedAtom(multiPDB):
 				 mediandensity_norm=[],numvoxels=[],stddensity=[],min90tile=[],max90tile=[],
 				 min95tile=[],max95tile=[],rsddensity=[],rangedensity=[]):
 
-		super(processedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,
-											X_coord,Y_coord,Z_coord,atomidentifier,numsurroundatoms,
-											numsurroundprotons,bdam,bdamchange,Bfactorchange,
-											meandensity_norm,maxdensity_norm,mindensity_norm,
-											mediandensity_norm,numvoxels,stddensity,min90tile,
-											max90tile,min95tile,max95tile,rsddensity,
-											rangedensity)
+		super(combinedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,
+										   X_coord,Y_coord,Z_coord,atomidentifier,numsurroundatoms,
+										   numsurroundprotons,bdam,bdamchange,Bfactorchange,
+									       numvoxels,stddensity,min90tile,max90tile,min95tile,
+									       max95tile,rsddensity,rangedensity)
 		self.getInfo()   
 
 	def getInfo(self):
@@ -35,24 +33,26 @@ class combinedAtom(multiPDB):
 			self.densMetric[metricType]['Standard'] = {}
 			self.densMetric[attr]['Standard']['values'] = {}
 
-	def calculateLinReg(self,numDatasets,type,densityMetric):
+	def calculateLinReg(self,numLinRegDatasets,type,densityMetric):
 		# Calculates linear regression for the density metric 'densityMetric' and
 		# determines the linear slope of density change
-		# 'numDatasets' in the number of difference map datasets across which 
+		# 'numLinRegDatasets' in the number of difference map datasets across which 
 		# linear regression will be preformed. 'type' specifies whether 'Standard'
 		# or 'Calpha normalised' metric values should be used
-		x = np.array(range(2,numDatasets+1))
+		x = np.array(range(2,numLinRegDatasets+1))
 
-		# this ensures metrics not included if empty list
-		if len(self.densMetric[metricType]['Standard']['values']) == 0:
-			return
+		# this ensures no calculation performed if metric values are empty list
+		if len(self.densMetric[metricType][type]['values']) == 0: return
 
 		self.densMetric[metricType][type]['lin reg'] = {}
 		y = np.array(self.densMetric[metricType][type]['values'][0:len(x)])
-		slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
+		linRegRslts = stats.linregress(x,y)
 		for vals in (['slope',slope],['intercept',intercept],['r_value',r_value**2],
 					 ['p_value',p_value],['std_err',std_err]):	
-			self.densMetric[densityMetric][type]['lin reg'][vals[0]] = vals[1]
+
+		for v1,v2 in zip(['slope','intercept','r_squared','p_value','std_err'],linRegRslts)
+			if v1 == 'r_value': v2 = v2**2
+			self.densMetric[densityMetric][type]['lin reg'][v1] = v2
 
 	def CalphaWeightedDensChange(self,CalphaWeights):
 		# calculates the Calpha weighted density metrics, compensating for 
