@@ -1,7 +1,7 @@
 # processedAtom class to refine the PDBmulti list of objects with additional 
 # attributes and methods
 
-from classHolder import singlePDB
+from classHolder import StructurePDB
 from scipy import stats
 import numpy as np
 import string
@@ -40,10 +40,8 @@ class combinedAtom(StructurePDB):
 		self.densMetric[metricType][type]['lin reg'] = {}
 		y = np.array(self.densMetric[metricType][type]['values'][0:len(x)])
 		linRegRslts = stats.linregress(x,y)
-		for vals in (['slope',slope],['intercept',intercept],['r_value',r_value**2],
-					 ['p_value',p_value],['std_err',std_err]):	
 
-		for v1,v2 in zip(['slope','intercept','r_squared','p_value','std_err'],linRegRslts)
+		for v1,v2 in zip(['slope','intercept','r_squared','p_value','std_err'],linRegRslts):
 			if v1 == 'r_value': v2 = v2**2
 			self.densMetric[densityMetric][type]['lin reg'][v1] = v2
 
