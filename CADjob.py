@@ -1,5 +1,4 @@
 from ccp4Job import ccp4Job
-from logFile import logFile
 
 class CADjob():
 	# run CAD job to combine F and SIGF columns from two merged mtz files
@@ -16,13 +15,15 @@ class CADjob():
 		self.outputDir			= outputDir
 		self.runLog 			= runLog
 
-		self.jobName = 'CAD'
 		runLog.writeToLog('Running CAD job')
 
 	def checkInputsExist(self):
 		# check if input mtz files exist
 		if (self.checkFileExists(self.CADinputMtz1) is False or
 		    self.checkFileExists(self.CADinputMtz2) is False):
+			string = 'Failed to find all required input files'
+			print string
+			runLog.writeToLog(string)
 			return False
 		else:
 			runLog.writeToLog('Input files:')
@@ -37,6 +38,8 @@ class CADjob():
 		if self.jobSuccess is True:
 			self.provideFeedback()
 		else:
+			string = 'Job did not run successfully, see job log file "{}"',format(self.outputLogfile)
+			runLog.writeToLog(string)
 			return
 
 	def runCAD(self):
