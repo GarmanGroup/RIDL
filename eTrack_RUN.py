@@ -131,7 +131,6 @@ class eTrack(object):
 		self.titleCaption('Map Processing')
 
 		# want to create the following additional subdirectories directories
-		where2 = '{}output/'.format(self.where)
 		if not os.path.exists(self.outputDir):
 		    os.makedirs(self.outputDir)
 
@@ -141,8 +140,8 @@ class eTrack(object):
 		pklFileNames = []
 		for dataset in self.pdbname:
 			# derive per-atom density metrics from maps
-			mapfilname1 		= '{}_atoms.map'.format(dataset)
-			mapfilname2 		= '{}_density.map'.format(dataset)
+			mapfilname1 	= '{}_atoms.map'.format(dataset)
+			mapfilname2 	= '{}_density.map'.format(dataset)
 			maps2DensMets 	= maps2DensMetrics(self.where,dataset,mapfilname1,'atom_map',
 											   mapfilname2,'density_map',self.plot)
    			maps2DensMets.maps2atmdensity()
@@ -164,27 +163,27 @@ class eTrack(object):
 		# retrieve object lists of atoms for each damage set
 		self.fillerLine()
 		print 'Reading in damaged pkl files...'
-		data_list = []
+		datasetList = []
 		for pkl_filename in self.pklfiles:
-			print 'Damage file number: {}\n'.format(len(data_list)+1)
+			print 'Damage file number: {}\n'.format(len(datasetList)+1)
 			PDB_ret = retrieve_objectlist(pkl_filename)
 
-			# add new retrieved damage set list to data_list
-			data_list.append(PDB_ret)
+			# add new retrieved damage set list to datasetList
+			datasetList.append(PDB_ret)
 
 		# create a list of atom objects with attributes as lists varying over 
 		# dose range, only including atoms present in ALL damage datasets
 		print 'New list of atoms over full dose range calculated...'
-		combinedAtoms = combinedAtomList(data_list,len(data_list),self.doses,initialPDBlist)
+		combinedAtoms = combinedAtomList(datasetList,len(datasetList),self.doses,initialPDBlist)
 		combinedAtoms.getMultiDoseAtomList()
-		# self.PDBmulti = combinedAtoms.atomList
 
 		# write atom numbers and density metrics to simple text files - one for 
 		# each density metric separately
-		for densMet in ('mean','loss','gain','median','standard deviation','mean/std',
-						'90tile loss','90tile gain','Bfactor'):
-			print 'Writing .txt file for per-atom density metric: {}'.format(densMet)
-			combinedAtoms.writeMetric2File(self.outputDir,densMet,'Standard')
+		for densMet in combinedAtoms.getDensMetrics():
+			print 'Writing .txt file for per-atom density metric: {}, normalisation: {}'.format(*densMet)
+			combinedAtoms.writeMetric2File(self.outputDir,*densMet)
+		
+		self.PDBmulti = combinedAtoms.atomList
 
 	def PDBmulti_retrieve(self):
 		self.titleCaption('Atom List Retrieval')

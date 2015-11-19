@@ -98,7 +98,7 @@ def getMultiDoseAtomList(data_list):
             print '---> not including atom in atom list...'
             notincludedatmcounter += 1
             continue
-             
+
         else:                 
             y = multiPDB()
             for attr in singDimAttrs+multiDimAttrs:
@@ -110,7 +110,6 @@ def getMultiDoseAtomList(data_list):
     print 'Number of atoms removed since not in all datasets: %s' %str(notincludedatmcounter)
     print '---> Finished!'
     return PDBdoses
-
 
 
 ###############################################################################

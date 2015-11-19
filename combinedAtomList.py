@@ -34,8 +34,8 @@ class combinedAtomList(object):
 	        print 'Multiple datasets detected...'
 	        for dataset in self.datasetList:
 	            if len(dataset) != len(self.datasetList[0]):
-	                print 'Not all PDB structures have same number of atoms!'\
-	                ' Will only include atoms common to ALL structures...'
+	                print 'Not all PDB structures have same number of atoms!\n'+\
+	                	  'Will only include atoms common to ALL structures...'
 	    elif len(self.datasetList) == 1:
 	        print 'Single dataset detected...'
 
@@ -117,6 +117,15 @@ class combinedAtomList(object):
 
 	def getNumAtoms(self):
 		return len(self.atomList)
+
+	def getDensMetrics(self):
+		# get a list of all density metrics and normalisations that currently have been defined
+		# with a set of values
+		currentMetrics = []
+		for metric in self.atomList[0].densMetric.keys():
+			for normType in self.atomList[0].densMetric[metric].keys():
+				currentMetrics.append([metric,normType])
+		return currentMetrics
 
 	def calcBfactorChange(self):
 		# calculate Bfactor change between initial and each later dataset
