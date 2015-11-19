@@ -9,6 +9,7 @@ from PDBMulti2Txt import objlist2txt
 from findMetricChange import find_Bchange
 from PDBFileManipulation import PDBtoList
 from densityAnalysisPlots import numneighbours_scatter
+from combinedAtomList import combinedAtomList
  
 class eTrack(object):
 	# A class for retrieving the eTrack input text file information and running 
@@ -177,7 +178,9 @@ class eTrack(object):
 		# create a list of atom objects with attributes as lists varying over 
 		# dose range, only including atoms present in ALL damage datasets
 		print 'New list of atoms over full dose range calculated...'
-		self.PDBmulti = getMultiDoseAtomList(data_list)
+		combinedAtoms = combinedAtomList(data_list,len(data_list),self.doses)
+		combinedAtoms.getMultiDoseAtomList()
+		self.PDBmulti = combinedAtoms.atomList
 
 		# determine Bfactor change between later datasets and initial 
 		find_Bchange(initialPDBlist,self.PDBmulti,'Bfactor')
