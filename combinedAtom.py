@@ -74,32 +74,20 @@ class combinedAtom(singlePDB):
 		metricVals = self.densMetric[metric]['Standard']['values']
 		self.densMetric[metric]['Calpha normalised']['values'] 	= list(np.divide(metricVals-weight,weight))
 
-	def calculateAdditionalMetrics(self):
-		# calculates addition metrics for each atom. These secondary metrics are 
-		# algebraic expressions of the primary metrics (Dmean, Dloss, Dgain, 
-		# B-factor etc..)
+	def getNumDatasets(self):
+		return len(self.densMetric['loss'][normType]['values'])
 
-		self.densMetric['weighted loss'] = {}
-		for normaliseType in ('Standard','Calpha normalised'):
-			self.densMetric['weighted loss'][normaliseType] = {}
-			self.densMetric['weighted loss'][normaliseType]['values'] = []
-			for dataset in range(0,len(self.mindensity)):
-				absMaxDensLoss = np.abs(self.densMetric['loss'][normaliseType]['values'][dataset])
-				absMaxDensGain = np.abs(self.densMetric['gain'][normaliseType]['values'][dataset])
-				metricVal = absMaxDensLoss/(absMaxDensLoss + absMaxDensGain)
-				self.densMetric['weighted loss'][normaliseType]['values'].append(metricVal)
-
+	def calculateNetChangeMetric(self,normType):
 		# the following metric attempts to determine whether there is a net loss, gain or disordering
 		# of density associated with a specific atom
 		self.densMetric['net'] = {}
-		for normaliseType in ('Standard','Calpha normalised'):
-			self.densMetric['net'][normaliseType] = {}
-			self.densMetric['net'][normaliseType]['values'] = []
-			for dataset in range(0,len(self.mindensity)):
-				abs_maxDensLoss = np.abs(self.densMetric['loss'][normaliseType]['values'][dataset]) 
-				abs_maxDensGain = np.abs(self.densMetric['gain'][normaliseType]['values'][dataset]) 
-				metricVal = (abs_maxDensLoss - abs_maxDensGain)
-				self.densMetric['net'][normaliseType]['values'].append(metricVal)
+		self.densMetric['net'][normType] = {}
+		self.densMetric['net'][normType]['values'] = []
+		for dataset in range(0,self.getNumDatasets()):
+			abs_maxDensLoss = np.abs(self.densMetric['loss'][normType]['values'][dataset]) 
+			abs_maxDensGain = np.abs(self.densMetric['gain'][normType]['values'][dataset]) 
+			metricVal = (abs_maxDensLoss - abs_maxDensGain)
+			self.densMetric['net'][normType]['values'].append(metricVal)
 
 	def findSolventAccessibility(self,inputPDBfile):
 		# read in a pdb file output by ccp4 program 'areaimol' which calculates solvent 
