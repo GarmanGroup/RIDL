@@ -8,15 +8,16 @@ from scipy import stats
 import operator
 import os
 from confidenceIntervalCalculator import mean_confidence_interval
+from findMetricChange import findBchange
 
 class combinedAtomList(object):
 	# class for list of atom objects defined by combinedAtom class
 
-	def __init__(self,datasetList,numLigRegDatasets,doseList):
+	def __init__(self,datasetList,numLigRegDatasets,doseList,initialPDBList):
 		self.datasetList 		= datasetList
 		self.numLigRegDatasets 	= numLigRegDatasets 	# number of datasets to perform linear regression over
-		self.doseList 			= doseList 		# list of (DWD)doses for each dataset
-
+		self.doseList 			= doseList 				# list of (DWD)doses for each dataset
+		self.initialPDBList		= initialPDBList 		# list of atom objects for initial (lowest dose) pdb file
 		# if number of datasets to perform lin reg not stated then set to total number of datasets in series
 		if self.numLigRegDatasets == 0:
 			self.numLigRegDatasets = len(self.datasetList[0].mindensity)
@@ -59,7 +60,7 @@ class combinedAtomList(object):
 
 	        # check whether atom in all datasets:
 	        Inds = ('residuenum','atomtype','basetype','chaintype')
-	        atomIndentifier = getattr(atom, attr) for attr in atomInds]
+	        atomIndentifier = [getattr(atom, attr) for attr in Inds]
 	        for dataset in self.datasetList[1:]:
 	            k = -1        
 	            for otheratom in dataset: 
@@ -85,19 +86,23 @@ class combinedAtomList(object):
 	            continue
 
 	        else:                 
-	            y = combinedAtom()
-	            for attr in singDimAttrs+multiDimAttrs:
-	                if attr[0] != '_':
-	                	if len(atomDict[attr]) == 1:
-	                    	setattr(y, attr,atomDict[attr])
-	                    else:
-	                    	y.densMetric[attr]['Standard']['values'] = atomDict[attr]
-	            PDBdoses.append(y)
+				y = combinedAtom()
+				for attr in singDimAttrs+multiDimAttrs:
+					if attr[0] != '_':
+						if len(atomDict[attr]) == 1:
+							setattr(y, attr,atomDict[attr])
+				else:
+					y.densMetric[attr]['Standard']['values'] = atomDict[attr]
+				PDBdoses.append(y)
 
 	    print '\n------------------------------------------------'    
 	    print 'Number of atoms removed since not in all datasets: {}'.format(numNotFoundAtoms)
 	    print '---> Finished!'
 	    self.atomList = PDBdoses
+
+	def calcBfactorChange(self):
+		# calculate Bfactor change between initial and each later dataset
+		findBchange(self.initialPDBList,self.atomList,'Bfactor')
 
 	def calcAdditionalMetrics(self):
 		# calculate the Calpha weights for each dataset (see CalphaWeight class for details)
@@ -105,13 +110,12 @@ class combinedAtomList(object):
 		CAweights = CalphaWeight(self.atomList)
 		CAweights.calculateWeights()
 
-		# loop over all atoms in list and determine new atom info (defined by processedAtom class)
-		print 'Creating new list of atom objects within class processedAtom...'
+		# loop over all atoms in list and calculate additional metrics for each atom in atomList
 		counter = 0
 		num_atoms = len(self.atomList)
 		for atom in self.atomList:
 			counter += 1
-			progress(counter, num_atoms, suffix='') #unessential loading bar add-in
+			progress(counter, num_atoms, suffix='') # unessential loading bar add-in
 			atom.CalphaWeightedDensChange(CAweights)
 			atom.calculateAdditionalMetrics()
 			atom.calculateLinReg(self.numLigRegDatasets,'Standard')
