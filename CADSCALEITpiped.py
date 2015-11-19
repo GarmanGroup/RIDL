@@ -1,6 +1,7 @@
 import os.path
 from time import gmtime, strftime
 from CADjob import CADjob
+from SCALEITjob import SCALEITjob
 from logFile import logFile
 
 class pipeline():
