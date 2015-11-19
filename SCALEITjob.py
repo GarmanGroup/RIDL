@@ -10,17 +10,18 @@ class SCALEITjob():
 		self.outputDir 			= outputDir
 		self.runLog				= runLog
 
-		self.jobName 			= 'SCALEIT'
 		runLog.writeToLog('Running SCALEIT job')
 
-
 	def checkInputsExist(self):
-		# check if input mtz file exist
+		# check if input mtz files exist
 		if self.checkFileExists(self.SCALEITinputMtz) is False:
+			string = 'Failed to find required input file'
+			print string
+			runLog.writeToLog(string)
 			return False
 		else:
 			runLog.writeToLog('Input files:')
-			runLog.writeToLog('{}'.format(self.SCALEITinputMtz))
+			runLog.writeToLog('{}'.format(self.SCALEITinputMtz))	
 			return True
 
 	def run(self):
@@ -30,6 +31,8 @@ class SCALEITjob():
 		if self.jobSuccess is True:
 			self.provideFeedback()
 		else:
+			string = 'Job did not run successfully, see job log file "{}"',format(self.outputLogfile)
+			runLog.writeToLog(string)
 			return
 
 	def runSCALEIT(self):
