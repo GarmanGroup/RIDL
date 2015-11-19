@@ -31,8 +31,8 @@ def findBchange(initialPDB,multiDoseList,Bmetric):
 		counter += 1
 		progress(counter, num_atoms, suffix='')
 
-	    Inds = ('residuenum','atomtype','basetype','chaintype')
-	    atomIndentifier = [getattr(atom, attr) for attr in Inds]
+		Inds = ('residuenum','atomtype','basetype','chaintype')
+		atomIndentifier = [getattr(atom, attr) for attr in Inds]
 		k = -1
 		for atomindex in initpdbindices:
 			k += 1

@@ -105,9 +105,9 @@ def pdbCUR_run(inputpdbfile,outputpdbfile):
 
 	return pdbcur_runoutput
 
-def SFALL_run(inputpdbfile,outputmapfile,symmetrygroup,sfall_GRID,sfall_VDWR):
+def SFALL_run(inputpdbfile,outputmapfile,symmetrygroup,sfall_GRID):
 
-	VDWR = sfall_VDWR
+	VDWR = 1
 	title = 'run of sfall'
 
 	input1 = "/Applications/ccp4-6.4.0/bin/sfall "+\
@@ -370,8 +370,6 @@ def get_atomanddensmaps():
 			sfall_GRIDny = line.split()[2]
 			sfall_GRIDnz = line.split()[3]
 			sfall_GRID = [sfall_GRIDnx,sfall_GRIDny,sfall_GRIDnz]
-		if 'sfall_VDWR' == line.split()[0]:
-			sfall_VDWR = line.split()[1]
 		if 'mtzIN' == line.split()[0]:
 			fft_inputmergedmtzfile = line.split()[1]
 		if 'fft_Fobs_dam' == line.split()[0]:
@@ -394,10 +392,11 @@ def get_atomanddensmaps():
 			break
 
 	pdbcur_inputpdbfile = pdbname
-	pdbcur_outputpdbfile = where+runname+N+'_pdbcur.pdb'
-	pdbreorder_outpdbfile = where+runname+N+'.pdb'
-	sfall_outputmapfile = where+runname+N+'_atoms_VDWR'+sfall_VDWR+'.map'
-	FFT_outputmapfile = where+runname+N+'_density_VDWR'+sfall_VDWR+'.map'
+	pdbcur_outputpdbfile = where+'pdbcur_'+runname+N+'.pdb'
+	pdbreorder_outpdbfile = where+'pdbreorder_'+runname+N+'.pdb'
+	sfall_outputmapfile = where+runname+N+'_atoms.map'
+	FFT_outputmapfile = where+runname+N+'_density.map'
+
 	# sfall_outputmapfileCROPPED = where+runname+N+'_atoms_CROPPED.map'
 
 	# run pdbcur job
@@ -408,7 +407,7 @@ def get_atomanddensmaps():
 	reorderedpdb = renumber_pdbfile(inputpdbfile,pdbreorder_outpdbfile)
 
 	# run sfall job
-	SFALL_runoutput = SFALL_run(reorderedpdb,sfall_outputmapfile,sfall_symmetrygroup,sfall_GRID,sfall_VDWR)
+	SFALL_runoutput = SFALL_run(reorderedpdb,sfall_outputmapfile,sfall_symmetrygroup,sfall_GRID)
 
 	# run fft job
 	mtzlabels = [Fobs_dam,SIGobs_dam,Fobs_init,SIGobs_init,PHIC_dam,FOM_dam,FOM_init]
