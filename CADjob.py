@@ -1,4 +1,4 @@
-from ccp4Job import ccp4Job
+from ccp4Job import ccp4Job,checkInputsExist
 import os
 
 class CADjob():
@@ -17,29 +17,18 @@ class CADjob():
 		self.runLog.writeToLog('Running CAD job')
 
 	def run(self):
-		if self.checkInputsExist() is False:
+		inputFiles = [self.inputMtz1,self.inputMtz2,self.inputMtz3]
+		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
 		self.runCAD()
 		if self.jobSuccess is True:
 			self.provideFeedback()
+			self.runLog.writeToLog('Output files:')	
+			self.runLog.writeToLog('{}'.format(self.outputMtz))
 			return True
 		else:
 			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
 			return False
-
-	def checkInputsExist(self):
-		# check if input mtz files exist
-		for fileName in (self.inputMtz1,self.inputMtz2,self.inputMtz3):
-			if os.path.isfile(fileName) is False:
-				self.runLog.writeToLog('Failed to find required input file "{}"'.format(fileName))
-				return False
-		else:
-			self.runLog.writeToLog('Input files:')
-			self.runLog.writeToLog('{}'.format(self.inputMtz1))	
-			self.runLog.writeToLog('{}'.format(self.inputMtz2))
-			self.runLog.writeToLog('Output files:')	
-			self.runLog.writeToLog('{}'.format(self.outputMtz))
-			return True
 
 	def runCAD(self):
 		title = 'run of cad'

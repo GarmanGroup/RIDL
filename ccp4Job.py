@@ -26,8 +26,7 @@ class ccp4Job():
 		os.system('{} < {}inputfile.txt > {}'.format(self.commandInput1,
 												   self.jobName,
 												   self.outputLogfile))
-		# os.system('{} < {}inputfile.txt'.format(self.commandInput1,
-		# 										   self.jobName))
+
 		# move ccp4 job input and log files to working sub directory
 		os.system('mv {}inputfile.txt {}/{}inputfile.txt'.format(self.jobName,self.outputDir,self.jobName))
 		os.system('mv {} {}/{}'.format(self.outputLogfile,self.outputDir,self.outputLogfile))
@@ -40,3 +39,15 @@ class ccp4Job():
 			return False
 		else:
 			return True
+
+def checkInputsExist(inputFiles,runLog):
+	# check if input files exist for a ccp4 job
+	for fileName in inputFiles:
+		if os.path.isfile(fileName) is False:
+			runLog.writeToLog('Failed to find required input file "{}"'.format(fileName))
+			return False
+	else:
+		runLog.writeToLog('Input files:')
+		for fileName in inputFiles:
+			runLog.writeToLog('{}'.format(fileName))	
+		return True
