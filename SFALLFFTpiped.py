@@ -6,22 +6,28 @@ from SFALLjob import SFALLjob
 from FFTjob import FFTjob
 from MAPMASKjob import MAPMASKjob
 from mapTools import mapTools
+from logFile import logFile
 
 class pipeline():
 
-	def __init__(self):
-		self.inputFile 	= 'inputfile_SFALLFFTpipeline.txt'
+	def __init__(self,outputDir,inputFile):
+		self.inputFile = inputFile
 
 	def runPipeline(self):
 
 		# read input file first
-		self.readInputFile()
+		success = self.readInputFile()
+		if x is False:
+			return 1
+
+		# create log file
+		self.pipelineLog = logFile(self.outputDir+'/runLog_SFALLFFTpipeline.txt')
 
 		# run pdbcur job 
-		pdbcur = PDBCURjob(self.pdbcurPDBinputFile,self.outputDir)
-		pdbcur.run()
-		if pdbcur.jobSuccess is False:
-			return 1
+		pdbcur = PDBCURjob(self.pdbcurPDBinputFile,self.outputDir,self.pipelineLog)
+		success = pdbcur.run()
+		if success is False:
+			return 2
 
 		self.PDBCURoutputFile = pdbcur.outputPDBfile
 
@@ -29,13 +35,15 @@ class pipeline():
 		self.renumberPDBFile()
 
 		# get space group from PDB file
-		self.getSpaceGroup()
+		success = self.getSpaceGroup()
+		if success is False:
+			return 3
 
 		# run SFALL job
-		sfall = SFALLjob(self.reorderedPDBFile,self.outputDir,self.sfall_VDWR,self.spaceGroup,self.sfall_GRID)
-		sfall.run()
-		if sfall.jobSuccess is False:
-			return 2
+		sfall = SFALLjob(self.reorderedPDBFile,self.outputDir,self.sfall_VDWR,self.spaceGroup,self.sfall_GRID,self.pipelineLog)
+		success = sfall.run()
+		if success is False:
+			return 4
 
 		# run FFT job
 		sfallMap = mapTools(sfall.outputMapFile)
@@ -43,28 +51,28 @@ class pipeline():
 		gridSamps = [sfallMap.gridsamp1,sfallMap.gridsamp2,sfallMap.gridsamp3]
 		labelsInit = ['FP_'+self.initPDB,'SIGFP_'+self.initPDB,'FOM_'+self.initPDB,'PHIC_'+self.initPDB]
 		labelsLater = ['FP_'+self.laterPDB,'SIGFP_'+self.laterPDB,'FOM_'+self.laterPDB,'PHIC_'+self.laterPDB]
-		fft = FFTjob(self.FFTtype,self.laterPDB,self.inputMtzFile,self.outputDir,axes,gridSamps,labelsLater,labelsInit)
-		fft.run()
-		if fft.jobSuccess is False:
-			return 3
+		fft = FFTjob(self.FFTtype,self.FOMweight,self.laterPDB,self.inputMtzFile,self.outputDir,axes,gridSamps,labelsLater,labelsInit,self.pipelineLog)
+		success = fft.run()
+		if success is False:
+			return 5
 
 		# crop fft and atom-tagged maps to asymmetric unit:
 		mapmask1 = MAPMASKjob(sfall.outputMapFile,'',self.outputDir)
-		mapmask1.crop2AsymUnit()
-		if mapmask1.jobSuccess is False:
-			return 4
+		success = mapmask1.crop2AsymUnit()
+		if success is False:
+			return 6
 
 		mapmask2 = MAPMASKjob(fft.outputMapFile,'',self.outputDir)
-		mapmask2.crop2AsymUnit()
-		if mapmask2.jobSuccess is False:
-			return 5
+		success = mapmask2.crop2AsymUnit()
+		if success is False:
+			return 7
 
 		# run MAPMASK job to crop fft density map to same grid 
 		# sampling dimensions as SFALL atom map
 		mapmask3 = MAPMASKjob(mapmask2.outputMapFile,mapmask1.outputMapFile,self.outputDir)
-		mapmask3.cropMap2Map()
-		if mapmask3.jobSuccess is False:
-			return 6
+		success = mapmask3.cropMap2Map()
+		if success is False:
+			return 8
 
 		# perform map consistency check between cropped fft and sfall maps
 		fftMap = mapTools(mapmask3.outputMapFile)
@@ -73,12 +81,18 @@ class pipeline():
 		sfallMap.readHeader()
 		success = self.mapConsistencyCheck(sfallMap,fftMap)
 		if success is False:
-			return 7
+			return 9
 		else:
 			return 0
 
 	def readInputFile(self):
 		# read in input file for pipeline
+
+		# if Input.txt not found, flag error
+		if self.checkFileExists(self.inputFile) is False:
+			print 'Required input file {} not found..'.format(self.inputFile)
+			return False
+
 		inputFile = open(self.inputFile,'r')
 
 		self.sfall_GRID = []
@@ -106,11 +120,16 @@ class pipeline():
 				self.laterPDB = line.split()[1]
 			if 'FFTmapType' == line.split()[0]:
 				self.FFTtype = line.split()[1]
+			if 'FFTmapWeight' == line.split()[0]:
+				self.FOMweight = True
+			else: 
+				self.FOMweight = False
+		return True
 
 	def renumberPDBFile(self):
 		# reorder atoms in pdb file since some may be missing now after
 		# pdbcur has been run
-
+		self.runLog.writeToLog('Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
 		self.reorderedPDBFile = (self.PDBCURoutputFile).split('_pdbcur.pdb')[0]+'_reordered.pdb'
 
 		pdbin = open(self.PDBCURoutputFile,'r')
@@ -128,43 +147,51 @@ class pipeline():
 				pdbout.write(line[11:80]+'\n')
 		pdbin.close()
 		pdbout.close()
+		self.runLog.writeToLog('Output pdb file: {}'.format(self.reorderedPDBFile))
 
 	def getSpaceGroup(self):
 		pdbin = open(self.reorderedPDBFile,'r')
 		for line in pdbin.readlines():
 			if line.split()[0] == 'CRYST1':
 				self.spaceGroup = line[55:66].replace(' ','')
-				print 'Space group determined to be {}'.format(self.spaceGroup)
+				self.runLog.writeToLog('Retrieving space group from file: {}'.format(self.PDBCURoutputFile))
+				self.runLog.writeToLog('Space group determined to be {}'.format(self.spaceGroup))
+		try:
+			self.spaceGroup
+		except attributeError:
+			self.runLog.writeToLog('Unable to find space group from file: {}'.format(self.PDBCURoutputFile))
+			return False
+		return True
 
 	def mapConsistencyCheck(self,sfallMap,fftMap):
 		# this function determines whether the atom map and density map calculated using SFALL and FFT
 		# are compatible - meaning the grid dimensions/filtering are the same and the ordering of the
 		# fast, medium, and slow axes are identical.
-		print 'Checking that atom map (SFALL) and density map (FFT) are compatible...'
+		self.runLog.writeToLog('Checking that atom map (SFALL) and density map (FFT) are compatible...')
 
 		if (sfallMap.gridsamp1 != fftMap.gridsamp1 or
 			sfallMap.gridsamp2 != fftMap.gridsamp2 or
 			sfallMap.gridsamp3 != fftMap.gridsamp3):
-			print 'Incompatible grid sampling found...'
+		self.runLog.writeToLog('Incompatible grid sampling found...')
 			return False
 
 		if (sfallMap.fastaxis != fftMap.fastaxis or
 			sfallMap.medaxis != fftMap.medaxis or
 			sfallMap.slowaxis != fftMap.slowaxis):
-			print 'Incompatible fast,med,slow axes ordering found...'
+			self.runLog.writeToLog('Incompatible fast,med,slow axes ordering found...')
 			return False
 
 		if (sfallMap.numCols != fftMap.numCols or
 			sfallMap.numRows != fftMap.numRows or
 			sfallMap.numSecs != fftMap.numSecs):
-			print 'Incompatible number of rows, columns and sections...'
+			self.runLog.writeToLog('Incompatible number of rows, columns and sections...')
 			return False
 
 		if sfallMap.getMapSize() != fftMap.getMapSize():
-			print 'Incompatible map file sizes'
+			self.runLog.writeToLog('Incompatible map file sizes')
 			return False
 
-		print '---> success!'
+		self.runLog.writeToLog('---> success!')
 		return True
 
 
