@@ -31,7 +31,7 @@ class SFALLjob():
 	def runSFALL(self):
 		title = 'run of sfall'
 
-		self.commandInput1 = '/Applications/ccp4-6.4.0/bin/sfall '+\
+		self.commandInput1 = 'sfall '+\
 				 'XYZIN {} '.format(self.inputPDBfile)+\
 				 'ATOMSF /Users/charlie/Desktop/atomsf_addNplus1.lib '+\
 			 	 'MAPOUT {} '.format(self.outputMapFile)+\

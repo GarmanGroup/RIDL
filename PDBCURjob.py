@@ -33,7 +33,7 @@ class PDBCURjob():
 
 		# run PDBCUR from command line
 
-		self.commandInput1 = '/Applications/ccp4-6.4.0/bin/pdbcur '+\
+		self.commandInput1 = 'pdbcur '+\
 				 			 'XYZIN {} '.format(self.inputPDBfile)+\
 				 			 'XYZOUT {} '.format(self.outputPDBfile)
 

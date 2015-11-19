@@ -43,10 +43,10 @@ class FFTjob():
 			
 	def runFFT(self):
 
-		self.commandInput1 = '/Applications/ccp4-6.4.0/bin/fft '+\
-				 				  'HKLIN {} '.format(self.inputMtzFile)+\
-			 	 				  'MAPOUT {} '.format(self.outputMapFile)+\
-			 	 				  'SYMINFO /Applications/ccp4-6.4.0/lib/data/syminfo.lib '
+		self.commandInput1 = 'fft '+\
+				 			 'HKLIN {} '.format(self.inputMtzFile)+\
+			 	 			 'MAPOUT {} '.format(self.outputMapFile)+\
+			 	 			 'SYMINFO /Applications/ccp4-6.4.0/lib/data/syminfo.lib '
 
 		# can distinguish here between SIMPLE and DIFFERENCE map types
 		if self.mapType == 'SIMPLE':

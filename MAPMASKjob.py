@@ -17,7 +17,7 @@ class MAPMASKjob():
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
 
-		self.commandInput1 = '/Applications/ccp4-6.4.0/bin/mapmask '+\
+		self.commandInput1 = 'mapmask '+\
 				 			 'MAPIN {} '.format(self.inputMapFile)+\
 						 	 'MAPOUT {} '.format(self.outputMapFile)+\
 						 	 'SYMINFO /Applications/ccp4-6.4.0/lib/data/syminfo.lib '
