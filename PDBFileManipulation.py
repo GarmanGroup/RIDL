@@ -34,85 +34,7 @@ def PDBtoList(pdbfilename,PDBarray):
     pdbin.close()
     return PDBarray
 
-def getMultiDoseAtomList(data_list):
-    # this function inputs a list of lists of PDB atom objects (see StructurePDB class)
-    # and formats as an object of the class 'multiPDB'. It is a variant of the function 
-    # above which can also cope with structures containing different numbers of atoms 
-    # (say if solvent molecules/ligands are included in a subset of the structures). 
-    # In this case, the smallest common substructure between all structures will be used
-     
-    # first check that each PDBarray contains the same number of atoms (consistency check)
-    if len(data_list) > 1:
-        print 'Multiple datasets detected...'
-        for dataset in data_list:
-            if len(dataset) != len(data_list[0]):
-                print 'Not all PDB structures have same number of atoms!'\
-                ' Will only include atoms common to ALL structures...'
-    elif len(data_list) == 1:
-        print 'Single dataset detected...'
 
-    PDBdoses = []
-    notincludedatmcounter = 0
-    
-    print '------------------------------------------------'
-    print 'Locating common atoms to ALL datasets...:'
-    singDimAttrs = ('atomnum','residuenum','atomtype','basetype',
-                    'chaintype','X_coord','Y_coord','Z_coord')
-    multiDimAttrs = ('Bfactor','Occupancy','meandensity','maxdensity',
-                     'mindensity','mediandensity','Bfactorchange',
-                     'numvoxels','stddensity','min90tile','max90tile',
-                     'min95tile','max95tile','rsddensity','rangedensity')
-    for atom in data_list[0]:
-        atm_counter = 1
-        atomDict = {attr:getattr(atom, attr) for attr in singDimAttrs}.copy()
-        atomDict.update({attr:[getattr(atom, attr)] for attr in multiDimAttrs})
-
-        # list of index of same atom in each later dataset
-        indexindataset = []
-
-        # check whether atom in all datasets:
-        for dataset in data_list[1:]:
-            k = -1        
-            for otheratom in dataset: 
-                k += 1  
-                if (atom.residuenum == otheratom.residuenum and 
-                    atom.atomtype == otheratom.atomtype and 
-                    atom.basetype == otheratom.basetype and 
-                    atom.chaintype == otheratom.chaintype):
-                    
-                    atm_counter += 1 
-                    for attr in multiDimAttrs:
-                        atomDict[attr].append(getattr(otheratom, attr))
-                    indexindataset.append(k)
-                    break
-
-        # remove this located atom from the later dataset now that it
-        # has been located --> to make loop faster 
-        for j in range(1,len(indexindataset)+1):
-            if indexindataset[j-1] != -1:
-                data_list[j].pop(indexindataset[j-1])
-                        
-        if atm_counter != len(data_list):
-            print 'Atom not found in all datasets!'
-            print 'Atom: {} {}{} {}'.format(atom.chaintype,atom.basetype,atom.residuenum,atom.atomtype)
-            print '---> not including atom in atom list...'
-            notincludedatmcounter += 1
-            continue
-
-        else:                 
-            y = multiPDB()
-            for attr in singDimAttrs+multiDimAttrs:
-                if attr[0] != '_':
-                    print attr
-                    setattr(y, attr,atomDict[attr])
-            PDBdoses.append(y)
-    print '\n------------------------------------------------'    
-    print 'Number of atoms removed since not in all datasets: %s' %str(notincludedatmcounter)
-    print '---> Finished!'
-    return PDBdoses
-
-
-###############################################################################
 def convertPDBobject_toPDBline_fn(element,Occupancy):
     #script to convert atom information (in class format) to 'ATOM' line format for
     #pdb output files. Note that the following PDB ATOM line convention is used:
@@ -170,10 +92,8 @@ def convertPDBobject_toPDBline_fn(element,Occupancy):
         sys.exit()
         
     return line
-###############################################################################
-    
 
-###############################################################################
+    
 def convertPDBobject_toPDBline_fn_Bfactorsetter(element,Bfactor):
     #script to convert atom information (in class format) to 'ATOM' line format for
     #pdb output files. Note that the following PDB ATOM line convention is used:
@@ -212,11 +132,8 @@ def convertPDBobject_toPDBline_fn_Bfactorsetter(element,Bfactor):
         sys.exit()
         
     return line
-###############################################################################
 
 
-
-###############################################################################
 def convertPDBobject_toPDBline_sudoWater(atom,Bfactor):
     # script to convert atom information (in class format) to 'ATOM' line format for
     # pdb output files. Here the line is written in pdb format as a sudo-water atom, 
@@ -254,4 +171,3 @@ def convertPDBobject_toPDBline_sudoWater(atom,Bfactor):
         sys.exit()
         
     return line
-###############################################################################
