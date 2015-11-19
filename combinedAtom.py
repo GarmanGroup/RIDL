@@ -6,28 +6,21 @@ from scipy import stats
 import numpy as np
 import string
 
-class combinedAtom(singlePDB):
-	# A subclass extension for a collection of multiple different dose pdb file structures as defined by the singlePDB class. 
+class combinedAtom(StructurePDB):
+	# A subclass extension for a collection of multiple different dose pdb file structures as defined by the StructurePDB class. 
 	# This class adds additonal attributes and methods
 	def __init__(self,atomnum=0,residuenum=0,atomtype="",basetype="",chaintype="",
-				 X_coord=0,Y_coord=0,Z_coord=0,Bfactor=[],Occupancy=[],meandensity=[],
-				 maxdensity=[],mindensity=[],mediandensity=[],atomidentifier="",
-				 numsurroundatoms=0,numsurroundprotons=0,bdam=[],bdamchange=[],Bfactorchange=[],
-				 meandensity_norm=[],maxdensity_norm=[],mindensity_norm=[],
-				 mediandensity_norm=[],numvoxels=[],stddensity=[],min90tile=[],max90tile=[],
-				 min95tile=[],max95tile=[],rsddensity=[],rangedensity=[]):
+				 X_coord=0,Y_coord=0,Z_coord=0,Bfactor=[],Occupancy=[],atomidentifier="",
+				 numsurroundatoms=0,numsurroundprotons=0,densMetric={}):
 
 		super(combinedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,
 										   X_coord,Y_coord,Z_coord,atomidentifier,numsurroundatoms,
-										   numsurroundprotons,bdam,bdamchange,Bfactorchange,
-									       numvoxels,stddensity,min90tile,max90tile,min95tile,
-									       max95tile,rsddensity,rangedensity)
+										   numsurroundprotons)
 		self.getInfo()   
 
 	def getInfo(self):
 		# these attributes are dictionaries and will contain values for multiple
 		# variations of the density change metrics
-		self.densMetric	= {}
 		for metricType in ('loss','gain','mean','bfactor','bdamage','|loss|','median'):
 			self.densMetric[metricType] = {}
 			self.densMetric[metricType]['Standard'] = {}
