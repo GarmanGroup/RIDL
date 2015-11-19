@@ -178,12 +178,9 @@ class eTrack(object):
 		# create a list of atom objects with attributes as lists varying over 
 		# dose range, only including atoms present in ALL damage datasets
 		print 'New list of atoms over full dose range calculated...'
-		combinedAtoms = combinedAtomList(data_list,len(data_list),self.doses)
+		combinedAtoms = combinedAtomList(data_list,len(data_list),self.doses,initialPDBlist)
 		combinedAtoms.getMultiDoseAtomList()
 		self.PDBmulti = combinedAtoms.atomList
-
-		# determine Bfactor change between later datasets and initial 
-		find_Bchange(initialPDBlist,self.PDBmulti,'Bfactor')
 
 		# write atom numbers and density metrics to simple text files - one for 
 		# each density metric separately
