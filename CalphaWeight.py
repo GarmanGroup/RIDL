@@ -1,9 +1,8 @@
-# small script to determine the Calpha weighting per dataset, to monitor the 
-# overall degregation of the electron density map with increasing dose
-# (due to global effects)
 import numpy as np 
 
 class CalphaWeight(object):
+	# class to determine the Calpha weighting per dataset, to monitor the overall degregation 
+	# of the electron density map with increasing dose (due to global effects)
 	def __init__(self, atomList = []):
 
 		self.atomList 	= atomList  # list of atoms over multiple doses
