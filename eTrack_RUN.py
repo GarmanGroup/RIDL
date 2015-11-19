@@ -2,10 +2,8 @@
 
 from readAtomMap import maps2DensMetrics
 from savevariables import retrieve_objectlist,save_objectlist
-from PDBFileManipulation import getMultiDoseAtomList
 from topDamageHits import topNdamsites_resibarplotter,topNdamsites_chainbarplotter,topNdamsites_printer
 import os
-from PDBMulti2Txt import objlist2txt
 from PDBFileManipulation import PDBtoList
 from densityAnalysisPlots import numneighbours_scatter
 from combinedAtomList import combinedAtomList
@@ -179,14 +177,14 @@ class eTrack(object):
 		print 'New list of atoms over full dose range calculated...'
 		combinedAtoms = combinedAtomList(data_list,len(data_list),self.doses,initialPDBlist)
 		combinedAtoms.getMultiDoseAtomList()
-		self.PDBmulti = combinedAtoms.atomList
+		# self.PDBmulti = combinedAtoms.atomList
 
 		# write atom numbers and density metrics to simple text files - one for 
 		# each density metric separately
-		for densMet in ('mean','min','max','median','std','rsd',
-						'min90tile','max90tile','min95tile','max95tile'):
+		for densMet in ('mean','loss','gain','median','standard deviation','mean/std',
+						'90tile loss','90tile gain','Bfactor'):
 			print 'Writing .txt file for per-atom density metric: {}'.format(densMet)
-			objlist2txt(self.PDBmulti,self.outputDir,densMet)
+			combinedAtoms.writeMetric2File(self.outputDir,densMet,'Standard')
 
 	def PDBmulti_retrieve(self):
 		self.titleCaption('Atom List Retrieval')

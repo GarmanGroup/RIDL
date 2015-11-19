@@ -46,9 +46,8 @@ class combinedAtomList(object):
 	    print 'Locating common atoms to ALL datasets...:'
 	    singDimAttrs = ('atomnum','residuenum','atomtype','basetype',
 	                    'chaintype','X_coord','Y_coord','Z_coord')
-	    multiDimAttrs = ('Bfactor','Occupancy','meandensity','maxdensity',
-	                     'mindensity','mediandensity','Bfactorchange',
-	                     'numvoxels','stddensity','min90tile','max90tile',
+	    multiDimAttrs = ('Bfactor','Occupancy','meandensity','maxdensity','mindensity',
+	    				 'mediandensity','numvoxels','stddensity','min90tile','max90tile',
 	                     'min95tile','max95tile','rsddensity','rangedensity')
 	    for atom in self.datasetList[0]:
 	        atm_counter = 1
@@ -86,19 +85,35 @@ class combinedAtomList(object):
 	            continue
 
 	        else:                 
-				y = combinedAtom()
+				atom = combinedAtom()
 				for attr in singDimAttrs+multiDimAttrs:
 					if attr[0] != '_':
-						if len(atomDict[attr]) == 1:
-							setattr(y, attr,atomDict[attr])
-				else:
-					y.densMetric[attr]['Standard']['values'] = atomDict[attr]
-				PDBdoses.append(y)
+						if isinstance(atomDict[attr],list) is False:
+							setattr(atom,attr,atomDict[attr])
+						else:
+							metName = self.findMetricName(attr)
+							atom.getDensMetricInfo(metName,'Standard',atomDict[attr])
+				PDBdoses.append(atom)
 
 	    print '\n------------------------------------------------'    
 	    print 'Number of atoms removed since not in all datasets: {}'.format(numNotFoundAtoms)
 	    print '---> Finished!'
 	    self.atomList = PDBdoses
+
+	def findMetricName(self,metricName):
+		# a conversion between the naming convention used by singlePDB class for each individual
+		# dataset and that to be used by dictionary of density metrics for combinedAtom class
+		conversions = (['Bfactor','Bfactor'],['Occupancy','occupancy'],
+					   ['meandensity','mean'],['maxdensity','gain'],
+					   ['mindensity','loss'],['mediandensity','median'],
+					   ['numvoxels','num voxels'],['stddensity','standard deviation'],
+	    			   ['min90tile','90tile loss'],['max90tile','90tile gain'],
+	    			   ['min95tile','95tile loss'],['max95tile','95tile gain'],
+	    			   ['rsddensity','relative-std'],['rangedensity','range'])
+
+		for conversion in conversions:
+			if metricName == conversion[0]:
+				return conversion[1]
 
 	def getNumAtoms(self):
 		return len(self.atomList)
@@ -124,21 +139,46 @@ class combinedAtomList(object):
 			atom.calculateLinReg(self.numLigRegDatasets,'Standard',metric)
 			atom.calculateNetChangeMetric('Standard')
 
+	def writeMetric2File(self,where,metric,normType):
+
+		# make a new txt file in location where
+		csvfile = open('{}{}-{}.csv'.format(where,metric,normType),'w')
+		csvfile.write('metric: {} normalisation: {}\n'.format(metric,normType))
+		csvfile.write('atomnum,atominfo,')
+		metricLength = self.atomList[0].getNumDatasets(metric)
+		for i in range(0,metricLength):
+			csvfile.write('{}'.format(str(i+1)))
+			if i != metricLength-1: csvfile.write(',')
+		csvfile.write('\n')
+
+		# sort atom list by atom number
+		self.atomList.sort(key=lambda x: x.atomnum)
+
+		# for each atom in atomList
+		for atom in self.atomList:
+			csvfile.write('{},'.format(atom.atomnum))
+			csvfile.write('{},'.format(atom.getAtomID()))
+			for i in range(0,metricLength):
+				csvfile.write('{}'.format(atom.densMetric[metric][normType]['values'][i]))
+				if i != metricLength-1: csvfile.write(',')
+			csvfile.write('\n')
+		csvfile.close()
+
 	def graphMetric(self):
 		# produce a graph of selected metric against dataset number for a specified atom
 		# get equivalent atoms of specified type (command line input to specify)
-		self.densityMetric = raw_input("Density metric type: ")
-		self.normalise  = raw_input("Normalisation type: ")
-		self.atomType 	= raw_input("Atom type: ")
-		self.baseType 	= raw_input("Residue/nucleotide type: ")
-		self.residueNum = int(raw_input("Residue number: "))
+		densMet 	= raw_input("Density metric type: ")
+		normType  	= raw_input("Normalisation type: ")
+		atomType 	= raw_input("Atom type: ")
+		baseType 	= raw_input("Residue/nucleotide type: ")
+		residueNum 	= int(raw_input("Residue number: "))
 
 		# find atoms of interest 
 		foundAtoms = []
 		for atom in self.atomList:
-			if (atom.atomtype 	== self.atomType and
-				atom.basetype 	== self.baseType and
-				atom.residuenum == self.residueNum):
+			if (atom.atomtype 	== atomType and
+				atom.basetype 	== baseType and
+				atom.residuenum == residueNum):
 				foundAtoms.append(atom)
 
 		# check at least one atom has been found
@@ -165,10 +205,8 @@ class combinedAtomList(object):
 			plt.plot(x,y)
 
 		plt.xlabel('Dataset', fontsize=18)
-		plt.ylabel('{} D{}'.format(self.normalise,self.densityMetric), fontsize=18)
-		f.suptitle('{} D{}: {} {} {}'.format(self.normalise,self.densityMetric,
-											 self.baseType,self.residueNum,
-											 self.atomType),fontsize=24)
+		plt.ylabel('{} D{}'.format(normType,densMet), fontsize=18)
+		f.suptitle('{} D{}: {} {} {}'.format(normType,densMet,baseType,residueNum,atomType),fontsize=24)
 		
 		plt.show()
 
