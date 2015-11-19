@@ -1,19 +1,28 @@
-from ccp4Job import ccp4Job
+from ccp4Job import ccp4Job,checkInputsExist
 import os
 
 class PDBCURjob():
 
-	def __init__(self,inputPDBfile,outputDir):
-		self.inputPDBfile = inputPDBfile
-		self.outputPDBfile = '{}/{}_pdbcur.pdb'.format(outputDir,inputPDBfile.split('/')[-1].split('.pdb')[0])
-		self.outputDir = outputDir
+	def __init__(self,inputPDBfile,outputDir,runLog):
+		self.inputPDBfile 	= inputPDBfile
+		self.outputPDBfile 	= '{}/{}_pdbcur.pdb'.format(outputDir,inputPDBfile.split('/')[-1].split('.pdb')[0])
+		self.outputDir 		= outputDir
+		self.runLog 			= runLog
+		self.runLog.writeToLog('Running PDBCUR job')
 
 	def run(self):
+		inputFiles = [self.inputPDBfile]
+		if checkInputsExist(inputFiles,self.runLog) is False:
+			return False
 		self.runPDBCUR()
 		if self.jobSuccess is True:
 			self.provideFeedback()
+			self.runLog.writeToLog('Output files:')	
+			self.runLog.writeToLog('{}'.format(self.outputPDBfile))
+			return True
 		else:
-			return
+			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
+			return False
 
 	def runPDBCUR(self):
 		# PDBcur job to specify to remove hydrogen atoms and pick on the most probably conformation

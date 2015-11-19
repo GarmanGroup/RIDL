@@ -1,10 +1,11 @@
-from ccp4Job import ccp4Job
+from ccp4Job import ccp4Job,checkInputsExist
 from mapTools import mapTools
 
 class FFTjob():
 
-	def __init__(self,mapType,laterPDB,inputMtzFile,outputDir,axes,gridSamps,labels1,labels2):
+	def __init__(self,mapType,FOMweight,laterPDB,inputMtzFile,outputDir,axes,gridSamps,labels1,labels2,runLog):
 		self.mapType 		= mapType
+		self.FOMweight		= FOMweight
 		self.inputMtzFile 	= inputMtzFile
 		self.outputMapFile 	= '{}/{}_fft.map'.format(outputDir,laterPDB)
 		self.outputDir		= outputDir
@@ -23,13 +24,22 @@ class FFTjob():
 		self.FOM2 			= labels2[2]
 		self.PHI1 			= labels1[3]
 		self.PHI2 			= labels2[3]
+		self.runLog 		= runLog
+		self.runLog.writeToLog('Running FFT job')
 
 	def run(self):
+		inputFiles = [self.inputMtzFile]
+		if checkInputsExist(inputFiles,self.runLog) is False:
+			return False
 		self.runFFT()
 		if self.jobSuccess is True:
 			self.provideFeedback()
+			self.runLog.writeToLog('Output files:')	
+			self.runLog.writeToLog('{}'.format(self.outputMapFile))
+			return True
 		else:
-			return
+			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
+			return False
 			
 	def runFFT(self):
 
@@ -38,26 +48,26 @@ class FFTjob():
 			 	 				  'MAPOUT {} '.format(self.outputMapFile)+\
 			 	 				  'SYMINFO /Applications/ccp4-6.4.0/lib/data/syminfo.lib '
 
-		# if FOM damaged exists, sub this line in below:
-		# "LABIN F1=%s SIG1=%s F2=%s SIG2=%s " %(str(Fobs_dam),str(SIGobs_dam),str(Fobs_init),str(SIGobs_init)) +\
-		#       "PHI=%s W=%s W2=%s\n" %(str(PHIC_dam),str(FOM_dam),str(FOM_init)) +\
-
-		# MODIFIED HERE TO DISTINGUISH BETWEEN SIMPLE AND DIFFERENCE MAP TYPES
+		# can distinguish here between SIMPLE and DIFFERENCE map types
 		if self.mapType == 'SIMPLE':
 			F2Scale = 0.0
 		else:
 			F2Scale = 1.0
+
+		#if a FOM is specified exists the weighting is applied to the map
+		if FOMweight is True:
+			FOMstring = 'W={}'.format(self.FOM_init)
+		else:
+			FOMstring = ''
 
 		self.commandInput2 = 	'AXIS {} {} {}\n'.format(self.fastAxis,self.medAxis,self.slowAxis)+\
 				 			 	'title FTT DENSITY MAP RUN\n'+\
 				 				'grid {} {} {}\n'.format(self.gridSamp1,self.gridSamp2,self.gridSamp3)+\
 				 				'xyzlim 0 1 0 1 0 1\n'+\
 								'LABIN F1={} SIG1={} F2={} SIG2={} '.format(self.F1,self.SIG1,self.F2,self.SIG2)+\
-								'PHI={}\n'.format(self.PHI1)+\
+								'PHI={} {}\n'.format(self.PHI1,FOMstring)+\
 								'SCALE F1 1.0 0.0 F2 {} 0.0\n'.format(F2Scale)+\
 								'END'
-		# 'PHI={} W={} W2 ={}\n'.format(self.PHI1,self.FOM1,self.FOM2)+\
-		# LINE ABOVE ONLY FOR CASE WHERE FOM LINES IN FILE (replace with other line above)
 
 		self.outputLogfile = 'FFTlogfile.txt'
 

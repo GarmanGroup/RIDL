@@ -1,23 +1,32 @@
-from ccp4Job import ccp4Job
+from ccp4Job import ccp4Job,checkInputsExist
 from mapTools import mapTools
 
 class SFALLjob():
 
-	def __init__(self,inputPDBfile,outputDir,VDWR,symmetrygroup,gridDimensions,mapoutType):
-		self.inputPDBfile = inputPDBfile
-		self.outputMapFile = '{}_sfall.map'.format(inputPDBfile.split('_reordered.pdb')[0])
-		self.outputDir = outputDir
-		self.symGroup = symmetrygroup
-		self.VDWR = VDWR
-		self.gridDims = gridDimensions
-		self.mapoutType = mapoutType # atom-map ATMMOD or solvent-map SOLVMAP
+	def __init__(self,inputPDBfile,outputDir,VDWR,symmetrygroup,gridDimensions,mapoutType,runLog):
+		self.inputPDBfile 	= inputPDBfile
+		self.outputMapFile 	= '{}_sfall.map'.format(inputPDBfile.split('_reordered.pdb')[0])
+		self.outputDir 		= outputDir
+		self.symGroup 		= symmetrygroup
+		self.VDWR 			= VDWR
+		self.gridDims 		= gridDimensions
+		self.mapoutType 	= mapoutType # atom-map ATMMOD or solvent-map SOLVMAP
+		self.runLog 		= runLog
+		self.runLog.writeToLog('Running SFALL job')
 
 	def run(self):
+		inputFiles = [self.inputPDBfile]
+		if checkInputsExist(inputFiles,self.runLog) is False:
+			return False
 		self.runSFALL()
 		if self.jobSuccess is True:
 			self.provideFeedback()
+			self.runLog.writeToLog('Output files:')	
+			self.runLog.writeToLog('{}'.format(self.outputMapFile))
+			return True
 		else:
-			return
+			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
+			return False
 
 	def runSFALL(self):
 		title = 'run of sfall'
@@ -57,6 +66,3 @@ class SFALLjob():
 		Map = mapTools(self.outputMapFile)
 		Map.printMapInfo()
 		print '--------------------------'
-
-
-
