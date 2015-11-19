@@ -16,8 +16,9 @@ class voxel_density:
 def combinevxl_atmanddensvals(atmmap_list,densmap_list):
     # create list of voxel objects in class voxel_density 
     # NEW VERSION OF FUNCTION - tested on 10**6 length lists (2s vs 12s)
-    
-    vxl_list = [voxel_density(atm,dens) for atm,dens in zip(atmmap_list,densmap_list)]
+    vxl_list = {atm:[] for atm in atmmap_list}
+    for atm,dens in zip(atmmap_list,densmap_list):
+        vxl_list[atm].append(dens)
     
     return vxl_list
                
