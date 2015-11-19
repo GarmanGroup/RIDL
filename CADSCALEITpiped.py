@@ -8,7 +8,7 @@ class pipeline():
 	# class to run CAD job to combine F and SIGF columns from
 	# two merged mtz files, then to scale the 2nd datasets F 
 	# structure factors against the 1st datasets
-	def __init__(self,where):
+	def __init__(self,where,inputFile):
 
 		# specify where output files should be written
 		self.outputDir 			= where
@@ -22,8 +22,7 @@ class pipeline():
 		self.CADoutputMtz 		= self.outputDir+'/CADcombined.mtz'
 		self.SCALEITinputMtz 	= self.outputDir+'/CADcombined.mtz'
 		self.SCALEIToutputMtz 	= self.outputDir+'/SCALEITcombined.mtz'
-		self.txtInputFile 		= 'Inputs.txt'
-
+		self.txtInputFile 		= self.outputDir+'/'+inputFile
 		self.pipelineLog 		= logFile(self.outputDir+'/runLog.txt')
 
 	def runPipeline(self):
@@ -34,19 +33,19 @@ class pipeline():
 
 		# run CAD job 
 		cad = CADjob(self.CADinputMtz1,self.CADinputMtz2,self.CADinputMtz3,
-					 self.Mtz1LabelName,self.Mtz2LabelName,self.Mtz3LabelName
-				 	 self.Mtz1LabelRename,self.Mtz2LabelRename,self.Mtz3LabelRename,
-				 	 self.CADoutputMtz,self.outputDir,self.pipelineLog)
-		cad.run()
-		if cad.jobSuccess is False:
+		self.Mtz1LabelName,self.Mtz2LabelName,self.Mtz3LabelName,
+		self.Mtz1LabelRename,self.Mtz2LabelRename,self.Mtz3LabelRename,
+		self.CADoutputMtz,self.outputDir,self.pipelineLog)
+		success = cad.run()
+		if success is False:
 			return 1
 
  		# run SCALEIT job 
 		scaleit = SCALEITjob(self.SCALEITinputMtz,self.SCALEIToutputMtz,
 							 self.Mtz1LabelRename,self.Mtz2LabelRename,
 							 self.outputDir,self.pipelineLog)
-		scaleit.run()
-		if scaleit.jobSuccess is False:
+		success = scaleit.run()
+		if success is False:
 			return 2
 
 	def readInputs(self):
