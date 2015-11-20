@@ -17,14 +17,14 @@ class pipeline():
 
 		# read input file first
 		success = self.readInputFile()
-		if x is False:
+		if success is False:
 			return 1
 
 		# create log file
-		self.pipelineLog = logFile(self.outputDir+'/runLog_SFALLFFTpipeline.txt')
+		self.runLog = logFile(self.outputDir+'/runLog_SFALLFFTpipeline.txt')
 
 		# run pdbcur job 
-		pdbcur = PDBCURjob(self.pdbcurPDBinputFile,self.outputDir,self.pipelineLog)
+		pdbcur = PDBCURjob(self.pdbcurPDBinputFile,self.outputDir,self.runLog)
 		success = pdbcur.run()
 		if success is False:
 			return 2
@@ -40,7 +40,8 @@ class pipeline():
 			return 3
 
 		# run SFALL job
-		sfall = SFALLjob(self.reorderedPDBFile,self.outputDir,self.sfall_VDWR,self.spaceGroup,self.sfall_GRID,self.pipelineLog)
+		sfall = SFALLjob(self.reorderedPDBFile,self.outputDir,self.sfall_VDWR,
+						 self.spaceGroup,self.sfall_GRID,'ATMMOD',self.runLog)
 		success = sfall.run()
 		if success is False:
 			return 4
@@ -51,25 +52,26 @@ class pipeline():
 		gridSamps = [sfallMap.gridsamp1,sfallMap.gridsamp2,sfallMap.gridsamp3]
 		labelsInit = ['FP_'+self.initPDB,'SIGFP_'+self.initPDB,'FOM_'+self.initPDB,'PHIC_'+self.initPDB]
 		labelsLater = ['FP_'+self.laterPDB,'SIGFP_'+self.laterPDB,'FOM_'+self.laterPDB,'PHIC_'+self.laterPDB]
-		fft = FFTjob(self.FFTtype,self.FOMweight,self.laterPDB,self.inputMtzFile,self.outputDir,axes,gridSamps,labelsLater,labelsInit,self.pipelineLog)
+		fft = FFTjob(self.FFTtype,self.FOMweight,self.laterPDB,self.inputMtzFile,
+					 self.outputDir,axes,gridSamps,labelsLater,labelsInit,self.runLog)
 		success = fft.run()
 		if success is False:
 			return 5
 
 		# crop fft and atom-tagged maps to asymmetric unit:
-		mapmask1 = MAPMASKjob(sfall.outputMapFile,'',self.outputDir)
+		mapmask1 = MAPMASKjob(sfall.outputMapFile,'',self.outputDir,self.runLog)
 		success = mapmask1.crop2AsymUnit()
 		if success is False:
 			return 6
 
-		mapmask2 = MAPMASKjob(fft.outputMapFile,'',self.outputDir)
+		mapmask2 = MAPMASKjob(fft.outputMapFile,'',self.outputDir,self.runLog)
 		success = mapmask2.crop2AsymUnit()
 		if success is False:
 			return 7
 
 		# run MAPMASK job to crop fft density map to same grid 
 		# sampling dimensions as SFALL atom map
-		mapmask3 = MAPMASKjob(mapmask2.outputMapFile,mapmask1.outputMapFile,self.outputDir)
+		mapmask3 = MAPMASKjob(mapmask2.outputMapFile,mapmask1.outputMapFile,self.outputDir,self.runLog)
 		success = mapmask3.cropMap2Map()
 		if success is False:
 			return 8
@@ -89,7 +91,7 @@ class pipeline():
 		# read in input file for pipeline
 
 		# if Input.txt not found, flag error
-		if self.checkFileExists(self.inputFile) is False:
+		if os.path.isfile(self.inputFile) is False:
 			print 'Required input file {} not found..'.format(self.inputFile)
 			return False
 
