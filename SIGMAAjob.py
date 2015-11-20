@@ -42,7 +42,7 @@ class SIGMAAjob():
 								'XYZIN {}'.format(self.inputPDB)
 
 		self.commandInput2 	= 'title {}\n'.format(title)+\
-							  'LABIN  FP=F_{} SIGFP=SIGF_{} FREE=FreeR_flag\n'.format(self.LabelName,self.LabelName)+\
+							  'LABIN  FP=F{} SIGFP=SIGF{} FREE=FreeR_flag\n'.format(self.LabelName,self.LabelName)+\
 							  'labout -\n'+\
    							  'FC=FC PHIC=PHIC\n'+\
 							  'MODE SFCALC -\n'+\
@@ -64,9 +64,9 @@ class SIGMAAjob():
 								'HKLOUT {} '.format(self.outputMtz)
 
 		self.commandInput2 	= 'title {}\n'.format(title)+\
-							  'LABIN  FP=F_{} SIGFP=SIGF_{} FC=FC PHIC=PHIC\n'.format(self.LabelName,self.LabelName)+\
+							  'LABIN  FP=F{} SIGFP=SIGF{} FC=FC PHIC=PHIC\n'.format(self.LabelName,self.LabelName)+\
 							  'labout -\n'+\
-   							  'DELFWT=DELFWT FWT=FWT WCMB=FOM_{}\n'.format(self.LabelName)+\
+   							  'DELFWT=DELFWT FWT=FWT WCMB=FOM{}\n'.format(self.LabelName)+\
 							  'ranges 20 -\n'+\
     						  '1000\n'+\
 							  'symmetry "{}"\n'.format(self.spaceGroup)+\
