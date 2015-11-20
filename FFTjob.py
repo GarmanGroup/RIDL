@@ -55,8 +55,8 @@ class FFTjob():
 			F2Scale = 1.0
 
 		#if a FOM is specified exists the weighting is applied to the map
-		if FOMweight is True:
-			FOMstring = 'W={}'.format(self.FOM_init)
+		if self.FOMweight is True:
+			FOMstring = 'W={}'.format(self.FOM2)
 		else:
 			FOMstring = ''
 
@@ -65,7 +65,7 @@ class FFTjob():
 				 				'grid {} {} {}\n'.format(self.gridSamp1,self.gridSamp2,self.gridSamp3)+\
 				 				'xyzlim 0 1 0 1 0 1\n'+\
 								'LABIN F1={} SIG1={} F2={} SIG2={} '.format(self.F1,self.SIG1,self.F2,self.SIG2)+\
-								'PHI={} {}\n'.format(self.PHI1,FOMstring)+\
+								'PHI={} {}\n'.format(self.PHI2,FOMstring)+\
 								'SCALE F1 1.0 0.0 F2 {} 0.0\n'.format(F2Scale)+\
 								'END'
 
