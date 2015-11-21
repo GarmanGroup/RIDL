@@ -16,7 +16,7 @@ class pipeline():
 		self.makeOutputDir()
 		self.txtInputFile 		= inputFile
 		self.jobName 			= jobName
-		self.runLog 			= logFile('{}/{}_runLog.txt'.format(self.outputDir,self.jobName))
+		self.runLog 			= logFile('{}/{}_runLog_1.txt'.format(self.outputDir,jobName))
 
 		# specify output files for parts of pipeline
 		self.CADoutputMtz 		= '{}/{}_CADcombined.mtz'.format(self.outputDir,self.jobName)

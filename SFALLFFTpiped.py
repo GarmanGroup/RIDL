@@ -10,8 +10,10 @@ from logFile import logFile
 
 class pipeline():
 
-	def __init__(self,outputDir,inputFile):
-		self.inputFile = inputFile
+	def __init__(self,outputDir,inputFile,jobName):
+		self.outputDir	= outputDir
+		self.inputFile 	= inputFile
+		self.jobName 	= jobName
 
 	def runPipeline(self):
 
@@ -21,7 +23,7 @@ class pipeline():
 			return 1
 
 		# create log file
-		self.runLog = logFile(self.outputDir+'/runLog_SFALLFFTpipeline.txt')
+		self.runLog = logFile('{}/{}_runLog_2.txt'.format(self.outputDir,self.jobName))
 
 		# run pdbcur job 
 		pdbcur = PDBCURjob(self.pdbcurPDBinputFile,self.outputDir,self.runLog)

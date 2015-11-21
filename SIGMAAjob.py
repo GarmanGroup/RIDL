@@ -7,8 +7,8 @@ class SIGMAAjob():
 
 		self.inputMtz 			= inputMtz # mtz containing initial dataset Fs
 		self.LabelName 			= MtzLabelName
-		self.tmpMtz				= inputMtz.split('.mtz')[0]+'.tmp'
-		self.outputMtz			= inputMtz.split('.mtz')[0]+'_sigmaa.mtz'
+		self.tmpMtz				= outputDir+'/'+(inputMtz.split('/')[-1]).split('.mtz')[0]+'.tmp'
+		self.outputMtz			= self.tmpMtz.split('.tmp')[0]+'_sigmaa.mtz'
 		self.inputPDB			= inputPDB
 		self.outputDir			= outputDir
 		self.runLog 			= runLog

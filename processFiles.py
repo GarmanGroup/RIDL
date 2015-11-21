@@ -6,6 +6,17 @@ class processFiles():
 	def __init__(self,inputFile):
 		self.inputFile = inputFile
 
+	def runProcessing(self):
+		self.readMainInputFile()
+		self.findFilesInDir()
+		self.writePipeline1Inputs()
+		self.writePipeline2Inputs()
+		success = self.runPipeline1()
+		if success == True:
+			success = self.runPipeline2()
+			if success == True:
+				self.cleanUpDirectory()
+
 	def readMainInputFile(self):
 		# split the input file into separate input files for 
 		# each section of the pipeline
@@ -69,10 +80,8 @@ class processFiles():
 
 		fileOut2 = open(self.pipe2FileName,'w')
 		inputString = 'pdbIN {}\n'.format(self.pdb2)+\
-					  'runname {}\n'.format(self.jobName)+\
 					  'initialPDB {}\n'.format(self.name1)+\
 					  'laterPDB {}\n'.format(self.name2)+\
-					  'foldername {}\n'.format(self.dir)+\
 					  'sfall_VDWR {}\n'.format(self.sfall_VDWR)+\
 					  'mtzIN {}/{}_SCALEITcombined.mtz\n'.format(self.dir,self.jobName)+\
 					  'FFTmapType {}\n'.format(self.FFTmapType)+\
@@ -92,7 +101,7 @@ class processFiles():
 			return False
 
 	def runPipeline2(self):
-		self.p2 = pipe2(self.dir,self.pipe2FileName)
+		self.p2 = pipe2(self.dir,self.pipe2FileName,self.jobName)
 		outcome = self.p2.runPipeline()
 		if outcome == 0:
 			print 'Pipeline ran to completion'
@@ -101,21 +110,26 @@ class processFiles():
 			print 'Pipeline failed to run to completion'
 			return False
 
+	def findFilesInDir(self):
+		# find files initially in working directory
+		self.filesInDir = os.listdir(self.dir)
+
 	def cleanUpDirectory(self):
 		# after successful completion of pipeline clean up working directory
 		print 'Cleaning up directory'
-		originalFiles 	= [self.mtz1,self.mtz2,self.mtz3,self.pdb1,self.pdb2]
+		# originalFiles 	= [self.mtz1,self.mtz2,self.mtz3,self.pdb1,self.pdb2]
 		keyLogFiles 	= [self.p1.runLog.logFile,self.p2.runLog.logFile]
 		mapFiles 		= ['{}/{}_fft_cropped_cropped.map'.format(self.dir,self.name2),
 						   '{}/{}_sfall_cropped.map'.format(self.dir,self.name2)]
 
-		subdir = '{}/additionalFiles'.format(self.dir)
+		subdir = '{}/{}_additionalFiles'.format(self.dir,self.jobName)
 		os.system('mkdir {}'.format(subdir))
 
-		for file in os.listdir(self.dir):
-			fileName = '{}/{}'.format(self.dir,file)
-			if fileName not in originalFiles+keyLogFiles+mapFiles+[subdir]:
-				os.system('mv {} {}/{}'.format(fileName,subdir,file))
+		for file in os.listdir(self.dir): 
+			if file not in self.filesInDir:
+				fileName = '{}/{}'.format(self.dir,file)
+				if fileName not in keyLogFiles+mapFiles+[subdir]:
+					os.system('mv {} {}/{}'.format(fileName,subdir,file))
 
 		os.system('tar -zcvf {}.tar.gz {}'.format(subdir,subdir))
 		os.system('rm -rf {}'.format(subdir))
