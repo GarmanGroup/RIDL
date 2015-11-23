@@ -9,6 +9,7 @@ import operator
 import os
 from confidenceIntervalCalculator import mean_confidence_interval
 from findMetricChange import findBchange
+import scipy.stats
 
 class combinedAtomList(object):
 	# class for list of atom objects defined by combinedAtom class
@@ -172,6 +173,103 @@ class combinedAtomList(object):
 				if i != metricLength-1: csvfile.write(',')
 			csvfile.write('\n')
 		csvfile.close()
+
+	def getTopDamSites(self,metric,normType,dataset,n):
+		# for a given metric type, determine top n damage sites
+		self.atomList.sort(key=lambda x: x.densMetric[metric][normType]['values'][dataset])
+		i = -1
+		while i < n:
+			i += 1
+			print self.atomList[i].getAtomID()
+
+	def getPerAtmtypeStats(self,metric,normType,dataset,sortby,n):
+		# for a given metric type, determine per-atom-type statistics on the distribution of damage
+		atmtypeDict = self.groupByAtmType() # group atoms by atom type
+		statsOut = self.reportStats(metric,normType,dataset,atmtypeDict,'Atom type',sortby,n)
+		return statsOut
+
+	def getPerResidueStats(self,metric,normType,dataset,sortby,n):
+		# for a given metric type, determine per-residue statistics on the distribution of damage
+		resDict = self.groupByResType() # group atoms by residue type
+		statsOut = self.reportStats(metric,normType,dataset,resDict,'Residue',sortby,n)
+		return statsOut
+
+	def getPerChainStats(self,metric,normType,dataset,sortby,n):
+		# for a given metric type, determine per-chain statistics on the distribution of damage
+		chainDict = self.groupByChainType() # group atoms by chain type
+		statsOut = self.reportStats(metric,normType,dataset,chainDict,'Chain',sortby,n)
+		return statsOut
+
+	def getDistnStats(self,metricList):
+		# calculate some measures of the distribution of values in a list metricList
+		numAtoms 	= len(metricList)
+		mean 		= np.mean(metricList)
+		std 		= np.std(metricList)
+		skew 		= scipy.stats.skew(metricList, axis=0, bias=True)
+		return numAtoms,mean,std,skew
+
+	def reportStats(self,metric,normType,dataset,dic,name,sortby,n):
+		# output distribution stats for each element in dictionary. 'sortby' specifies how 
+		# the output should be ranked. 'n' is number of entries to print (specify an integer or 'all')
+		list1,list2 = [],[]
+		for key in dic.keys():
+			metricList = [atom.densMetric[metric][normType]['values'][dataset] for atom in dic[key]]
+			stats = self.getDistnStats(metricList)
+			string = '{} type: {} # atoms: {} mean: {} std: {} skewness: {}'.format(name,key,*stats)
+			list1.append(string)
+			if sortby == 'mean':
+				list2.append(stats[1])
+			elif sortby == 'skew':
+				list2.append(stats[3])
+			elif sortby == 'std':
+				list2.append(stats[2])
+			else:
+				print 'Unexpected ranking specified'
+				return
+		sortedList1 = [x for (y,x) in sorted(zip(list2,list1))] # sort by chosen 'sortby' parameter
+		i = 0
+		for string in sortedList1:
+			if n != 'all':
+				if i > n:
+					break
+			print string
+			i += 1
+		if n != 'all':
+			stringOut =	'\n'.join(sortedList1[:n])	
+		else:
+			stringOut =	'\n'.join(sortedList1)	
+		return stringOut
+
+	def groupByAtmType(self):
+		# group atoms in a dictionary by atom type
+		atmtypeDict = {}
+		for atom in self.atomList:
+			atmtype = atom.basetype+'-'+atom.atomtype
+			if atmtype not in atmtypeDict.keys():
+				atmtypeDict[atmtype] = [atom]
+			else:
+				atmtypeDict[atmtype].append(atom)
+		return atmtypeDict
+
+	def groupByResType(self):
+		# group atoms in a dictionary by residue type
+		resDict = {}
+		for atom in self.atomList:
+			if atom.basetype not in resDict.keys():
+				resDict[atom.basetype] = [atom]
+			else:
+				resDict[atom.basetype].append(atom)
+		return resDict
+
+	def groupByChainType(self):
+		# group atoms in a dictionary by chain type
+		chainDict = {}
+		for atom in self.atomList:
+			if atom.chaintype not in chainDict.keys():
+				chainDict[atom.chaintype] = [atom]
+			else:
+				chainDict[atom.chaintype].append(atom)
+		return chainDict
 
 	def graphMetric(self):
 		# produce a graph of selected metric against dataset number for a specified atom
