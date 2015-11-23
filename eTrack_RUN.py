@@ -184,11 +184,35 @@ class eTrack(object):
 			combinedAtoms.writeMetric2File(self.outputDir,*densMet)
 		
 		self.PDBmulti = combinedAtoms.atomList
+		self.combinedAtoms = combinedAtoms
+		self.summaryStatistics()
 
 	def PDBmulti_retrieve(self):
 		self.titleCaption('Atom List Retrieval')
 		# retrieve the PDBmulti list from the pickle list
 		self.PDBmulti = retrieve_objectlist(self.PDBmultipklname)
+
+	def summaryStatistics(self):
+		# produce a selection of per-dataset summary statistics
+		summaryFile = open('{}/summaryFile.txt'.format(self.outputDir),'w')
+		for i in range(self.combinedAtoms.atomList[0].getNumDatasets()):
+			summaryFile.write('\n\nDataset: {}'.format(i))
+			summaryFile.write('\n-----------------------\n')
+			summaryFile.write('Per-residue Statistics:\n')
+			summaryFile.write('Dloss metric ranked by skewness:\n')
+			statsOut = self.combinedAtoms.getPerResidueStats('loss','Standard',i,'skew','all')
+			summaryFile.write(statsOut)
+			summaryFile.write('\n-----------------------\n')
+			summaryFile.write('Per-chain Statistics:\n')
+			summaryFile.write('Dloss metric ranked by skewness:\n')
+			statsOut = self.combinedAtoms.getPerChainStats('loss','Standard',i,'skew','all')
+			summaryFile.write(statsOut)
+			summaryFile.write('\n-----------------------\n')
+			summaryFile.write('Per-atom-type Statistics:\n')
+			summaryFile.write('Dloss metric ranked by mean value:\n')
+			statsOut = self.combinedAtoms.getPerAtmtypeStats('loss','Standard',i,'mean',25)
+			summaryFile.write(statsOut)
+		summaryFile.close()
 
 	def graph_analysis(self):
 		self.titleCaption('Graph Analysis')
