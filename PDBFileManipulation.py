@@ -26,8 +26,9 @@ def PDBtoList(pdbfilename,PDBarray):
             y.Y_coord       = float(line[38:46].strip())                                             
             y.Z_coord       = float(line[46:54].strip())                                                 
             y.Occupancy     = str(line[54:60].strip())                                                    
-            y.Bfactor       = str(line[60:66].strip())
+            y.Bfactor       = float(line[60:66].strip())
             y.atomID        = str(line[76:78].strip())  
+            y.atomOrHetatm  = str(line[0:6].strip())
             PDBarray.append(y)
         else: 
             pass
