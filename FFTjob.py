@@ -46,7 +46,7 @@ class FFTjob():
 		self.commandInput1 = 'fft '+\
 				 			 'HKLIN {} '.format(self.inputMtzFile)+\
 			 	 			 'MAPOUT {} '.format(self.outputMapFile)+\
-			 	 			 'SYMINFO /Applications/ccp4-6.4.0/lib/data/syminfo.lib '
+			 	 			 'SYMINFO /Applications/ccp4-6.5/lib/data/syminfo.lib '
 
 		# can distinguish here between SIMPLE and DIFFERENCE map types
 		if self.mapType == 'SIMPLE':
@@ -55,8 +55,9 @@ class FFTjob():
 			F2Scale = 1.0
 
 		#if a FOM is specified exists the weighting is applied to the map
-		if self.FOMweight is True:
-			FOMstring = 'W={}'.format(self.FOM2)
+		if self.FOMweight in ('True','TRUE','true'):
+			FOMstring  = 'W={}'.format(self.FOM2)
+			FOMstring2 = 'W2={}'.format(self.FOM2)
 		else:
 			FOMstring = ''
 
@@ -65,7 +66,7 @@ class FFTjob():
 				 				'grid {} {} {}\n'.format(self.gridSamp1,self.gridSamp2,self.gridSamp3)+\
 				 				'xyzlim 0 1 0 1 0 1\n'+\
 								'LABIN F1={} SIG1={} F2={} SIG2={} '.format(self.F1,self.SIG1,self.F2,self.SIG2)+\
-								'PHI={} {}\n'.format(self.PHI2,FOMstring)+\
+								'PHI={} {} PHI2={} {}\n'.format(self.PHI2,FOMstring,self.PHI2,FOMstring2)+\
 								'SCALE F1 1.0 0.0 F2 {} 0.0\n'.format(F2Scale)+\
 								'END'
 
