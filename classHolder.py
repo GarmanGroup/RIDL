@@ -24,7 +24,7 @@ class StructurePDB(object):
     # A class for coordinate PDB file atom
     def __init__(self,atomnum = 0,residuenum = 0,atomtype = "",basetype = "",chaintype = "",
                  X_coord = 0,Y_coord = 0,Z_coord = 0,atomID = "",numsurroundatoms = 0,
-                 numsurroundprotons = 0,vdw_rad = 0):
+                 numsurroundprotons = 0,vdw_rad = 0,atomOrHetatm = "" ):
             
         self.atomnum            = atomnum
         self.residuenum         = residuenum
@@ -38,6 +38,7 @@ class StructurePDB(object):
         self.numsurroundatoms   = numsurroundatoms
         self.numsurroundprotons = numsurroundprotons
         self.vdw_rad            = vdw_rad
+        self.atomOrHetatm       = atomOrHetatm
 
     # To determine whether the current atom is a constituent of protein or nucleic acid    
     def protein_or_nucleicacid(self):
@@ -62,9 +63,15 @@ class StructurePDB(object):
             
     def VDW_get(self):
         # determine VDW radius for atom type
-        filename    = 'VDVradiusfile.txt'
-        VDWradfile  = open(str(filename),'r')
-        vdw         = 'notyetdefined'
+        filename = 'VDVradiusfile.txt'
+        vdw      = 'notyetdefined'
+
+        try: # only proceed if file actually found
+            VDWradfile  = open(str(filename),'r')
+        except IOError:
+            self.vdw_rad = 'Unable to locate {} file'.format(filename)
+            return
+
         for line in VDWradfile.readlines():
             a = str(line.split()[1]).lower()
             b = str(self.atomID).lower()
@@ -94,13 +101,12 @@ class singlePDB(StructurePDB):
     def __init__(self,atomnum = 0,residuenum = 0,atomtype = "",basetype = "",chaintype = "",
                  X_coord = 0,Y_coord = 0,Z_coord = 0,Bfactor = 0,Occupancy = 0,meandensity = 0,
                  maxdensity = 0,mindensity = 0,mediandensity = 0,atomID = "",
-                 numsurroundatoms = 0,numsurroundprotons = 0,vdw_rad = 0,bdam = 0,bdamchange = 0,
-                 Bfactorchange = 0,numvoxels = 0,stddensity = 0,min90tile = 0,max90tile = 0,
-                 min95tile = 0,max95tile = 0):
+                 numsurroundatoms = 0,numsurroundprotons = 0,vdw_rad = 0,atomOrHetatm = "",bdam = 0,
+                 bdamchange = 0,Bfactorchange = 0,numvoxels = 0,stddensity = 0,min90tile = 0,
+                 max90tile = 0,min95tile = 0,max95tile = 0):
                     
-        super(singlePDB, self).__init__(
-            atomnum,residuenum,atomtype,basetype,chaintype,X_coord,Y_coord,
-            Z_coord,atomID,numsurroundatoms,numsurroundprotons,vdw_rad)
+        super(singlePDB, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,X_coord,Y_coord,
+                                        Z_coord,atomID,numsurroundatoms,numsurroundprotons,vdw_rad,atomOrHetatm)
             
         self.Bfactor        = Bfactor 
         self.Occupancy      = Occupancy
@@ -180,3 +186,47 @@ class MapInfo:
         self.axis       = {'fast':fast_axis,'med':med_axis,'slow':slow_axis}
         self.density    = {'min':mindensity,'max':maxdensity,'mean':meandensity}
         self.vxls_val   = vxls_val
+
+    def getnxyzString(self):
+        return self.getParamString('Num. Col, Row, Sec',
+                                   ['nx','ny','nz'],self.nxyz)
+
+    def getStartString(self):
+        return self.getParamString('Start positions',
+                                   ['1','2','3'],self.start)
+
+    def getGridsampString(self):
+        return self.getParamString('Grid sampling',
+                                   ['1','2','3'],self.gridsamp)
+
+    def getCelldimsString(self):
+        title = 'Cell dimensions'
+        s = self.getParamString(title,['a','b','c'],self.celldims) +'\n'
+        s += self.getParamString(' '*len(title),['alpha','beta','gamma'],self.celldims)
+        return s
+
+    def getAxisString(self):
+        return self.getParamString('Fast,med,slow axes',
+                                   ['fast','med','slow'],self.axis)
+
+    def getDensityString(self):
+        return self.getParamString('Values (min, max, mean)',
+                                   ['min','max','mean'],self.density)
+
+    def getParamString(self,title,orderedKeys,mapAttr):
+        s = title +(40-len(title))*'.'
+        for val in orderedKeys: s += str(mapAttr[val])+' '
+        return s
+
+    def getHeaderInfo(self):
+        s =  self.getnxyzString() +'\n'
+        s += self.getStartString() +'\n'
+        s += self.getGridsampString() +'\n'
+        s += self.getCelldimsString() +'\n'
+        s += self.getAxisString() +'\n'
+        s += self.getDensityString()
+        print s
+        return s
+
+
+
