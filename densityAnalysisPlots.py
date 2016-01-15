@@ -16,7 +16,7 @@ def edens_scatter(where,var,PDBarray,pdbname):
     # atom to plot against each other in a scatter plot
 
     # append to log file for this eTrack run
-    logfile = open(where+'output/'+pdbname+'_log.txt','a')
+    logfile = open(where+pdbname+'_log.txt','a')
     
     valsperparam = []
     for param in var:   
@@ -76,7 +76,7 @@ def edens_scatter(where,var,PDBarray,pdbname):
     plt.xlabel(str(var[0]) + ' density',fontsize=18)   
     plt.ylabel(str(var[1]) + ' density',fontsize=16)
 
-    figname = str(where)+'output/plots/' + str(pdbname) + '_' + str(var[0])+'_vs_'+str(var[1])+'.jpg'
+    figname = where+'plots/'+pdbname+'_'+str(var[0])+'_vs_'+str(var[1])+'.png'
     scatter1.savefig(figname)
 ###############################################################################
 
@@ -101,7 +101,7 @@ def numneighbours_scatter(where,PDBarray,pdbname):
     plt.xlabel('# atoms',fontsize=18)  
     plt.ylabel('# protons',fontsize=16)
 
-    figname = str(where)+'output/plots/' + str(pdbname) + '_' + 'numneighbouratomsVprotons.jpg'
+    figname = where+pdbname+ '_'+'numneighbouratomsVprotons.png'
     scatter1.savefig(figname)
 ###############################################################################
 
