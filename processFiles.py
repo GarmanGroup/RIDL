@@ -7,7 +7,10 @@ class processFiles():
 		self.inputFile = inputFile
 
 	def runProcessing(self):
-		self.readMainInputFile()
+		success = self.readMainInputFile()
+		if success == False:
+			return
+		self.checkOutputDirExists()
 		self.findFilesInDir()
 		self.writePipeline1Inputs()
 		self.writePipeline2Inputs()
@@ -15,7 +18,8 @@ class processFiles():
 		if success == True:
 			success = self.runPipeline2()
 			if success == True:
-				self.cleanUpDirectory()
+				success = self.cleanUpDirectory()
+		return success
 
 	def readMainInputFile(self):
 		# split the input file into separate input files for 
@@ -39,20 +43,25 @@ class processFiles():
 		fileIn.close()
 
 		# check that all required properties have been found
-		requiredProps = ['name1','mtz1','mtzlabels1','pdb1',
+		requiredProps = ['name1','mtz1','mtzlabels1','pdb1','RfreeFlag1',
 						 'name2','mtz2','mtzlabels2','pdb2',
 						 'name3','mtz3','mtzlabels3',''
-						 'sfall_VDWR','FFTmapType',
-						 'dir','FFTmapWeight']
+						 'sfall_VDWR','densMapType','dir','FFTmapWeight']
 
 		for prop in requiredProps:
 			try:
 				getattr(self,prop)
-			except attributeError:
+			except AttributeError:
 				print 'Necessary input not found: {}'.format(prop)
 				return False
 		print 'All necessary inputs found in input file'
 		return True
+
+	def checkOutputDirExists(self):
+		# check whether output directory exists and make if not
+		if not os.path.exists(self.dir):
+			print 'Output directory "{}" not found, making directory'.format(self.dir)
+			os.makedirs(self.dir)
 
 	def writePipeline1Inputs(self):
 
@@ -62,6 +71,7 @@ class processFiles():
 		inputString = 'filename1 {}\n'.format(self.mtz1)+\
 					  'labels1 {}\n'.format(self.mtzlabels1)+\
 					  'label1rename {}\n'.format(self.name1)+\
+					  'RfreeFlag1 {}\n'.format(self.RfreeFlag1)+\
 					  'filename2 {}\n'.format(self.mtz2)+\
 					  'labels2 {}\n'.format(self.mtzlabels2)+\
 					  'label2rename {}\n'.format(self.name2)+\
@@ -84,7 +94,7 @@ class processFiles():
 					  'laterPDB {}\n'.format(self.name2)+\
 					  'sfall_VDWR {}\n'.format(self.sfall_VDWR)+\
 					  'mtzIN {}/{}_SCALEITcombined.mtz\n'.format(self.dir,self.jobName)+\
-					  'FFTmapType {}\n'.format(self.FFTmapType)+\
+					  'densMapType {}\n'.format(self.densMapType)+\
 					  'FFTmapWeight {}\n'.format(self.FFTmapWeight)+\
 					  'END'
 		fileOut2.write(inputString)
@@ -117,10 +127,20 @@ class processFiles():
 	def cleanUpDirectory(self):
 		# after successful completion of pipeline clean up working directory
 		print 'Cleaning up directory'
-		# originalFiles 	= [self.mtz1,self.mtz2,self.mtz3,self.pdb1,self.pdb2]
+
+		# distinguish between FFT and END map output formats
+		if self.densMapType in ('SIMPLE','DIFF'): densMapProg = 'fft'
+		elif self.densMapType in ('END'): densMapProg = 'END'
+
+		params 			= [self.dir,self.name2]
 		keyLogFiles 	= [self.p1.runLog.logFile,self.p2.runLog.logFile]
-		mapFiles 		= ['{}/{}_fft_cropped_cropped.map'.format(self.dir,self.name2),
-						   '{}/{}_sfall_cropped.map'.format(self.dir,self.name2)]
+		mapFiles 		= ['{}/{}_{}_cropped_cropped.map'.format(self.dir,self.name2,densMapProg),
+						   '{}/{}_sfall_cropped.map'.format(*params)]
+		pdbFiles 		= ['{}/{}_reordered.pdb'.format(*params)]
+		outputFiles 	= mapFiles + pdbFiles
+		renameFiles 	= ['{}/{}_density.map'.format(*params),
+					  	   '{}/{}_atoms.map'.format(*params),
+					   	   '{}/{}.pdb'.format(*params)]
 
 		subdir = '{}/{}_additionalFiles'.format(self.dir,self.jobName)
 		os.system('mkdir {}'.format(subdir))
@@ -128,16 +148,31 @@ class processFiles():
 		for file in os.listdir(self.dir): 
 			if file not in self.filesInDir:
 				fileName = '{}/{}'.format(self.dir,file)
-				if fileName not in keyLogFiles+mapFiles+[subdir]:
+				if fileName not in keyLogFiles+mapFiles+pdbFiles+[subdir]:
 					os.system('mv {} {}/{}'.format(fileName,subdir,file))
 
 		os.system('tar -zcvf {}.tar.gz {}'.format(subdir,subdir))
 		os.system('rm -rf {}'.format(subdir))
 
 		# rename final map files
-		params = [self.dir,self.name2,self.dir,self.name2]
-		os.system('mv {}/{}_fft_cropped_cropped.map {}/{}_dens.map'.format(*params))
-		os.system('mv {}/{}_sfall_cropped.map {}/{}_atoms.map'.format(*params))
+		# params1 = [self.dir,self.name2,densMapProg,self.dir,self.name2]
+		# params2 = [self.dir,self.name2,self.dir,self.name2]
+		# os.system('mv {}/{}_{}_cropped_cropped.map {}/{}_density.map'.format(*params1))
+		# os.system('mv {}/{}_sfall_cropped.map {}/{}_atoms.map'.format(*params2))
+		# os.system('mv {}/{}_reordered.pdb {}/{}.pdb'.format(*params2))
+
+		# rename final map files
+		for i in range(3): os.system('mv {} {}'.format(outputFiles[i],renameFiles[i]))
+
+		# check that resulting files are found
+		self.findFilesInDir()
+		for f in renameFiles:
+			if f.split('/')[-1] not in self.filesInDir:
+				print 'Not all key output files found'
+				return False
+		return True
+
+
 
 
 
