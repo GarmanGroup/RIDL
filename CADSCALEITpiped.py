@@ -37,7 +37,8 @@ class pipeline():
 			return 1
 
 		# run SIGMAA job
-		sigmaa = SIGMAAjob(self.SIGMAAinputMtz,self.Mtz1LabelName,self.inputPDBfile,self.outputDir,self.runLog)	
+		sigmaa = SIGMAAjob(self.SIGMAAinputMtz,self.Mtz1LabelName,self.RfreeFlag,
+						   self.inputPDBfile,self.outputDir,self.runLog)	
 		success = sigmaa.run()
 		if success is False:
 			return 2
@@ -45,9 +46,9 @@ class pipeline():
 
 		# run CAD job 
 		cad = CADjob(self.CADinputMtz1,self.CADinputMtz2,self.CADinputMtz3,
-		self.Mtz1LabelName,self.Mtz2LabelName,self.Mtz3LabelName,
-		self.Mtz1LabelRename,self.Mtz2LabelRename,self.Mtz3LabelRename,
-		self.CADoutputMtz,self.outputDir,self.runLog)
+					 self.Mtz1LabelName,self.Mtz2LabelName,self.Mtz3LabelName,
+					 self.Mtz1LabelRename,self.Mtz2LabelRename,self.Mtz3LabelRename,
+					 self.CADoutputMtz,self.outputDir,self.runLog)
 		success = cad.run()
 		if success is False:
 			return 3
@@ -84,6 +85,8 @@ class pipeline():
 				self.SIGMAAinputMtz 	= line.split()[1]
 			elif line.split()[0] == 'labels1':
 				self.Mtz1LabelName 		= line.split()[1]
+			elif line.split()[0] == 'RfreeFlag1':
+				self.RfreeFlag 			= line.split()[1]
 			elif line.split()[0] == 'filename2':
 				self.CADinputMtz2 		= line.split()[1]
 			elif line.split()[0] == 'labels2':
