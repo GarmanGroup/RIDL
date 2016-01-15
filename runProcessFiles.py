@@ -37,27 +37,29 @@ class process():
 		f.write(string)
 		f.close()
 
-	def writePDBredoInputFile(self,pdb1,pdb2,etrackFolder,fileLocation):
+	def writePDBredoInputFile(self,pdb1,pdb2,inputFileDir,outputDir):
 		# write an input file that is suitable for a pdb_redo-downloaded damage series
+		# inputFileDir = '/Users/charlie/DPhil/PDBredo_damageSeries/??'
+		# outputDir = '/Users/charlie/DPhil/YEAR2/JAN/??'
 		self.setInputFile('fullInput_{}-{}DIFF.txt'.format(pdb2,pdb1))
 		f = open(self.inputFile,'w')
-		string 	 = 	'dir /Users/charlie/DPhil/YEAR2/JAN/{}\n'.format(etrackFolder)+\
-					'INITIALDATASET\n'+\
+		string 	 = 	'dir {}\n'.format(outputDir)+\
+					'\nINITIALDATASET\n'+\
 					'name1 {}init\n'.format(pdb1)+\
-					'mtz1 /Users/charlie/DPhil/PDBredo_damageSeries/{}/{}/{}.mtz\n'.format(fileLocation,pdb1,pdb1)+\
+					'mtz1 {}/{}/{}.mtz\n'.format(inputFileDir,pdb1,pdb1)+\
 					'mtzlabels1 P_{}\n'.format(pdb1)+\
-					'pdb1 /Users/charlie/DPhil/PDBredo_damageSeries/{}/{}/{}.pdb\n'.format(fileLocation,pdb1,pdb1)+\
+					'pdb1 {}/{}/{}.pdb\n'.format(inputFileDir,pdb1,pdb1)+\
 					'RfreeFlag1 FreeR_flag\n'+\
-					'LATERDATASET\n'+\
+					'\nLATERDATASET\n'+\
 					'name2 {}\n'.format(pdb2)+\
-					'mtz2 /Users/charlie/DPhil/PDBredo_damageSeries/{}/{}/{}.mtz\n'.format(fileLocation,pdb2,pdb2)+\
+					'mtz2 {}/{}/{}.mtz\n'.format(inputFileDir,pdb2,pdb2)+\
 					'mtzlabels2 P_{}\n'.format(pdb2)+\
-					'pdb2 /Users/charlie/DPhil/PDBredo_damageSeries/{}/{}/{}.pdb\n'.format(fileLocation,pdb2,pdb2)+\
-					'PHASEDATASET\n'+\
+					'pdb2 {}/{}/{}.pdb\n'.format(inputFileDir,pdb2,pdb2)+\
+					'\nPHASEDATASET\n'+\
 					'name3 {}init\n'.format(pdb1)+\
-					'mtz3 /Users/charlie/DPhil/PDBredo_damageSeries/{}/{}/{}.mtz\n'.format(fileLocation,pdb1,pdb1)+\
+					'mtz3 {}/{}/{}.mtz\n'.format(inputFileDir,pdb1,pdb1)+\
 					'mtzlabels3 C_{}\n'.format(pdb1)+\
-					'MAPINFO\n'+\
+					'\nMAPINFO\n'+\
 					'sfall_VDWR 1\n'+\
 					'densMapType DIFF\n'+\
 					'FFTmapWeight True'
