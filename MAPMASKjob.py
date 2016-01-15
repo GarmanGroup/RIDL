@@ -20,9 +20,9 @@ class MAPMASKjob():
 		self.commandInput1 = 'mapmask '+\
 				 			 'MAPIN {} '.format(self.inputMapFile)+\
 						 	 'MAPOUT {} '.format(self.outputMapFile)+\
-						 	 'SYMINFO /Applications/ccp4-6.4.0/lib/data/syminfo.lib '
+						 	 'SYMINFO /Applications/ccp4-6.5/lib/data/syminfo.lib '
 		self.commandInput2 = 'EXTEND\nXYZLIM ASU\nEND'
-		self.outputLogfile = 'SFALLlogfile.txt'
+		self.outputLogfile = 'MAPMASKlogfile.txt'
 
 		# run MAPMASK job
 		job = ccp4Job('MAPMASK_crop2AsymUnit',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMapFile)
@@ -44,13 +44,13 @@ class MAPMASKjob():
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
 
-		self.commandInput1 = '/Applications/ccp4-6.4.0/bin/mapmask '+\
+		self.commandInput1 = 'mapmask '+\
 				 			 'MAPIN {} '.format(self.inputMapFile)+\
 				 			 'MAPLIM {} '.format(self.inputMapFile2)+\
 						 	 'MAPOUT {} '.format(self.outputMapFile)+\
-						 	 'SYMINFO /Applications/ccp4-6.4.0/lib/data/syminfo.lib '
+						 	 'SYMINFO /Applications/ccp4-6.5/lib/data/syminfo.lib '
 		self.commandInput2 = 'EXTEND\nXYZLIM MATCH\nEND'
-		self.outputLogfile = 'SFALLlogfile.txt'
+		self.outputLogfile = 'MAPMASKlogfile.txt'
 
 		# run MAPMASK job
 		job = ccp4Job('MAPMASK_cropMap2Map',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMapFile)
