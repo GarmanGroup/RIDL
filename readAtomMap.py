@@ -27,8 +27,9 @@ class vxls_of_atm():
         self.atmnum = atmnum
 
 class maps2DensMetrics():
-    def __init__(self,where,pdbname,mapfilname1,maptype1,mapfilname2,maptype2,plot):
-        self.where = where # output directory
+    def __init__(self,filesIn,filesOut,pdbname,mapfilname1,maptype1,mapfilname2,maptype2,plot):
+        self.filesIn = filesIn
+        self.filesOut = filesOut # output directory
         self.pdbname = pdbname
         self.map1 = {'filename':mapfilname1,'type':maptype1}
         self.map2 = {'filename':mapfilname2,'type':maptype2}
@@ -38,7 +39,7 @@ class maps2DensMetrics():
         self.printTitle()
 
         # write a log file for this eTrack run
-        logfile = open('{}output/{}_log.txt'.format(self.where,self.pdbname),'w')
+        logfile = open('{}{}_log.txt'.format(self.filesOut,self.pdbname),'w')
         logfile.write('eTrack run log file\n')
         logfile.write('Date: '+ str(time.strftime("%d/%m/%Y"))+'\n')
         logfile.write('Time: '+ str(time.strftime("%H:%M:%S"))+'\n')
@@ -57,15 +58,15 @@ class maps2DensMetrics():
 
     def readPDBfile(self):
         # read in pdb file info here
-        logfile = open('{}output/{}_log.txt'.format(self.where,self.pdbname),'a')
+        logfile = open('{}{}_log.txt'.format(self.filesOut,self.pdbname),'a')
         self.startTimer()
         print 'Reading in pdb file...'
-        print 'pdb name: {}{}.pdb'.format(self.where,self.pdbname)
-        logfile.write('pdb name: {}{}.pdb\n'.format(self.where,self.pdbname))
+        print 'pdb name: {}{}.pdb'.format(self.filesIn,self.pdbname)
+        logfile.write('pdb name: {}{}.pdb\n'.format(self.filesOut,self.pdbname))
 
         # next read in the pdb structure file:
         # run function to fill PDBarray list with atom objects from structure
-        self.PDBarray = PDBtoList('{}{}.pdb'.format(self.where,self.pdbname),[])
+        self.PDBarray = PDBtoList('{}{}.pdb'.format(self.filesIn,self.pdbname),[])
         self.success()
         self.stopTimer()
 
@@ -79,15 +80,16 @@ class maps2DensMetrics():
         
     def readAtomMap(self):
         # read in the atom map
-        logfile = open('{}output/{}_log.txt'.format(self.where,self.pdbname),'a')
+        logfile = open('{}{}_log.txt'.format(self.filesOut,self.pdbname),'a')
 
         self.startTimer()
         self.fillerLine()
         print 'Reading in Atom map file...'
-        print 'Atom map name: {}{}'.format(self.where,self.map1['filename'])
-        logfile.write('atom map name: {}{}\n'.format(self.where,self.map1['filename']))
+        print 'Atom map name: {}{}'.format(self.filesIn,self.map1['filename'])
+        logfile.write('atom map name: {}{}\n'.format(self.filesOut,self.map1['filename']))
 
-        self.atmmap,self.atom_indices = readMap(self.where,self.pdbname,self.map1['filename'],self.map1['type'],[])  
+        self.atmmap,self.atom_indices = readMap(self.filesIn,self.filesOut,self.pdbname,
+                                                self.map1['filename'],self.map1['type'],[])  
 
         self.success()
         self.stopTimer()
@@ -109,29 +111,30 @@ class maps2DensMetrics():
         
     def readDensityMap(self):
         # read in the density map
-        logfile = open('{}output/{}_log.txt'.format(self.where,self.pdbname),'a')
+        logfile = open('{}{}_log.txt'.format(self.filesOut,self.pdbname),'a')
 
         self.startTimer()
         self.fillerLine()
         print 'Reading in Density map file...'
-        print 'Density map name: {}{}'.format(self.where,self.map2['filename'])
-        logfile.write('density map name: {}{}\n'.format(self.where,self.map2['filename']))
+        print 'Density map name: {}{}'.format(self.filesIn,self.map2['filename'])
+        logfile.write('density map name: {}{}\n'.format(self.filesIn,self.map2['filename']))
 
-        self.densmap = readMap(self.where,self.pdbname,self.map2['filename'],self.map2['type'],self.atom_indices)  
+        self.densmap = readMap(self.filesIn,self.filesOut,self.pdbname,
+                               self.map2['filename'],self.map2['type'],
+                               self.atom_indices)  
 
         self.success()
         self.stopTimer()
 
     def checkMapCompatibility(self):
         # check that atom-tagged and density map can be combined successfully
-        logfile = open('{}output/{}_log.txt'.format(self.where,self.pdbname),'a')
+        logfile = open('{}{}_log.txt'.format(self.filesOut,self.pdbname),'a')
 
         self.fillerLine()
         print 'Checking that maps have same dimensions and sampling properties...' 
         self.startTimer()
         # Check that the maps have the same dimensions, grid sampling,..
         if (self.atmmap.axis != self.densmap.axis or
-            self.atmmap.celldims != self.densmap.celldims or
             self.atmmap.gridsamp != self.densmap.gridsamp or 
             self.atmmap.start != self.densmap.start or
             self.atmmap.nxyz != self.densmap.nxyz or
@@ -140,6 +143,27 @@ class maps2DensMetrics():
             print 'Incompatible map properties --> terminating script'
             logfile.write('Incompatible map properties --> terminating script\n')
             sys.exit()
+
+        elif self.atmmap.celldims != self.densmap.celldims:
+            print 'Not exact same map grid dimensions..'
+            logfile.write('Not exactly same map grid dimensions..')
+            # now check if grid dims same to a specific dp and consider continuing
+            stop = True
+            for i in list(reversed(range(7))):
+                count = 0
+                for key in self.atmmap.celldims.keys():
+                    if np.round(self.atmmap.celldims[key],i) == np.round(self.densmap.celldims[key],i):
+                        count += 1
+                if count == 6:
+                    print 'Map grid dimensions same to {}dp'.format(i)
+                    logfile.write('Map grid dimensions same to {}dp --> continuing with processing anyway'.format(i))
+                    stop = False
+                    break
+            if stop == True:
+                print 'Map grid dimensions still not same to 0dp' 
+                logfile.write('Map grid dimensions still not same to 0dp --> terminating script\n')
+                sys.exit()
+
         else:
             self.success()
             print 'The atom and density map are of compatible format!'
@@ -168,7 +192,7 @@ class maps2DensMetrics():
     def plotDensHistPlots(self):
         # histogram & kde plots of number of voxels per atom
         for plotType in ('histogram','kde'):
-            plotVxlsPerAtm(self.pdbname,self.where,self.vxlsPerAtom,plotType)
+            plotVxlsPerAtm(self.pdbname,self.filesOut,self.vxlsPerAtom,plotType)
 
     def calculateDensMetrics(self):
         # determine density summary metrics per atom, including:
@@ -212,17 +236,17 @@ class maps2DensMetrics():
                     ['min90tile','min95tile'],['max90tile','max95tile'],
                     ['std','range'],['mean','range'])
         for pVars in plotVars:
-            edens_scatter(self.where,pVars,self.PDBarray,self.pdbname)
+            edens_scatter(self.filesOut,pVars,self.PDBarray,self.pdbname)
 
     def plotPerResidueBoxPlots(self):
         # perform residue analysis for datatset, outputting boxplots for each atom specific
         # to each residue, and also a combined boxplot across all residues in structures.
         for densMet in ('mean','min','max'):
-            residueArray = densper_resatom_NOresidueclass(self.where,self.PDBarray,'y',densMet,self.pdbname)
+            residueArray = densper_resatom_NOresidueclass(self.filesOut,self.PDBarray,'y',densMet,self.pdbname)
 
         minresnum = 0
         sideormain = ['sidechain','mainchain']
-        densper_res(self.where,residueArray,minresnum,sideormain,'min',self.pdbname)
+        densper_res(self.filesOut,residueArray,minresnum,sideormain,'min',self.pdbname)
 
         # remove residueArray now to save memory 
         residueArray = []
