@@ -4,6 +4,7 @@ import sys
 from PDBCURjob import PDBCURjob
 from SFALLjob import SFALLjob
 from FFTjob import FFTjob
+from ENDjob import ENDjob
 from MAPMASKjob import MAPMASKjob
 from mapTools import mapTools
 from logFile import logFile
@@ -54,9 +55,19 @@ class pipeline():
 		gridSamps = [sfallMap.gridsamp1,sfallMap.gridsamp2,sfallMap.gridsamp3]
 		labelsInit = ['FP_'+self.initPDB,'SIGFP_'+self.initPDB,'FOM_'+self.initPDB,'PHIC_'+self.initPDB]
 		labelsLater = ['FP_'+self.laterPDB,'SIGFP_'+self.laterPDB,'FOM_'+self.laterPDB,'PHIC_'+self.laterPDB]
-		fft = FFTjob(self.FFTtype,self.FOMweight,self.laterPDB,self.inputMtzFile,
-					 self.outputDir,axes,gridSamps,labelsLater,labelsInit,self.runLog)
-		success = fft.run()
+		
+		if self.densMapType != 'END':
+			fft = FFTjob(self.densMapType,self.FOMweight,self.laterPDB,self.inputMtzFile,
+						 self.outputDir,axes,gridSamps,labelsLater,labelsInit,self.runLog)
+			success = fft.run()
+		else:
+			# run END job if required (may take time to run!!)
+			endInputPDB = self.pdbcurPDBinputFile
+			endInputMTZ = ''.join(endInputPDB.split('.')[:-1]+['.mtz'])
+			endInputEFF = ''.join(endInputPDB.split('.')[:-1]+['.eff'])
+			end = ENDjob(endInputPDB,endInputMTZ,endInputEFF,self.outputDir,gridSamps,self.runLog)
+			success = end.run()
+
 		if success is False:
 			return 5
 
@@ -66,7 +77,13 @@ class pipeline():
 		if success is False:
 			return 6
 
-		mapmask2 = MAPMASKjob(fft.outputMapFile,'',self.outputDir,self.runLog)
+		# choose correct density map to include in MAPMASK cropping below
+		if self.densMapType != 'END':
+			inputDensMap = fft.outputMapFile
+		else: 
+			inputDensMap = end.outputMapFile
+
+		mapmask2 = MAPMASKjob(inputDensMap,'',self.outputDir,self.runLog)
 		success = mapmask2.crop2AsymUnit()
 		if success is False:
 			return 7
@@ -122,12 +139,10 @@ class pipeline():
 				self.initPDB = line.split()[1]
 			if 'laterPDB' == line.split()[0]:
 				self.laterPDB = line.split()[1]
-			if 'FFTmapType' == line.split()[0]:
-				self.FFTtype = line.split()[1]
+			if 'densMapType' == line.split()[0]:
+				self.densMapType = line.split()[1]
 			if 'FFTmapWeight' == line.split()[0]:
-				self.FOMweight = True
-			else: 
-				self.FOMweight = False
+				self.FOMweight = line.split()[1]
 		return True
 
 	def renumberPDBFile(self):
