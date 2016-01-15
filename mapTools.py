@@ -41,5 +41,5 @@ class mapTools():
 		string 	=  	'Number of columns, rows, sections ......  {} {} {}\n'.format(self.numCols,self.numRows,self.numSecs)+\
 					'Grid sampling on x, y, z ...............  {} {} {}\n'.format(self.gridsamp1,self.gridsamp2,self.gridsamp3)+\
 					'Fast, medium, slow axes ................  {} {} {}\n'.format(self.fastaxis,self.medaxis,self.slowaxis)+\
-					'Number of map voxels .....................{}'.format(numVoxels)
+					'Number of map voxels ...................  {}'.format(numVoxels)
 		print string
