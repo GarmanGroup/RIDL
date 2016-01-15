@@ -1,0 +1,44 @@
+# e_Track input file for current run
+#
+# location of map and pdb files required
+where /Users/charlie/DPhil/YEAR1/eTrack/TRAPdata/
+#
+# dataset names -> prefix only needed here. eg: '3clcdamage1' for 
+# '3clcdamage.pdb','3clcdamage_atoms.map','3clcdamage_density.map'
+# To further assist, specify number 'damageset_num' of each damage set
+# separately to damage series name:
+damageset_name TRAPRNAdamage
+damageset_num 2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+#
+# optional pkl file names for post processing pipeline step. If input below
+# these will be read in only in map_processing step is not included within 
+# pipeline run, otherwise map_processing output used instead
+PKLFILE 13830_TRAPRNAdamage2_data.pkl
+PKLFILE 13830_TRAPRNAdamage3_data.pkl
+PKLFILE 13830_TRAPRNAdamage4_data.pkl
+PKLFILE 13830_TRAPRNAdamage5_data.pkl
+PKLFILE 13830_TRAPRNAdamage6_data.pkl
+PKLFILE 13830_TRAPRNAdamage7_data.pkl
+PKLFILE 13830_TRAPRNAdamage8_data.pkl
+PKLFILE 13830_TRAPRNAdamage9_data.pkl
+PKLFILE 13830_TRAPRNAdamage10_data.pkl
+PKLFILE 13830_TRAPRNAdamage11_data.pkl
+PKLFILE 13830_TRAPRNAdamage12_data.pkl
+PKLFILE 13830_TRAPRNAdamage13_data.pkl
+PKLFILE 13830_TRAPRNAdamage14_data.pkl
+PKLFILE 13830_TRAPRNAdamage15_data.pkl
+PKLFILE 13830_TRAPRNAdamage16_data.pkl
+#
+# post_processing initial pdb file specified here
+initialPDB TRAPRNA1.pdb
+#
+# graph_analysis variables to be specified here
+topN 500
+densmet min
+#
+# PDBmulti multi dataset list of objects pkl file name 
+PKLMULTIFILE 13830_TRAPRNAdamage_data.pkl 
+#
+# doses are specified here (comma separated list here)
+doses 1.31,3.88,6.45,9.02,11.58,14.15,16.72,19.29,21.86,24.98
+#
