@@ -8,12 +8,22 @@ class combinedAtom(StructurePDB):
 	# defined by the StructurePDB class. This class adds additonal attributes and methods
 	def __init__(self,atomnum = 0,residuenum = 0,atomtype = "",basetype = "",chaintype = "",
 				 X_coord = 0,Y_coord = 0,Z_coord = 0,atomidentifier = "",
-				 numsurroundatoms = 0,numsurroundprotons = 0,densMetric = {}):
+				 numsurroundatoms = 0,numsurroundprotons = 0,densMetric = {},partialInfo=False):
 
 		super(combinedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,X_coord,
 										   Y_coord,Z_coord,atomidentifier,numsurroundatoms,numsurroundprotons)
 
 		self.densMetric = {} # dictionary of density metrics to be filled
+
+	def getPresentDatasets(self):
+		# for atoms only present within subset of datasets, get the datasets for which present
+		presentList = []
+		i = -1
+		for val in self.densMetric['loss']['Standard']['values']:
+			i += 1
+			if not np.isnan(val):
+				presentList.append(i)
+		return presentList
 
 	def getDensMetricInfo(self,metric,normType,values):
 		# these attributes are dictionaries and will contain values for multiple
@@ -27,8 +37,13 @@ class combinedAtom(StructurePDB):
 		self.densMetric[metric][normType] = {}
 		self.densMetric[metric][normType]['values'] = values
 
-	def calculateLinReg(self,numLinRegDatasets,type,densityMetric):
-		# Calculates linear regression for the density metric 'densityMetric' and
+	def calcAvMetric(self,type,densMetric):
+		# calculate the average of a given metric over series of datasets
+		densVals = self.densMetric[densMetric][type]['values']
+		self.densMetric[densMetric][type]['average'] = np.nanmean(densVals)
+		
+	def calcLinReg(self,numLinRegDatasets,type,densMetric):
+		# Calculates linear regression for the density metric 'densMetric' and
 		# determines the linear slope of density change
 		# 'numLinRegDatasets' in the number of difference map datasets across which 
 		# linear regression will be preformed. 'type' specifies whether 'Standard'
@@ -36,15 +51,15 @@ class combinedAtom(StructurePDB):
 		x = np.array(range(2,numLinRegDatasets+1))
 
 		# this ensures no calculation performed if metric values are empty list
-		if len(self.densMetric[metricType][type]['values']) == 0: return
+		if len(self.densMetric[densMetric][type]['values']) == 0: return
 
-		self.densMetric[metricType][type]['lin reg'] = {}
-		y = np.array(self.densMetric[metricType][type]['values'][0:len(x)])
+		self.densMetric[densMetric][type]['lin reg'] = {}
+		y = np.array(self.densMetric[densMetric][type]['values'][0:len(x)])
 		linRegRslts = stats.linregress(x,y)
 
 		for v1,v2 in zip(['slope','intercept','r_squared','p_value','std_err'],linRegRslts):
 			if v1 == 'r_value': v2 = v2**2
-			self.densMetric[densityMetric][type]['lin reg'][v1] = v2
+			self.densMetric[densMetric][type]['lin reg'][v1] = v2
 
 	def CalphaWeightedDensChange(self,CalphaWeights,metric):
 		# calculates the Calpha weighted density metrics for metric "metric",
@@ -65,13 +80,31 @@ class combinedAtom(StructurePDB):
 		metricVals = self.densMetric[metric]['Standard']['values']
 		self.getDensMetricInfo(metric,'Calpha normalised',list(np.divide(metricVals-weight,weight)))
 
+	def calcFirstDatasetSubtractedMetric(self,normType,metric):
+		# for a specified metric calculate a new metric: metric(dn)-metric(d1) where dn is dataset n
+		metricVals = self.densMetric[metric][normType]['values']
+		self.getDensMetricInfo(metric,'dataset 1 subtracted',metricVals-metricVals[0]*(np.ones(len(metricVals))))
+
 	def getNumDatasets(self,*metric):
 		if len(metric) == 0:
 			return len(self.densMetric['loss']['Standard']['values'])
 		else:
 			return len(self.densMetric[metric[0]]['Standard']['values'])
 
-	def calculateNetChangeMetric(self,normType):
+	def calcDiffFromMeanMetric(self,metric,normType,avMetric):
+		# for a specified metric calculate difference between metric for atom and from mean of structure
+		# 'avMetric' is average metric over whole structure
+		metricVals = self.densMetric[metric][normType]['values']
+		self.getDensMetricInfo(metric,'subtract mean',list(np.array(metricVals)-np.array(avMetric)))
+
+	def calcNumStdFromMeanMetric(self,metric,normType,avMetric,stdMetric):
+		# for a specified metric calculate number of structure-wide standard deviations between 
+		# metric for atom and from mean of structure. 'avMetric' is average metric over whole structure
+		self.calcDiffFromMeanMetric(metric,normType,avMetric)
+		metricVals = self.densMetric[metric]['subtract mean']['values']
+		self.getDensMetricInfo(metric,'num stds',list(np.array(metricVals)/np.array(stdMetric)))
+
+	def calcNetChangeMetric(self,normType):
 		# the following metric attempts to determine whether there is a net loss, gain or disordering
 		# of density associated with a specific atom
 		self.getDensMetricInfo('net',normType,[])
