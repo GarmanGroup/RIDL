@@ -20,15 +20,25 @@ The scripts require the following to run:
 - The *seaborn* python plotting library
 - A list of calculated doses for the series for full quantitative analysis (can be set to increasing integers if unknown)
 
+
+To show how to run the scripts, use the *getPDBseries.py* script to retrieve a pdb series from pdb_redo. In python type:
+```python
+import os
+os.system('mkdir testRun')
+from get PDBSeries import getSeries
+for i in ['1qid','1qie','1qif']:
+p = getSeries('1dwa','initial','./testOutput/')
+```
+
 First, for each dataset within the selected damage series, the *.pdb* and *.mtz* files are used to create compatible SFALL-output atom-tagged *.map* files and a Fourier difference map Fn-F1 *.map*. The *runProcessFiles.py script performs this task, using the following input file:
 
 `dir /Users/charlie/DPhil/YEAR2/JAN/Weik2000_ETRACK\n`
-`INITIALDATASET\n`
-`name1 1qidinit\n`
-`mtz1 /Users/charlie/DPhil/PDBredo_damageSeries/Weik2000/1qid/1qid.mtz\n`
-`mtzlabels1 P_1qid\n`
-`pdb1 /Users/charlie/DPhil/PDBredo_damageSeries/Weik2000/1qid/1qid.pdb\n`
-`RfreeFlag1 FreeR_flag\n`
+`INITIALDATASET`
+`name1 1qidinit`
+`mtz1 /Users/charlie/DPhil/PDBredo_damageSeries/Weik2000/1qid/1qid.mtz`
+`mtzlabels1 P_1qid`
+`pdb1 /Users/charlie/DPhil/PDBredo_damageSeries/Weik2000/1qid/1qid.pdb`
+`RfreeFlag1 FreeR_flag`
 `LATERDATASET`
 `name2 1qid`
 `mtz2 /Users/charlie/DPhil/PDBredo_damageSeries/Weik2000/1qid/1qid.mtz`
