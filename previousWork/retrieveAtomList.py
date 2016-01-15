@@ -1,5 +1,6 @@
 # small helpful script to retrieve the processedAtom class list of objects from
 # scratch after opening python
+# NO LONGER USED SINCE PROCESSEDATOMLIST CLASS REPLACED
 
 from eTrack_RUN import eTrack
 from processedAtomList import processedAtomList
