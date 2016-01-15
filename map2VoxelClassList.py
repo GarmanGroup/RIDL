@@ -1,18 +1,14 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Jan  7 00:14:01 2015
-
-@author: charlie
-"""
 from struct import unpack,calcsize
 from classHolder import MapInfo
 import os
 import sys
 import mmap
+import numpy as np
 
-def readMap(where,pdbname,mapfilename,maptype,atom_indices):
+def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices):
     # append to log file for this eTrack run 
-    logfileName = '{}output/{}_log.txt'.format(where,pdbname)
+    logfileName = '{}{}_log.txt'.format(dirOut,pdbname)
     logfile = open(logfileName,'a')
     
     # define 'rho' electron map object
@@ -20,64 +16,40 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
 
     # open electron density .map file here (bmf for binary map file)
     # bmf = open(where+mapfilename,'rb')
-    mapName = where+mapfilename
+    mapName = dirIn+mapfilename
     with open( mapName ) as f:
         bmf = mmap.mmap( f.fileno(), 0, prot = mmap.PROT_READ, flags = mmap.MAP_PRIVATE )
     
     # start adding header information into MapInfo class format. 
     # Note the unpacking of a struct for each byte, read as a long 'l'
     for n in ('nx','ny','nz'):
-        rho.nxyz[n]   = unpack('=l',bmf.read(4))[0]
+        rho.nxyz[n] = unpack('=l',bmf.read(4))[0]
 
-    print 'Num. Col, Row, Sec: '
-    print '{} {} {}'.format(*rho.nxyz.values())
-    logfile.write('Num. Col, Row, Sec: {} {} {}\n'.format(*rho.nxyz.values()))
-    
     rho.type = unpack('=l',bmf.read(4))[0]
 
     for s in ('1','2','3'):
         rho.start[s] = unpack('=l',bmf.read(4))[0] 
 
-    print 'Start positions: '
-    print '{} {} {}'.format(*rho.start.values())
-    logfile.write('Start positions: {} {} {}\n'.format(*rho.start.values()))
-
     for g in ('1','2','3'):
         rho.gridsamp[g] = unpack('=l',bmf.read(4))[0] 
 
-    print 'Grid sampling:'
-    print '{} {} {}'.format(*rho.gridsamp.values())
-    logfile.write('Grid sampling: {} {} {}\n'.format(*rho.gridsamp.values()))
-
-    # for cell dimensions, stored in header file as float not long 
-    # integer so must account for this
     for d in ('a','b','c','alpha','beta','gamma'):
-        rho.celldims[d]       = unpack('f',bmf.read(4))[0]
+        rho.celldims[d] = unpack('f',bmf.read(4))[0] # cell dims stored as float not long int
 
-    print 'Cell dimensions:'
-    print '{} {} {}'.format(*rho.celldims.values()[0:3])
-    print '{} {} {}'.format(*rho.celldims.values()[3:6])
-    logfile.write('Cell dimensions: {} {} {} {} {} {}\n'.format(*rho.celldims.values()))
-
-    for a in ('fast','med','slow'):
-        rho.axis[a]   = unpack('=l',bmf.read(4))[0] 
-
-    print 'Fast,med,slow axes: '
-    print '{} {} {}'.format(*rho.axis.values())
-    logfile.write('Fast,med,slow axes: {} {} {}\n'.format(*rho.axis.values()))
-
-    for d in ('min','max','mean'):
-        rho.density[d]  = unpack('f',bmf.read(4))[0] 
+    for a in ('fast','med','slow'): 
+        rho.axis[a] = unpack('=l',bmf.read(4))[0] 
         
-    print 'Density values: '
-    print '{} {} {}'.format(*rho.density.values())
-    logfile.write('Density values: {} {} {}\n'.format(*rho.density.values()))
+    for d in ('min','max','mean'): 
+        rho.density[d] = unpack('f',bmf.read(4))[0] 
+
+    s = rho.getHeaderInfo()
+    logfile.write(s)
 
     # next find .map file size, to calculate the last nx*ny*nz bytes of 
     # file (corresponding to the position of the 3D electron density 
     # array). Note factor of 4 is included since 4-byte floats used for 
     # electron density array values.
-    filesize = os.path.getsize(where+mapfilename)
+    filesize = os.path.getsize(dirIn+mapfilename)
     densitystart = filesize - 4*(reduce(lambda x, y: x*y, rho.nxyz.values()))
     
     # next seek start of electron density data
@@ -121,6 +93,7 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
                 else:    
                     appenddens(s)
                     appendindex(counter)
+            print '# voxels in total : {}'.format(counter)
 
         # efficient way to read through density map file using indices of atoms
         # from atom map file above
@@ -134,7 +107,17 @@ def readMap(where,pdbname,mapfilename,maptype,atom_indices):
                 data = bmf.read(struct_len)
                 s = unpack(struct_fmt,data)[0]
                 appenddens(s)
-                
+
+            print 'mean structure density : {}'.format(np.mean(density))
+            print 'max structure density : {}'.format(max(density))
+            print 'min structure density : {}'.format(min(density))
+            print 'std structure density : {}'.format(np.std(density))
+            print '# voxels included : {}'.format(len(density))
+
+            # check that resulting list of same length as atom_indices
+            if len(density) != len(atom_indices):
+                print 'Error in processing of density map using atom-tagged map'
+                sys.exit()           
         else:
             print 'Unknown map type --> terminating script'
             sys.exit()
