@@ -80,8 +80,8 @@ def residue_violinplotter(where,densitylist_atomorder,atoms_labels,
 
     for densities in densitylist_atomorder:
         count += 1
-        densityList = densityList + densities
-        atomList = atomList + [atoms_labels[count]]*len(densities)
+        densityList += densities
+        atomList += [atoms_labels[count]]*len(densities)
     dataDict = {'Atoms':atomList,'Densities':densityList}
 
     # Create an axes instance
@@ -103,7 +103,7 @@ def residue_violinplotter(where,densitylist_atomorder,atoms_labels,
     plt.ylabel('Electron Density Change', fontsize=16)
     
     ## Save the figure
-    fig.savefig(str(where)+'output/plots/' + str(pdbname) + '_'+str(residue_name)+'_'+str(densmet)+'_boxplot.png',
+    fig.savefig(str(where)+'plots/' + str(pdbname) + '_'+str(residue_name)+'_'+str(densmet)+'_boxplot.png',
                 bbox_inches='tight')
     
     
