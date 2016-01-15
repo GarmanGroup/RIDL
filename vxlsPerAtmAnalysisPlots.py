@@ -26,5 +26,5 @@ def plotVxlsPerAtm(pdbname,where,vxlsperatom,plotType):
     plt.xlabel('Voxels per atom')
     plt.ylabel('Frequency')
     plt.title('{} plot of voxels per atom'.format(plotType))
-    fig.savefig('{}output/plots/{}vxlsperatm_{}.png'.format(where,pdbname,plotType))
+    fig.savefig('{}plots/{}vxlsperatm_{}.png'.format(where,pdbname,plotType))
     
