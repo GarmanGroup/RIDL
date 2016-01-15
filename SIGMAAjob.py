@@ -3,10 +3,11 @@ import os
 
 class SIGMAAjob():
 	# run SIGMAA job to combine generate FOM weights if not present in input mtz file
-	def __init__(self,inputMtz,MtzLabelName,inputPDB,outputDir,runLog):
+	def __init__(self,inputMtz,MtzLabelName,RfreeFlag,inputPDB,outputDir,runLog):
 
 		self.inputMtz 			= inputMtz # mtz containing initial dataset Fs
 		self.LabelName 			= MtzLabelName
+		self.RfreeFlag			= RfreeFlag
 		self.tmpMtz				= outputDir+'/'+(inputMtz.split('/')[-1]).split('.mtz')[0]+'.tmp'
 		self.outputMtz			= self.tmpMtz.split('.tmp')[0]+'_sigmaa.mtz'
 		self.inputPDB			= inputPDB
@@ -42,13 +43,13 @@ class SIGMAAjob():
 								'XYZIN {}'.format(self.inputPDB)
 
 		self.commandInput2 	= 'title {}\n'.format(title)+\
-							  'LABIN  FP=F{} SIGFP=SIGF{} FREE=FreeR_flag\n'.format(self.LabelName,self.LabelName)+\
+							  'LABIN  FP=F{} SIGFP=SIGF{} FREE={}\n'.format(self.LabelName,self.LabelName,self.RfreeFlag)+\
 							  'labout -\n'+\
    							  'FC=FC PHIC=PHIC\n'+\
 							  'MODE SFCALC -\n'+\
     						  'XYZIN -\n'+\
     						  'HKLIN\n'+\
-							  'symmetry "{}"\n'.format(self.spaceGroup)+\
+							  'symmetry {}\n'.format(self.spaceGroup)+\
 							  'end'
 					
 		self.outputLogfile = 'SIGMAAlogfile1.txt'
