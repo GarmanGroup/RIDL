@@ -204,6 +204,12 @@ class combinedAtomList(object):
 				print 'new metric type not recognised.. choose from: {}'.format(options)
 				return
 
+	def calcVectorWeightedMetric(self,metric,normType,vector):
+		# for a specified metric calculate new vector-weighted values, where the metric over a series of doses
+		# is multiplied by a vector of per-dataset scalings
+		for atom in self.atomList:
+			atom.calcVectorWeightedMetric(metric,normType,vector)
+
 	def calcStandardisedMetrics(self,metric):
 		# standardise distribution of a given metric to have (mean=0,std=1) for each 
 		# dataset within a damage series
@@ -570,10 +576,11 @@ class combinedAtomList(object):
 	def getNumDatasets(self):
 		return self.atomList[0].getNumDatasets()
 
-	def graphMetricDistn(self,where,metric,normType,plotType,resiType,save):
+	def graphMetricDistn(self,metric,normType,plotType,resiType,save):
 		# histogram/kde plot of density metric per atom
 		# plotType is 'histogram' or 'kde'
 		# resiType is 'all' or list of residue types
+		# save is Boolian to save or not
 		if plotType not in ('hist','kde'): return 'Unknown plotting type selected.. cannot plot..'
 		if self.checkMetricPresent(self.atomList[0],metric,normType) is False: return # check metric valid
 
@@ -594,10 +601,10 @@ class combinedAtomList(object):
 		plt.xlabel('{} D{} per atom'.format(normType,metric))
 		plt.ylabel('Frequency')
 		plt.title('{} D{} per atom, residues: {}'.format(normType,metric,resiType))
-		if save != 'y': 
+		if not save: 
 			plt.show()
 		else:
-			f.savefig('{}{}_D{}_{}_{}_{}.png'.format(self.outputDir,normType,densMet,baseType,residueNum,atomType))
+			fig.savefig('{}{}_D{}_{}.png'.format(self.outputDir,normType,metric,resiType))
 
 	def plotHist(self,plotType,datax,lbl):
 		# plot histogram or kde plot for datax and give current label
@@ -737,7 +744,7 @@ class combinedAtomList(object):
 			return False
 		return True
 
-	def calcHalfDose(self,chain,restype,resnum,atomtype,densMet,shift,offset):
+	def calcHalfDose(self,chain,restype,resnum,atomtype,densMet,normType,shift,offset):
 		# call the external halfDoseCalc class to calculate a rough half dose decay value for a specified atom
 		# 'shift' (Boolian) determines whether half dose is dose for density to reach half of initial density (=False)
 		# or half dose is dose for density to reach av(initial density,end density limit (=True)
@@ -745,18 +752,18 @@ class combinedAtomList(object):
 		atom = self.getAtom(chain,restype,resnum,atomtype)
 		if len(self.doseList) != self.getNumDatasets():
 			return 'need to specify doses list as class attribute before this can be calculated'
-		halfDoseApprox(atom,self.atomList,True,self.doseList,False,0.5,densMet,self.outputDir,shift,offset)
+		halfDoseApprox(atom,self.atomList,True,self.doseList,False,0.5,densMet,normType,self.outputDir,shift,offset)
 
-	def calcHalfDoseForAtomtype(self,restype,atomtype,densMet,shift,offset,n):
+	def calcHalfDoseForAtomtype(self,restype,atomtype,densMet,normType,shift,offset,n):
 		# call the above calcHalfDose method for instances of of restype and atomtype
 		atoms = self.getAtom('',restype,'',atomtype)
 		for atom in atoms:
-			self.calcHalfDose(atom.chaintype,restype,atom.residuenum,atomtype,densMet,shift,offset)
+			self.calcHalfDose(atom.chaintype,restype,atom.residuenum,atomtype,densMet,normType,shift,offset)
 		print '--------------------'
 		print 'Summary here of run:'
 
-		residuals = [atom.densMetric[densMet]['Standard']['Half-dose']['Residuals'] for atom in atoms]
-		certainties = [atom.densMetric[densMet]['Standard']['Half-dose']['Certainty'] for atom in atoms]
+		residuals = [atom.densMetric[densMet][normType]['Half-dose']['Residuals'] for atom in atoms]
+		certainties = [atom.densMetric[densMet][normType]['Half-dose']['Certainty'] for atom in atoms]
 		residualThreshold = np.mean(residuals) + n*np.std(residuals)
 		certaintyThreshold = np.mean(certainties) - n*np.std(certainties)
 		print 'Will remove atoms with residual score > {} or certainty score < {}'.format(residualThreshold,certaintyThreshold)
@@ -764,7 +771,7 @@ class combinedAtomList(object):
 		xData,yData = [],[]
 		count = 0
 		for atom in atoms:
-			halfDoseStatDic = atom.densMetric[densMet]['Standard']['Half-dose']
+			halfDoseStatDic = atom.densMetric[densMet][normType]['Half-dose']
 			print '{} --> {}'.format(halfDoseStatDic['Initial density'],halfDoseStatDic['Half-dose'])
 
 			if (halfDoseStatDic['Residuals'] <= residualThreshold and 
@@ -782,14 +789,14 @@ class combinedAtomList(object):
 							'D{}: {}-{}'.format(densMet,restype,atomtype),
 							'D{}Scatter_{}-{}_thres{}.png'.format(densMet,restype,atomtype,n),False)
 
-	def compareAtomHalfDoses(self,restype,atomtype1,atomtype2,densMet,n):
+	def compareAtomHalfDoses(self,restype,atomtype1,atomtype2,densMet,normType,n):
 		# after above method calcHalfDoseForAtomtype is run for two atom types atomtype1 and atomtype2
 		# can compare half-doses between two atoms within same side-chain
 		atoms1 = self.getAtom('',restype,'',atomtype1)
 		atoms2 = self.getAtom('',restype,'',atomtype2)
 
-		residuals = [atom.densMetric[densMet]['Standard']['Half-dose']['Residuals'] for atom in atoms1]
-		certainties = [atom.densMetric[densMet]['Standard']['Half-dose']['Certainty'] for atom in atoms2]
+		residuals = [atom.densMetric[densMet][normType]['Half-dose']['Residuals'] for atom in atoms1]
+		certainties = [atom.densMetric[densMet][normType]['Half-dose']['Certainty'] for atom in atoms2]
 		residualThreshold = np.mean(residuals) + n*np.std(residuals)
 		certaintyThreshold = np.mean(certainties) - n*np.std(certainties)
 
@@ -799,12 +806,12 @@ class combinedAtomList(object):
 			for atom2 in atoms2:
 				if (atom1.chaintype == atom2.chaintype and
 					atom1.residuenum == atom2.residuenum):
-					if (atom1.densMetric[densMet]['Standard']['Half-dose']['Residuals'] <= residualThreshold and 
-						atom1.densMetric[densMet]['Standard']['Half-dose']['Certainty'] >= certaintyThreshold and
-						atom2.densMetric[densMet]['Standard']['Half-dose']['Residuals'] <= residualThreshold and 
-						atom2.densMetric[densMet]['Standard']['Half-dose']['Certainty'] >= certaintyThreshold):
-						xData.append(atom1.densMetric[densMet]['Standard']['Half-dose']['Half-dose'])
-						yData.append(atom2.densMetric[densMet]['Standard']['Half-dose']['Half-dose'])
+					if (atom1.densMetric[densMet][normType]['Half-dose']['Residuals'] <= residualThreshold and 
+						atom1.densMetric[densMet][normType]['Half-dose']['Certainty'] >= certaintyThreshold and
+						atom2.densMetric[densMet][normType]['Half-dose']['Residuals'] <= residualThreshold and 
+						atom2.densMetric[densMet][normType]['Half-dose']['Certainty'] >= certaintyThreshold):
+						xData.append(atom1.densMetric[densMet][normType]['Half-dose']['Half-dose'])
+						yData.append(atom2.densMetric[densMet][normType]['Half-dose']['Half-dose'])
 					else:
 						count += 1
 					break
@@ -875,11 +882,11 @@ class combinedAtomList(object):
 		plt.xlabel(xLabel, fontsize=18)
 		plt.ylabel(ylabel, fontsize=18)
 		fig.suptitle(figtitle,fontsize=24)
-		fname = lambda x: saveTitle.strip('.png')+'_{}.png'.format(x)
+		fname = lambda x: self.outputDir+saveTitle.strip('.png')+'_{}.png'.format(x)
 		i = 0
 		while os.path.isfile(fname(i)): i += 1 
 		fig.savefig(fname(i))
-		return r_value**2
+		if lineBestFit is True: return r_value**2
 
 	def damageVdistPlot(self,type1,type2,dataset,densMet,normType):
 		# for atom of type1 determine a correlation between the closest distance to atom type2
