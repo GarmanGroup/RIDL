@@ -22,7 +22,7 @@ class MAPMASKjob():
 		# switch the axis order of an input .map file. order = [1,2,3] for example
 		xyz = {'1':'X','2':'Y','3':'Z'}
 		axisOrder = [xyz[str(i)] for i in order]
-		self.outputMapFile 	= self.inputMapFile
+		self.outputMapFile 	= inputMapFile.split('.map')[0]+'_switchedAxes.map'
 
 		inputFiles = [self.inputMapFile]
 		if checkInputsExist(inputFiles,self.runLog) is False:
