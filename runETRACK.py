@@ -11,31 +11,44 @@ class run():
 	def __init__(self):
 		self.inputFileName = 'e_Track_inputfile.txt'
 
-	def writeETRACKinputfile_generic(self):
-		# Need to create input file for a generic damage series to be completed by the user
-		inputString =	'where <input file location>\n'+\
-						'damageset_name <consistent name of series, e.g. for TRAP1.pdb, TRAP2.pdb, this is TRAP>\n'+\
-						'damageset_num <dataset numbers, e.g. 1,2 for TRAP. Can be letters corresponding to pdb series>\n'+\
-						'initialPDB <initial dataset pdb file e.g. TRAP1.pdb>\n'+\
-						'doses <list of doses, length must match length of damageset_num above>\n'+\
-						'PKLMULTIFILE <if already processed in ETRACK, can specify single output .pkl for series>'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
-
 	def runETRACK(self,mapProcess,postProcess,retrieve):
 		# run the ETRACK processing for the currently defined input file
 		eT = eTrack()
-		eT.runPipeline(mapProcess,postProcess,retrieve,False,self.inputFileName)
+		eT.runPipeline(mapProcess,postProcess,retrieve,self.inputFileName)
 		self.et = eT
 
+	def defineDoseList(self,doses,names,version):
+		# do not include first dataset dose if difference maps chosen
+		if version == 'DIFF':
+			dosesOut = ','.join(doses.split(',')[1:])
+			namesOut = ','.join(names.split(',')[1:])
+			return dosesOut,namesOut
+		else: return doses,names
 
-	####################################################################################
+	def writeBlankInputFile(self):
+		# Need to create input file for a generic damage series to be completed by the user
+		inputString = self.writeInputFile('<input file location>',
+										  '<consistent name of series, e.g. for TRAP1.pdb, TRAP2.pdb, this is TRAP>',
+										  '<dataset numbers, e.g. 1,2 for TRAP. Can be letters corresponding to pdb series>',
+										  '<initial dataset pdb file e.g. TRAP1.pdb>',
+										  '<list of doses, length must match length of damageset_num above>',
+										  '<if already processed in ETRACK, can specify single output .pkl for series>')	
 
-	####################################################################################
+	def writeInputFile(self,where,damageset_name,damageset_num,initialPDB,doses,PKLMULTIFILE):
+		# write a generic input file for a damage series here
+		inputString = 'where {}\n'.format(where)+\
+					  'damageset_name {}\n'.format(damageset_name)+\
+					  'damageset_num {}\n'.format(damageset_num)+\
+					  'initialPDB {}\n'.format(initialPDB)+\
+					  'doses {}\n'.format(doses)+\
+					  'PKLMULTIFILE {}'.format(PKLMULTIFILE)
+		inputFile  = open(self.inputFileName,'w')
+		inputFile.write(inputString)
+		inputFile.close()	
 
-	####################################################################################
-	# series of additional methods for processing specific damage series within the pdb
+	#####################################################################################
+	# series of additional methods for processing specific damage series within the pdb #
+	#####################################################################################
 
 	def runDataseries(self,name,version,process,postprocess,retrieve):
 		if name == 'TRAP':
@@ -57,11 +70,11 @@ class run():
 		elif name == 'WEIK':
 			self.writeETRACKinputfile_Weik2000(version)
 		elif name == 'DIXON':
-			self.writeETRACKinputfile_TDIXONinsulin()
+			self.writeETRACKinputfile_TDIXONinsulin(version)
 		elif name == 'SUTTON':
 			self.writeETRACKinputfile_Sutton2013()
 		elif name == 'PETROVA':
-			self.writeETRACKinputfile_Petrova2010()
+			self.writeETRACKinputfile_Petrova2010(version)
 		elif name == 'NANAO':
 			self.writeETRACKinputfile_Nanao2005(version)
 		else:
@@ -81,194 +94,116 @@ class run():
 
  	def writeETRACKinputfile_TRAP(self):
 		# Need to create input file for this test TRAP damage series
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/TRAP_ETRACK/DIFF/\n'+\
-						'damageset_name TRAP\n'+\
-						'damageset_num 2,3,4,5,6,7,8,9,10\n'+\
-						'initialPDB TRAP1.pdb\n'+\
-						'doses 3.88,6.45,9.02,11.58,14.15,16.72,19.29,21.86,24.98\n'+\
-						'PKLFILE 13830_TRAP2_data.pkl\n'+\
-						'PKLFILE 13830_TRAP3_data.pkl\n'+\
-						'PKLFILE 13830_TRAP4_data.pkl\n'+\
-						'PKLFILE 13830_TRAP5_data.pkl\n'+\
-						'PKLFILE 13830_TRAP6_data.pkl\n'+\
-						'PKLFILE 13830_TRAP7_data.pkl\n'+\
-						'PKLFILE 13830_TRAP8_data.pkl\n'+\
-						'PKLFILE 13830_TRAP9_data.pkl\n'+\
-						'PKLFILE 13830_TRAP10_data.pkl\n'+\
-						'PKLMULTIFILE TRAP_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()	
+		doses = '3.88,6.45,9.02,11.58,14.15,16.72,19.29,21.86,24.98'
+		dNames = '2,3,4,5,6,7,8,9,10'
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/TRAP_ETRACK/DIFF/',
+									      'TRAP',dNames,'TRAP1.pdb',doses,'TRAP_data.pkl')					
 
 	def writeETRACKinputfile_Burm2000(self,version):
 		# Need to create input file for the Burmeister 2000 damage series
 		# version in ('final','initial') depending on which PDB_REDO version required
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Burm2000_ETRACK/{}/\n'.format(version)+\
-						'damageset_name 1dw\n'+\
-						'damageset_num f,g,h\n'+\
-						'initialPDB 1dwa.pdb\n'+\
-						'doses 2,3,4\n'+\
-						'PKLMULTIFILE 1dw_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '2,3,4'
+		dNames = 'f,g,h'
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Burm2000_ETRACK/{}/'.format(version),
+									      '1dw',dNames,'1dwa.pdb',doses,'1dw_data.pkl')							   
 
 	def writeETRACKinputfile_Sutton2013(self):
 		# Need to create input file for the Sutton 2013 damage series
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Sutton2013_ETRACK/DIFF/\n'+\
-						'damageset_name 4h\n'+\
-						'damageset_num 8y,8z,9a,9b,9c,9e,9f,9h,9i,90,91,92,93,94\n'+\
-						'initialPDB 4h8x.pdb\n'+\
-						'doses 2,3,4,5,6,7,8,9,10,11,12,13,14,15\n'+\
-						'PKLMULTIFILE 4h_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '2,3,4,5,6,7,8,9,10,11,12,13,14,15'
+		dNames = '8y,8z,9a,9b,9c,9e,9f,9h,9i,90,91,92,93,94'
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Sutton2013_ETRACK/DIFF/',
+									      '4h',dNames,'4h8x.pdb',doses,'4h_data.pkl')
 
-	def writeETRACKinputfile_Petrova2010(self):
+	def writeETRACKinputfile_Petrova2010(self,version):
 		# Need to create input file for the Petrova 2010 damage series
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Petrova2010_ETRACK/M_100K/DIFF/\n'+\
-						'damageset_name 3m\n'+\
-						'damageset_num nc,ns,nx,o3,o6,o9,oc\n'+\
-						'initialPDB 3mnb.pdb\n'+\
-						'doses 2,3,4,5,6,7,8\n'+\
-						'PKLMULTIFILE 3m_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		dNames = '1,2,3,4,5,6,7,8'
+		doses = '1.2,14.2,15.4,28.4,29.6,42.6,43.8,56.8'
+		doses,dNames = self.defineDoseList(doses,dNames,version)
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Petrova2010_ETRACK/M_100K/{}/'.format(version),
+									      'PET',dNames,'PET1.pdb',doses,'PET_data.pkl')
 
 	def writeETRACKinputfile_Nanao2005(self,protein):
 		# Need to create input file for the Nanao 2005 damage sets
 		# 'protein' in ('Elastase','Thaumatin','Trypsin','Lysozyme','Insulin','RibonucleaseA')
-		if protein == 'Trypsin': 
-			initPDB,endPDB = 'lv','lw'
-		elif protein == 'Thaumatin':
-			initPDB,endPDB = 'lr','lu'	
-		elif protein == 'Elastase':
-			initPDB,endPDB = 'lo','lq'
-		elif protein == 'Insulin':
-			initPDB,endPDB = 'n3','n1'
-		elif protein == 'Lysozyme':
-			initPDB,endPDB = 'lx','ly'
-		elif protein == 'RibonucleaseA':
-			initPDB,endPDB = 'lp','lz'
-		else: return
+		pInfo = {'Trypsin':['lv','lw'],'Thaumatin':['lr','lu'],'Elastase':['lo','lq'],
+				 'Lysozyme':['lx','ly'],'RibonucleaseA':['lp','lz'],'Insulin':['n3','n1']}
+		if protein not in pInfo.keys(): return
 
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Nanao2005_ETRACK/{}/DIFF/\n'.format(protein)+\
-						'damageset_name 2b\n'+\
-						'damageset_num {}\n'.format(endPDB)+\
-						'initialPDB 2b{}.pdb\n'.format(initPDB)+\
-						'doses 2\n'+\
-						'PKLMULTIFILE 2b_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '2'
+		dNames = pInfo[protein][1]
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Nanao2005_ETRACK/{}/DIFF/'.format(protein),
+									      '2b',dNames,'2b{}.pdb'.format(pInfo[protein][0]),doses,'2b_data.pkl')
 
-	def writeETRACKinputfile_DelaMora2011(self,type):
+	def writeETRACKinputfile_DelaMora2011(self,version):
 		# Need to create input file for the DelaMora 2011 damage series
-		# type in ('DIFF','SIMPLE')
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/DelaMora2011_ETRACK/{}/\n'.format(type)+\
-						'damageset_name 2yb\n'+\
-						'damageset_num i,j,l,m,n\n'+\
-						'initialPDB 2ybh.pdb\n'+\
-						'doses 2,3,4,5,6\n'+\
-						'PKLMULTIFILE 2yb_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		# type in ('DIFF','SIMPLE','END')
+		doses = '2.31,6.62,12.31,17.9,23.3,28.6'
+		dNames = 'h,i,j,l,m,n'
+		doses,dNames = self.defineDoseList(doses,dNames,version)
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/DelaMora2011_ETRACK/{}/'.format(version),
+									      '2yb',dNames,'2ybh.pdb',doses,'2yb_data.pkl')
 
 	def writeETRACKinputfile_Fior2007(self):
 		# Need to create input file for the Fioravanti 2007 series
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Fioravanti2007_ETRACK/\n'+\
-						'damageset_name 2j5\n'+\
-						'damageset_num q,r\n'+\
-						'initialPDB 2j5k.pdb\n'+\
-						'doses 2,3\n'+\
-						'PKLMULTIFILE 2j5_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '2,3'
+		dNames = 'q,r'
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Fioravanti2007_ETRACK/',
+									      '2j5',dNames,'2j5k.pdb',doses,'2j5_data.pkl')
 
 	def writeETRACKinputfile_Frankaer2014(self):
 		# Need to create input file for the Frankaer 2014 series
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Frankaer2014_ETRACK/\n'+\
-						'damageset_name 4m4\n'+\
-						'damageset_num h,i,j\n'+\
-						'initialPDB 4m4f.pdb\n'+\
-						'doses 2,3,4\n'+\
-						'PKLMULTIFILE 4m4_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '2,3,4'
+		dNames = 'h,i,j'
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Frankaer2014_ETRACK/',
+									      '4m4',dNames,'4m4f.pdb',doses,'4m4_data.pkl')
 
 	def writeETRACKinputfile_Juers2011_100K(self):
 		# Need to create input file for the Frankaer 2014 100K series
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Juers2011-100K_ETRACK/\n'+\
-						'damageset_name 3p7\n'+\
-						'damageset_num q,r,s\n'+\
-						'initialPDB 3p7p.pdb\n'+\
-						'doses 2,3,4\n'+\
-						'PKLMULTIFILE 3p7_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '2,3,4'
+		dNames = 'q,r,s'
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/insu/charlie/DPhil/YEAR2/JAN/Juers2011-100K_ETRACK/',
+									      '3p7',dNames,'3p7p.pdb',doses,'3p7_data.pkl')
 
 	def writeETRACKinputfile_Juers2011_160K(self):
 		# Need to create input file for the Frankaer 2014 160K series
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Juers2011-160K_ETRACK/\n'+\
-						'damageset_name 3p7\n'+\
-						'damageset_num u,v,w\n'+\
-						'initialPDB 3p7t.pdb\n'+\
-						'doses 2,3,4\n'+\
-						'PKLMULTIFILE 3p7_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '2,3,4'
+		dNames = 'u,v,w'
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Juers2011-160K_ETRACK/',
+									      '3p7',dNames,'3p7t.pdb',doses,'3p7_data.pkl')
 
 	def writeETRACKinputfile_Bury2015(self,version):
 		# Need to create input file for the Bury2015 series
 		# version in ('final','initial') depending on which PDB_REDO version required
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Bury2015_ETRACK/{}/\n'.format(version)+\
-						'damageset_name 4x4\n'+\
-						'damageset_num c,d,e,f,g,h,i\n'+\
-						'initialPDB 4x4b.pdb\n'+\
-						'doses 6.2,10.3,14.4,20.6,26.8,35.7,44.6\n'+\
-						'PKLFILE 3925_4x4c_data.pkl\n'+\
-						'PKLFILE 3925_4x4d_data.pkl\n'+\
-						'PKLFILE 3925_4x4e_data.pkl\n'+\
-						'PKLFILE 3925_4x4f_data.pkl\n'+\
-						'PKLFILE 3925_4x4g_data.pkl\n'+\
-						'PKLFILE 3925_4x4h_data.pkl\n'+\
-						'PKLFILE 3925_4x4i_data.pkl\n'+\
-						'PKLMULTIFILE 4x4_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '6.2,10.3,14.4,20.6,26.8,35.7,44.6'
+		dNames = 'c,d,e,f,g,h,i'
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Bury2015_ETRACK/{}/'.format(version),
+									      '4x4',dNames,'4x4b.pdb',doses,'4x4_data.pkl')
 
 	def writeETRACKinputfile_Weik2000(self,version):
 		# Need to create input file for the Weik2000 series
 		# version in ('final','initial') depending on which PDB_REDO version required
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/Weik2000_ETRACK/{}/\n'.format(version)+\
-						'damageset_name 1qi\n'+\
-						'damageset_num e,f,g,h,i,j,k,m\n'+\
-						'initialPDB 1qid.pdb\n'+\
-						'doses 2,3,4,5,6,7,8,9\n'+\
-						'PKLMULTIFILE 1qi_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '1,2,3,4,5,6,7,8,9'
+		dNames = 'd,e,f,g,h,i,j,k,m'
+		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Weik2000_ETRACK/{}/'.format(version),
+									      '1qi',dNames,'1qid.pdb',doses,'1qi_data.pkl')
 
-	def writeETRACKinputfile_TDIXONinsulin(self):
+	def writeETRACKinputfile_TDIXONinsulin(self,version):
 		# Need to create input file for the TDIXON-insulin series
-		inputString =	'where /Users/charlie/DPhil/YEAR2/JAN/TDIXON_InsulinSeries_ETRACK/\n'+\
-						'damageset_name insu\n'+\
-						'damageset_num 2,3,4,5,6,7,8,9,10\n'+\
-						'initialPDB insu1.pdb\n'+\
-						'doses 2,3,4,5,6,7,8,9,10\n'+\
-						'PKLMULTIFILE insu_data.pkl'
-		inputFile  = open(self.inputFileName,'w')
-		inputFile.write(inputString)
-		inputFile.close()
+		doses = '0.89,2.74,4.59,6.44,8.29,10.14,11.98,13.84,15.68,17.54'
+		dNames = '1,2,3,4,5,6,7,8,9,10'
+		doses,dNames = self.defineDoseList(doses,dNames,version)
+		inputString = self.writeInputFile('/insu/charlie/DPhil/YEAR2/JAN/TDIXON_InsulinSeries_ETRACK/{}/'.format(version),
+									      'insu',dNames,'insu1.pdb',doses,'insu_data.pkl')
 
 	def runBatchSeries(self,mapPro,postPro,retr,densMet,normType):
  		dSeries = self.getDensSeries()
