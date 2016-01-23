@@ -115,6 +115,15 @@ class combinedAtom(StructurePDB):
 			metricVal = (abs_maxDensLoss - abs_maxDensGain)
 			self.densMetric['net'][normType]['values'].append(metricVal)
 
+	def calcVectorWeightedMetric(self,metric,normType,vector):
+		# for a specified metric calculate new vector-weighted values, where the metric over a series of doses
+		# is multiplied by a vector of per-dataset scalings
+		metricVals = self.densMetric[metric][normType]['values']
+		if len(vector) != len(metricVals):
+			print 'Incompatible metric and per-dataset scale vector lengths'
+			return
+		self.getDensMetricInfo(metric,'vector-weighted',metricVals/np.array(vector))
+
 	def findSolventAccessibility(self,inputPDBfile):
 		# read in a pdb file output by ccp4 program 'areaimol' which calculates solvent 
 		# accessibility for each atom within a pdb file and writes value in Bfactor column
