@@ -93,7 +93,7 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices):
                 else:    
                     appenddens(s)
                     appendindex(counter)
-            print '# voxels in total : {}'.format(counter)
+            print '# voxels in total : {}'.format(counter+1)
 
         # efficient way to read through density map file using indices of atoms
         # from atom map file above
@@ -107,12 +107,6 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices):
                 data = bmf.read(struct_len)
                 s = unpack(struct_fmt,data)[0]
                 appenddens(s)
-
-            print 'mean structure density : {}'.format(np.mean(density))
-            print 'max structure density : {}'.format(max(density))
-            print 'min structure density : {}'.format(min(density))
-            print 'std structure density : {}'.format(np.std(density))
-            print '# voxels included : {}'.format(len(density))
 
             # check that resulting list of same length as atom_indices
             if len(density) != len(atom_indices):
@@ -156,7 +150,6 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices):
         return rho,atom_indices
     else:
         return rho
-        
 
 ###----------------###----------------###----------------###----------------###
 ###############################################################################
