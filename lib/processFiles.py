@@ -7,6 +7,7 @@ class processFiles():
 		self.inputFile = inputFile
 
 	def runProcessing(self):
+		self.titleCaption('ETRACK file preparation')
 		success = self.readMainInputFile()
 		if success == False:
 			return
@@ -170,5 +171,8 @@ class processFiles():
 				print 'Not all key output files found'
 				return False
 		return True
+
+	def titleCaption(self,title):
+		print '\n\n\n||========================== {} ==========================||'.format(title)
 
 
