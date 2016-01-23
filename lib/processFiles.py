@@ -55,6 +55,11 @@ class processFiles():
 				print 'Necessary input not found: {}'.format(prop)
 				return False
 		print 'All necessary inputs found in input file'
+
+		# create dataset name here, used to distinguish input file naming scheme 
+		# (if name2 not the same as pdb2 then this is required)
+		self.dsetName = str((self.pdb2).split('/')[-1]).strip('.pdb')
+
 		return True
 
 	def checkOutputDirExists(self):
@@ -132,15 +137,16 @@ class processFiles():
 		if self.densMapType in ('SIMPLE','DIFF'): densMapProg = 'fft'
 		elif self.densMapType in ('END'): densMapProg = 'END'
 
-		params 			= [self.dir,self.name2]
+		params 			= [self.dir,self.dsetName]
+		renameParams	= [self.dir,self.name2]
 		keyLogFiles 	= [self.p1.runLog.logFile,self.p2.runLog.logFile]
-		mapFiles 		= ['{}/{}_{}_cropped_cropped.map'.format(self.dir,self.name2,densMapProg),
+		mapFiles 		= ['{}/{}_{}_cropped_cropped.map'.format(self.dir,self.dsetName,densMapProg),
 						   '{}/{}_sfall_cropped.map'.format(*params)]
 		pdbFiles 		= ['{}/{}_reordered.pdb'.format(*params)]
 		outputFiles 	= mapFiles + pdbFiles
-		renameFiles 	= ['{}/{}_density.map'.format(*params),
-					  	   '{}/{}_atoms.map'.format(*params),
-					   	   '{}/{}.pdb'.format(*params)]
+		renameFiles 	= ['{}/{}_density.map'.format(*renameParams),
+					  	   '{}/{}_atoms.map'.format(*renameParams),
+					   	   '{}/{}.pdb'.format(*renameParams)]
 
 		subdir = '{}/{}_additionalFiles'.format(self.dir,self.jobName)
 		os.system('mkdir {}'.format(subdir))
@@ -155,13 +161,6 @@ class processFiles():
 		os.system('rm -rf {}'.format(subdir))
 
 		# rename final map files
-		# params1 = [self.dir,self.name2,densMapProg,self.dir,self.name2]
-		# params2 = [self.dir,self.name2,self.dir,self.name2]
-		# os.system('mv {}/{}_{}_cropped_cropped.map {}/{}_density.map'.format(*params1))
-		# os.system('mv {}/{}_sfall_cropped.map {}/{}_atoms.map'.format(*params2))
-		# os.system('mv {}/{}_reordered.pdb {}/{}.pdb'.format(*params2))
-
-		# rename final map files
 		for i in range(3): os.system('mv {} {}'.format(outputFiles[i],renameFiles[i]))
 
 		# check that resulting files are found
@@ -171,9 +170,5 @@ class processFiles():
 				print 'Not all key output files found'
 				return False
 		return True
-
-
-
-
 
 
