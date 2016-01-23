@@ -57,7 +57,7 @@ class pipeline():
 		labelsLater = ['FP_'+self.laterPDB,'SIGFP_'+self.laterPDB,'FOM_'+self.laterPDB,'PHIC_'+self.laterPDB]
 		
 		if self.densMapType != 'END':
-			fft = FFTjob(self.densMapType,self.FOMweight,self.laterPDB,self.inputMtzFile,
+			fft = FFTjob(self.densMapType,self.FOMweight,self.reorderedPDBFile,self.inputMtzFile,
 						 self.outputDir,axes,gridSamps,labelsLater,labelsInit,self.runLog)
 			success = fft.run()
 		else:
@@ -83,10 +83,19 @@ class pipeline():
 		else: 
 			inputDensMap = end.outputMapFile
 
+		# switch END map axes to match SFALL atom-tagged map if required
+		if self.densMapType == 'END':
+			mapmask_ENDmap = MAPMASKjob(inputDensMap,'',self.outputDir,self.runLog)
+			success = mapmask_ENDmap.switchAxisOrder(axes,self.spaceGroup)
+		if success is False:
+			return 7.0
+		else: inputDensMap = mapmask_ENDmap.outputMapFile
+
+		# run MAPMASK job to crop fft density map to asym unit
 		mapmask2 = MAPMASKjob(inputDensMap,'',self.outputDir,self.runLog)
 		success = mapmask2.crop2AsymUnit()
 		if success is False:
-			return 7
+			return 7.1
 
 		# run MAPMASK job to crop fft density map to same grid 
 		# sampling dimensions as SFALL atom map
