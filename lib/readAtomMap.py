@@ -47,6 +47,7 @@ class maps2DensMetrics():
         self.readPDBfile()
         self.readAtomMap()
         self.readDensityMap()
+        self.reportDensMapInfo()
         self.checkMapCompatibility()
         self.createVoxelList()
         self.plotDensHistPlots()
@@ -122,9 +123,26 @@ class maps2DensMetrics():
         self.densmap = readMap(self.filesIn,self.filesOut,self.pdbname,
                                self.map2['filename'],self.map2['type'],
                                self.atom_indices)  
-
         self.success()
         self.stopTimer()
+
+    def reportDensMapInfo(self):
+        # print density map summary information to command line
+        totalNumVxls     = np.product(self.atmmap.nxyz.values())
+        structureNumVxls = len(self.densmap.vxls_val)
+        totalMean        = self.densmap.density['mean']
+        structureMean    = np.mean(self.densmap.vxls_val)
+        solvNumVxls      = totalNumVxls - structureNumVxls
+        solvMean         = (totalNumVxls*totalMean - structureNumVxls*structureMean)/solvNumVxls
+        print 'For voxels assigned to structure:'
+        print 'mean structure density : {}'.format(structureMean)
+        print 'max structure density : {}'.format(max(self.densmap.vxls_val))
+        print 'min structure density : {}'.format(min(self.densmap.vxls_val))
+        print 'std structure density : {}'.format(np.std(self.densmap.vxls_val))
+        print '# voxels included : {}'.format(structureNumVxls)
+        print 'For voxels assigned to solvent:'
+        print 'mean solvent-region density : {}'.format(solvMean)
+        print '# voxels included : {}'.format(solvNumVxls)
 
     def checkMapCompatibility(self):
         # check that atom-tagged and density map can be combined successfully
