@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 class halfDoseApprox():
-	def __init__(self,atom,atoms,plot,doses,globalScaling,doseFraction,densityMetric,plotDir,shiftedHalfDose,zeroOffset):
+	def __init__(self,atom,atoms,plot,doses,globalScaling,doseFraction,densityMetric,normType,plotDir,shiftedHalfDose,zeroOffset):
 		
 		self.atom 				= atom # the current atom object 
 		self.atoms 				= atoms # the full list of atom objects
@@ -11,8 +11,9 @@ class halfDoseApprox():
 		self.globalScaling 		= globalScaling # (Boolian) decide whether to crudely weight for global density decay
 		self.doseFraction 		= doseFraction # typically 0.5 for half dose but other values between 0 & 1 suitable
 		self.densMet 			= densityMetric # density metric to use for calculation ('loss','gain',etc..)
+		self.normType 			= normType # the corresponding metric normalisation type ('Standard', etc..)
 		self.doses 				= doses # list of doses 
-		self.avDmetric 			= np.mean([atm.densMetric[self.densMet]['Standard']['values'] for atm in atoms],0)
+		self.avDmetric 			= np.mean([atm.densMetric[self.densMet][normType]['values'] for atm in atoms],0)
 		self.plotDir 			= plotDir # where saved plots will go
 		self.shiftedHalfDose 	= shiftedHalfDose # see method for half-dose calculation below
 		self.zeroOffset 		= zeroOffset # takes values 'y' (fit end density) or float n for fixed end density n 
@@ -50,7 +51,7 @@ class halfDoseApprox():
 		# fit the data to exponentially decaying model function
 		xData = np.array(self.doses)
 
-		yData = np.array(self.atom.densMetric[self.densMet]['Standard']['values'])
+		yData = np.array(self.atom.densMetric[self.densMet][self.normType]['values'])
 		if self.globalScaling is True: yData /= self.avDmetric
 
 		# initial parameter guesses
@@ -99,11 +100,11 @@ class halfDoseApprox():
 
 	def saveAtomHalfDose(self):
 		# for current atom object save the half dose statistics as attributes
-		self.atom.densMetric[self.densMet]['Standard']['Half-dose'] = {'Half-dose':self.halfDose,
-																	   'Residuals':self.fitResiduals,
-																	   'Certainty':self.certaintyValue,
-																	   'Initial density':self.fitParams[0],
-																	   'End density':self.fitParams[2]}
+		self.atom.densMetric[self.densMet][self.normType]['Half-dose'] = {'Half-dose':self.halfDose,
+																	   	  'Residuals':self.fitResiduals,
+																	      'Certainty':self.certaintyValue,
+																	      'Initial density':self.fitParams[0],
+																	      'End density':self.fitParams[2]}
 
 	def plotDecayPlot(self,xData,yData):
 		f = plt.figure()
@@ -122,7 +123,7 @@ class halfDoseApprox():
 		plt.ylabel('D{}'.format(self.densMet))
 		plt.grid()
 		identifier = self.atom.getAtomID() 
-		f.suptitle('D{} Half-dose: {} MGy'.format(self.densMet,self.halfDose))
+		f.suptitle('{} D{} Half-dose: {} MGy'.format(self.normType,self.densMet,self.halfDose))
 		if self.plotDir != '':
 			f.savefig('{}/{}.png'.format(self.plotDir,identifier))
 		else:
