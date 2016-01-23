@@ -3,11 +3,11 @@ from mapTools import mapTools
 
 class FFTjob():
 
-	def __init__(self,mapType,FOMweight,laterPDB,inputMtzFile,outputDir,axes,gridSamps,labels1,labels2,runLog):
+	def __init__(self,mapType,FOMweight,inputPDBname,inputMtzFile,outputDir,axes,gridSamps,labels1,labels2,runLog):
 		self.mapType 		= mapType
 		self.FOMweight		= FOMweight
 		self.inputMtzFile 	= inputMtzFile
-		self.outputMapFile 	= '{}/{}_fft.map'.format(outputDir,laterPDB)
+		self.outputMapFile 	= '{}_fft.map'.format(inputPDBname.split('_reordered.pdb')[0])
 		self.outputDir		= outputDir
 		XYZ 				= ['X','Y','Z']
 		self.fastAxis 		= XYZ[int(axes[0])-1]
