@@ -65,3 +65,36 @@ class process():
 					'FFTmapWeight True'
 		f.write(string)
 		f.close()
+
+	def writeTestInputFile(self,dataset):
+		# write an input file for the test case on the github README.md
+		inds = ['d','e','f']
+		if dataset not in range(1,4):
+			print 'Select dataset between 1-3'
+			return
+		ind = inds[dataset-1]
+
+		self.setInputFile('testInput{}.txt'.format(dataset))
+		f = open(self.inputFile,'w')
+		string 	 =  'dir ./testOutput/ETRACK\n'+\
+					'INITIALDATASET\n'+\
+					'name1 1qidinit\n'+\
+					'mtz1 ./testOutput/1qid/1qid.mtz\n'+\
+					'mtzlabels1 P_1qid\n'+\
+					'pdb1 ./testOutput/1qid/1qid.pdb\n'+\
+					'RfreeFlag1 FreeR_flag\n'+\
+					'LATERDATASET\n'+\
+					'name2 1qi{}\n'.format(ind)+\
+					'mtz2 ./testOutput/1qi{}/1qi{}.mtz\n'.format(ind,ind)+\
+					'mtzlabels2 P_1qi{}\n'.format(ind)+\
+					'pdb2 ./testOutput/1qi{}/1qi{}.pdb\n'.format(ind,ind)+\
+					'PHASEDATASET\n'+\
+					'name3 1qidinit\n'+\
+					'mtz3 ./testOutput/1qid/1qid.mtz\n'+\
+					'mtzlabels3 C_1qid\n'+\
+					'MAPINFO\n'+\
+					'sfall_VDWR 1\n'+\
+					'densMapType DIFF\n'+\
+					'FFTmapWeight True'
+		f.write(string)
+		f.close()
