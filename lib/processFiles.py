@@ -136,7 +136,7 @@ class processFiles():
 
 		# distinguish between FFT and END map output formats
 		if self.densMapType in ('SIMPLE','DIFF'): densMapProg = 'fft'
-		elif self.densMapType in ('END'): densMapProg = 'END'
+		elif self.densMapType in ('END'): densMapProg = 'END_switchedAxes'
 
 		params 			= [self.dir,self.dsetName]
 		renameParams	= [self.dir,self.name2]
