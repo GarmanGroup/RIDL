@@ -279,6 +279,20 @@ class eTrack(object):
 				self.combinedAtoms.plotSusceptibleAtoms(metric,'Standard',True,'y',aTypes)
 				self.combinedAtoms.plotSusceptibleAtoms(metric,'Standard',False,'y',aTypes)
 
+	def getSpaceGroup(self):
+		pdbFile = self.where+self.initialPDB
+		pdbin = open(self.where+self.initialPDB,'r')
+		for line in pdbin.readlines():
+			if line.split()[0] == 'CRYST1':
+				self.spaceGroup = line[55:66].replace(' ','')
+		pdbin.close()
+		try: 
+			self.spaceGroup
+		except attributeError:
+			print 'Unable to find space group from file: {}'.format(pdbFile)
+			return False
+		return True
+
 	def fillerLine(self):
 		print '---------------------------------------------------------------'	
 
