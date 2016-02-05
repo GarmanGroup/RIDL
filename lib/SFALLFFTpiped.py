@@ -87,9 +87,9 @@ class pipeline():
 		if self.densMapType == 'END':
 			mapmask_ENDmap = MAPMASKjob(inputDensMap,'',self.outputDir,self.runLog)
 			success = mapmask_ENDmap.switchAxisOrder(axes,self.spaceGroup)
-		if success is False:
-			return 7.0
-		else: inputDensMap = mapmask_ENDmap.outputMapFile
+			if success is False:
+				return 7.0
+			else: inputDensMap = mapmask_ENDmap.outputMapFile
 
 		# run MAPMASK job to crop fft density map to asym unit
 		mapmask2 = MAPMASKjob(inputDensMap,'',self.outputDir,self.runLog)
