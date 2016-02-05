@@ -20,8 +20,12 @@ class run():
 	def defineDoseList(self,doses,names,version):
 		# do not include first dataset dose if difference maps chosen
 		if version == 'DIFF':
-			dosesOut = ','.join(doses.split(',')[1:])
-			namesOut = ','.join(names.split(',')[1:])
+			if len(doses.split(',')[1:])>1:
+				dosesOut = ','.join(doses.split(',')[1:])
+				namesOut = ','.join(names.split(',')[1:])
+			else:
+				dosesOut = doses.split(',')[1]
+				namesOut = names.split(',')[1]
 			return dosesOut,namesOut
 		else: return doses,names
 
@@ -85,19 +89,19 @@ class run():
 
 	def getDensSeries(self):
 		dSeries = [['DELAMORA','DIFF'],['JUERS100',''],['JUERS160',''],
- 					['BURY','initial'],['WEIK','initial'],['DIXON',''],
+ 					['BURY','initial'],['WEIK','initial'],['DIXON','DIFF'],
  					['FIOR',''],['BURM','final'],['TRAP',''],['SUTTON',''],
- 					['PETROVA',''],['NANAO','Elastase'],['NANAO','Thaumatin'],
+ 					['PETROVA','DIFF'],['NANAO','Elastase'],['NANAO','Thaumatin'],
  					['NANAO','Trypsin'],['NANAO','Lysozyme'],['NANAO','Insulin'],
  					['NANAO','RibonucleaseA']]
  		return dSeries
 
- 	def writeETRACKinputfile_TRAP(self):
+ 	def writeETRACKinputfile_TRAP(self,version):
 		# Need to create input file for this test TRAP damage series
-		doses = '3.88,6.45,9.02,11.58,14.15,16.72,19.29,21.86,24.98'
-		dNames = '2,3,4,5,6,7,8,9,10'
-		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
-		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/TRAP_ETRACK/DIFF/',
+		doses = '1.31,3.88,6.45,9.02,11.58,14.15,16.72,19.29,21.86,24.98'
+		dNames = '1,2,3,4,5,6,7,8,9,10'
+		doses,dNames = self.defineDoseList(doses,dNames,version)
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/TRAP_ETRACK/{}/'.format(version),
 									      'TRAP',dNames,'TRAP1.pdb',doses,'TRAP_data.pkl')					
 
 	def writeETRACKinputfile_Burm2000(self,version):
@@ -128,15 +132,15 @@ class run():
 	def writeETRACKinputfile_Nanao2005(self,protein):
 		# Need to create input file for the Nanao 2005 damage sets
 		# 'protein' in ('Elastase','Thaumatin','Trypsin','Lysozyme','Insulin','RibonucleaseA')
-		pInfo = {'Trypsin':['lv','lw'],'Thaumatin':['lr','lu'],'Elastase':['lo','lq'],
-				 'Lysozyme':['lx','ly'],'RibonucleaseA':['lp','lz'],'Insulin':['n3','n1']}
+		pInfo = {'Trypsin':'lv,lw','Thaumatin':'lr,lu','Elastase':'lo,lq',
+				 'Lysozyme':'lx,ly','RibonucleaseA':'lp,lz','Insulin':'n3,n1'}
 		if protein not in pInfo.keys(): return
 
-		doses = '2'
-		dNames = pInfo[protein][1]
+		doses = '1,2'
+		dNames = pInfo[protein]
 		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
 		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Nanao2005_ETRACK/{}/DIFF/'.format(protein),
-									      '2b',dNames,'2b{}.pdb'.format(pInfo[protein][0]),doses,'2b_data.pkl')
+									      '2b',dNames,'2b{}.pdb'.format(pInfo[protein].split(',')[0]),doses,'2b_data.pkl')
 
 	def writeETRACKinputfile_DelaMora2011(self,version):
 		# Need to create input file for the DelaMora 2011 damage series
@@ -168,7 +172,7 @@ class run():
 		doses = '2,3,4'
 		dNames = 'q,r,s'
 		doses,dNames = self.defineDoseList(doses,dNames,'DIFF')
-		inputString = self.writeInputFile('/insu/charlie/DPhil/YEAR2/JAN/Juers2011-100K_ETRACK/',
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/Juers2011-100K_ETRACK/',
 									      '3p7',dNames,'3p7p.pdb',doses,'3p7_data.pkl')
 
 	def writeETRACKinputfile_Juers2011_160K(self):
@@ -202,7 +206,7 @@ class run():
 		doses = '0.89,2.74,4.59,6.44,8.29,10.14,11.98,13.84,15.68,17.54'
 		dNames = '1,2,3,4,5,6,7,8,9,10'
 		doses,dNames = self.defineDoseList(doses,dNames,version)
-		inputString = self.writeInputFile('/insu/charlie/DPhil/YEAR2/JAN/TDIXON_InsulinSeries_ETRACK/{}/'.format(version),
+		inputString = self.writeInputFile('/Users/charlie/DPhil/YEAR2/JAN/TDIXON_InsulinSeries_ETRACK/{}/'.format(version),
 									      'insu',dNames,'insu1.pdb',doses,'insu_data.pkl')
 
 	def runBatchSeries(self,mapPro,postPro,retr,densMet,normType):
@@ -285,11 +289,31 @@ class run():
 	def runBatchSeries3(self,mapPro,postPro,retr,densMet,normType,distLim):
 		seriesData = {}
 		dSeries = self.getDensSeries()
+		TyrDamAll,CO2DamAll = [],[]
 		for dSer in dSeries:
 			self.runDataseries(dSer[0],dSer[1],mapPro,postPro,retr)
-			self.et.combinedAtoms.calcAdditionalMetrics('loss','Standard','average')
-			seriesData['-'.join(dSer)] = self.et.combinedAtoms.densMetSurroundAtmsCorrel('TYR','OH',distLim,normType,densMet)
+			self.et.combinedAtoms.calcMetricNumStdsFromStructureMean(densMet,'Standard')
+			self.et.combinedAtoms.calcMetricRatioToStructureMean(densMet,'Standard')
+			self.et.combinedAtoms.calcAdditionalMetrics('loss',normType,'average')
+			self.et.combinedAtoms.seriesName = '-'.join(dSer)
+
+			# get pdb file information and space group
+			pdbName = self.et.where+self.et.initialPDB 
+			success = self.et.getSpaceGroup()
+			if success is False: return
+
+			# determine correlation between TYR-OH damage and carboxyl contacts
+			seriesData['-'.join(dSer)],TyrDam,CO2Dam = self.et.combinedAtoms.densMetSurroundAtmsCorrel('TYR','OH',distLim,normType,densMet,
+																						 			   True,pdbName,self.et.spaceGroup)
+			TyrDamAll += TyrDam
+			CO2DamAll += CO2Dam
 
 		for key in seriesData.keys():
 			print 'For dataseries: {}'.format(key)
 			print seriesData[key]
+
+		# plot the relationship between TYR-OH density and nearby carboxyl atom density
+		self.et.combinedAtoms.plotScatterPlot(TyrDamAll,CO2DamAll,'TYR-OH D{}'.format(densMet),'Carboxyl-contact D{}'.format(densMet),
+											  'TYR-OH vs carboxyl-contact D{}'.format(densMet),
+											  'D{}Scatter_TYR-OH_carboxylContacts-COMBINED.png'.format(densMet),False)
+
