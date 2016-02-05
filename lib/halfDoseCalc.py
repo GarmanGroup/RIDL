@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+import seaborn as sns
 
 class halfDoseApprox():
 	def __init__(self,atom,atoms,plot,doses,globalScaling,doseFraction,densityMetric,normType,plotDir,shiftedHalfDose,zeroOffset):
@@ -88,6 +89,7 @@ class halfDoseApprox():
 		lwrHalfDoseStd 		= self.calculateHalfDose(lwrParams,self.shiftedHalfDose)
 		upprHalfDoseStd 	= self.calculateHalfDose(uprParams,self.shiftedHalfDose)
 		self.halfDoseStd 	= np.array([lwrHalfDoseStd,upprHalfDoseStd])
+		self.calculateInitDecayRate(self.fitParams)
 
 		if self.zeroOffset == 'y':
 			self.certaintyValue = np.product(self.fitParams/self.fitErrors)
@@ -104,12 +106,15 @@ class halfDoseApprox():
 																	   	  'Residuals':self.fitResiduals,
 																	      'Certainty':self.certaintyValue,
 																	      'Initial density':self.fitParams[0],
-																	      'End density':self.fitParams[2]}
+																	      'End density':self.fitParams[2],
+																	      'init decay rate':self.initDecayRate}
 
 	def plotDecayPlot(self,xData,yData):
+		sns.set(context='talk',style='dark')
 		f = plt.figure()
-		plt.plot(xData,yData,marker='.',linestyle='',markersize=10)	
-		plt.plot(xData,self.decayFuncOffset(xData,*self.fitParams))
+		plt.plot(xData,yData,marker='.',linestyle='',markersize=14)	
+		x = np.linspace(min(xData),max(xData),100)
+		plt.plot(x,self.decayFuncOffset(x,*self.fitParams))
 
 		# plot horizontal end density point 
 		xvals = range(0,int(xData[-1]+1)+1)
@@ -119,15 +124,17 @@ class halfDoseApprox():
 		# plot start density point
 		plt.plot([0],[self.fitParams[0]+self.fitParams[2]],'o')
 
-		plt.xlabel("Dose")
-		plt.ylabel('D{}'.format(self.densMet))
+		plt.xlabel("Dose (MGy)",fontsize=20)
+		plt.ylabel('D{} (e/A^3)'.format(self.densMet),fontsize=20)
 		plt.grid()
 		identifier = self.atom.getAtomID() 
-		f.suptitle('{} D{} Half-dose: {} MGy'.format(self.normType,self.densMet,self.halfDose))
+		sns.despine()
+		f.suptitle('{} {} D{} Half-dose: {} MGy, initial decay: {}'.format(self.atom.getAtomID(),self.normType,
+																		   self.densMet,self.halfDose,self.initDecayRate))
 		if self.plotDir != '':
-			f.savefig('{}/{}.png'.format(self.plotDir,identifier))
+			f.savefig('{}/{}-D{}.png'.format(self.plotDir,identifier,self.densMet))
 		else:
-			f.savefig('{}.png'.format(identifier))
+			f.savefig('{}-D{}.png'.format(identifier,self.densMet))
 
 	def printCalcSummary(self):
 		print '----------------------------'
@@ -139,6 +146,7 @@ class halfDoseApprox():
 			print 'val/Std error: {}, {}'.format(*(self.fitParams[:-1]/self.fitErrors))
 		print 'Residuals: {}'.format(self.fitResiduals)
 		print "Half life predicted to be {}".format(self.halfDose)
+		print "initial decay rate: {}".format(self.initDecayRate)
 		print "Certainty value: {}".format(self.certaintyValue)
 		print "Half dose Std interval: {}-{}".format(*self.halfDoseStd)
 
@@ -156,5 +164,11 @@ class halfDoseApprox():
 		# if shift is True then half dose is dose for density to reach av(initial density,end density limit)
 		else:
 			 return -np.log(self.doseFraction)/fitConstants[1]
+
+	def calculateInitDecayRate(self,fitConstants):
+		# calculate the initial decay rate for the current exponential decay model
+		# It is the derivative at dose=0
+		self.initDecayRate = round(fitConstants[0]*fitConstants[1],2)
+
 
 
