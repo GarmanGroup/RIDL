@@ -97,6 +97,12 @@ class combinedAtom(StructurePDB):
 		metricVals = self.densMetric[metric][normType]['values']
 		self.getDensMetricInfo(metric,'subtract mean',list(np.array(metricVals)-np.array(avMetric)))
 
+	def calcRatioToMeanMetric(self,metric,normType,avMetric):
+		# for a specified metric calculate difference between metric for atom and from mean of structure
+		# 'avMetric' is average metric over whole structure
+		metricVals = self.densMetric[metric][normType]['values']
+		self.getDensMetricInfo(metric,'divide mean',list(np.array(metricVals)/np.array(avMetric)))
+
 	def calcNumStdFromMeanMetric(self,metric,normType,avMetric,stdMetric):
 		# for a specified metric calculate number of structure-wide standard deviations between 
 		# metric for atom and from mean of structure. 'avMetric' is average metric over whole structure
@@ -123,6 +129,15 @@ class combinedAtom(StructurePDB):
 			print 'Incompatible metric and per-dataset scale vector lengths'
 			return
 		self.getDensMetricInfo(metric,'vector-weighted',metricVals/np.array(vector))
+
+	def calcVectorSubtractedMetric(self,metric,normType,vector):
+		# for a specified metric calculate new vector-weighted values, where the metric over a series of doses
+		# is multiplied by a vector of per-dataset scalings
+		metricVals = self.densMetric[metric][normType]['values']
+		if len(vector) != len(metricVals):
+			print 'Incompatible metric and per-dataset scale vector lengths'
+			return
+		self.getDensMetricInfo(metric,'vector-subtracted',metricVals - np.array(vector))
 
 	def findSolventAccessibility(self,inputPDBfile):
 		# read in a pdb file output by ccp4 program 'areaimol' which calculates solvent 
