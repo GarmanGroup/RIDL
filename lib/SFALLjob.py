@@ -33,9 +33,9 @@ class SFALLjob():
 
 		self.commandInput1 = 'sfall '+\
 				 'XYZIN {} '.format(self.inputPDBfile)+\
-				 'ATOMSF /Users/charlie/Desktop/atomsf_addNplus1.lib '+\
+				 'ATOMSF atomsf.lib '+\
 			 	 'MAPOUT {} '.format(self.outputMapFile)+\
-				 'SYMINFO /Applications/ccp4-6.5/lib/data/syminfo.lib '
+				 'SYMINFO syminfo.lib '
 
 		if len(self.gridDims) == 0:
 			self.commandInput2 = 'MODE ATMMAP {}\n'.format(self.mapoutType)+\
