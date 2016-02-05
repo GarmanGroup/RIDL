@@ -1,13 +1,11 @@
 import sys
 sys.path.insert(0,'./lib')
 from processFiles import processFiles
-from dependencies import addPaths
 
 class process():
 	# process pdb & mtz files to generate suitable density map files for subsequent analysis
 	def __init__(self):
 		self.inputFile = 'fullInput.txt'
-		addPaths()
 
 	def setInputFile(self,name):
 		# specify input file name as required
