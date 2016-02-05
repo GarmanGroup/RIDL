@@ -173,6 +173,6 @@ class processFiles():
 		return True
 
 	def titleCaption(self,title):
-		print '\n\n\n||========================== {} ==========================||'.format(title)
+		print '\n\n||========================== {} ==========================||'.format(title)
 
 
