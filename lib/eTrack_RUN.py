@@ -2,10 +2,12 @@
 
 from readAtomMap import maps2DensMetrics
 from savevariables import retrieve_objectlist,save_objectlist,saveGenericObject,retrieveGenericObject
-from PDBFileManipulation import PDBtoList
+from PDBFileManipulation import PDBtoList,writePDBline
 from combinedAtomList import combinedAtomList
 import os
- 
+from time import gmtime, strftime
+import numpy as np
+
 class eTrack(object):
 	# A class for retrieving the eTrack input text file information and running 
 	# the eTrack pipeline functions separately or together in full pipeline
@@ -50,6 +52,8 @@ class eTrack(object):
 			pklSeries = saveGenericObject(self.combinedAtoms,self.seriesName)
 			os.system('mv {} {}{}'.format(pklSeries,self.outputDir,pklSeries))
 			self.pklSeries = pklSeries
+			self.summaryStats('loss','Standard') # provide summary txt file on Dloss metric metric per-dataset
+			self.summaryStats('loss','Calpha normalised') 
 		else: 
 			print 'Post processing job not chosen...'
 		self.fillerLine()
@@ -127,6 +131,10 @@ class eTrack(object):
 			if not os.path.exists(oDir):
 				os.makedirs(oDir)
 
+		# make pklFiles and dir to move all generated per-dataset pkl files to this
+		pklFileDir = 'pklFiles-perDataset'
+		os.system('mkdir {}{}'.format(self.outputDir,pklFileDir))
+
 		pklFileNames = []
 		for dataset in self.pdbNames:
 			# derive per-atom density metrics from maps
@@ -140,8 +148,8 @@ class eTrack(object):
 
 			# move pkl file to working output directory
 			pklFileName = maps2DensMets.pklFileName
-			os.system('mv {} {}{}'.format(pklFileName,self.outputDir,pklFileName))
-			pklFileNames.append(self.outputDir+pklFileName)
+			os.system('mv {} {}{}/{}'.format(pklFileName,self.outputDir,pklFileDir,pklFileName))
+			pklFileNames.append('{}{}/{}'.format(self.outputDir,pklFileDir,pklFileName))
 
 		self.pklFiles = pklFileNames
 
@@ -180,11 +188,16 @@ class eTrack(object):
 		# write atom numbers and density metrics to simple text files - one for 
 		# each density metric separately
 		for densMet in combinedAtoms.getDensMetrics():
-			print 'Writing .txt file for per-atom density metric: {}, normalisation: {}'.format(*densMet)
+			print 'Writing .csv file for per-atom density metric: {}, normalisation: {}'.format(*densMet)
 			combinedAtoms.writeMetric2File(self.outputDir,*densMet)
-		
+
+		# make csvFiles dir and move all generated csv files to this
+		os.system('mkdir {}/csvFiles'.format(self.outputDir))
+		for file in os.listdir(self.outputDir):
+			if file.endswith(".csv"):
+				os.system('mv -f {}{} {}csvFiles/{}'.format(self.outputDir,file,self.outputDir,file))
+
 		self.combinedAtoms = combinedAtoms
-		self.summaryStats()
 		#self.sensAtomPlots()
 
 	def PDBmulti_retrieve(self):
@@ -194,57 +207,182 @@ class eTrack(object):
 		# retrieve the combinedAtoms object from the pkl file
 		self.combinedAtoms = retrieveGenericObject(self.outputDir+self.pklSeries)
 
-	def summaryStats(self):
+	def summaryStats(self,metric,normType):
 		# produce a selection of per-dataset summary statistics
-		summaryFile = open('{}/summaryFile.txt'.format(self.outputDir),'w')
-		for i in range(self.combinedAtoms.atomList[0].getNumDatasets()):
+		# by default set metric as 'loss' for Dloss metric
+		# by default 'normType' is 'Standard'
 
-			# standard Dloss statistics
-			summaryFile.write('\n\nDataset: {}'.format(i))
+		# calculate C-alpha normalised version of Dloss
+		if normType == 'Calpha normalised':
+			for m in ('loss','mean','gain','Bfactor'):
+				self.combinedAtoms.calcAdditionalMetrics(m,'Standard','Calpha')
+
+		numDsets = self.combinedAtoms.atomList[0].getNumDatasets() # get number of datasets in damage series
+		summaryFile = open('{}/summaryFile-D{}-{}.txt'.format(self.outputDir,metric,normType.replace(' ','-')),'w')
+		summaryFile.write('D{} ({}) eTrack summary file\n'.format(metric,normType))
+		summaryFile.write('Created: {}\n'.format(strftime("%Y-%m-%d %H:%M:%S", gmtime())))
+		summaryFile.write('Summary information derived from {}\n'.format(self.pklSeries))
+		summaryFile.write('Email charles.bury@dtc.ox.ac.uk for queries\n')
+
+		summaryFile.write('\n-----------------------\n')
+		summaryFile.write('Number of datasets reported in file: {}\n'.format(numDsets))
+		summaryFile.write('Providing analysis on each dataset individually below\n')
+
+		summaryFile.write('\n-----------------------\n')
+		summaryFile.write('Key of reported quantities:\n')
+		summaryFile.write('mean: average of metric calculated over all atoms of a specified type\n')
+		summaryFile.write('std: standard deviation of metric calculated over all atoms of a specified type\n')
+		summaryFile.write('#atoms: total number of atoms of a specified type\n')
+		summaryFile.write('outliers: assuming a symmetric distn around the mode, number of atoms that fall outside this domain\n')
+		summaryFile.write('skew: skewness of metric distribution for atoms of specified type\n')
+		summaryFile.write('ratio: net ratio of distn values either side of metric distn mode\n\n')
+
+		av,std = self.combinedAtoms.getAverageMetricVals(metric,normType) # get structure-wide metric average & std dev
+
+		for i in range(numDsets):
+			summaryFile.write('-----------------------'*3+'\n')
+			summaryFile.write('Dataset info:\nNumber in series: {}\n'.format(i+1))
+			summaryFile.write('Name: {}\n'.format(self.pdbNames[i]))
+			summaryFile.write('Dose (MGy): {}\n'.format(self.doses[i]))
+
 			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Per-residue Statistics:\n')
-			summaryFile.write('Dloss metric ranked by mean value:\n')
-			statsOut = self.combinedAtoms.getPerResidueStats('loss','Standard',i,'mean','all')
-			summaryFile.write(statsOut[0])
+			summaryFile.write('Structure-wide D{} summary:\n'.format(metric))
+			summaryFile.write('Average D{}: {}\n'.format(metric,round(av[i],3)))
+			summaryFile.write('Std dev in D{}: {}\n'.format(metric,round(std[i],3)))
+
+			summaryFile.write('# atoms with {} Dloss metric above N std dev of structure-wide mean:\n'.format(normType))
+			summaryFile.write('N\t\t#atoms\n')
+			n = self.combinedAtoms.numAtmsWithMetricAboveLevel(i,metric,normType,0.5,False)
+			summaryFile.write('{}\t\t{}\n'.format(0.5,n))
+			t = 0
+			while n != 0:
+				t += 1
+				n = self.combinedAtoms.numAtmsWithMetricAboveLevel(i,metric,normType,t,False)
+				summaryFile.write('{}\t\t{}\n'.format(t,n))
+
 			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Per-chain Statistics:\n')
-			summaryFile.write('Dloss metric ranked by mean value:\n')
-			statsOut = self.combinedAtoms.getPerChainStats('loss','Standard',i,'mean','all')
-			summaryFile.write(statsOut[0])
+			summaryFile.write('Per-atom Statistics:\n')
+			summaryFile.write('Top hits ranked by D{} metric:\n'.format(metric))
+			statsOut = self.combinedAtoms.getTopNAtomsString(metric,normType,i,25)
+			summaryFile.write(statsOut)
+
 			summaryFile.write('\n-----------------------\n')
 			summaryFile.write('Per-atom-type Statistics:\n')
-			summaryFile.write('Dloss metric ranked by mean value:\n')
-			statsOut = self.combinedAtoms.getPerAtmtypeStats('loss','Standard',i,'mean',25)
+			summaryFile.write('D{} metric ranked by mean value:\n'.format(metric))
+			statsOut = self.combinedAtoms.getPerAtmtypeStats(metric,normType,i,'mean',25)
 			summaryFile.write(statsOut[0])
+
 			summaryFile.write('\n-----------------------\n')
 			summaryFile.write('Per-atom Statistics:\n')
-			summaryFile.write('Top hits ranked by Dloss metric:\n')
-			statsOut = self.combinedAtoms.getTopNAtomsString('loss','Standard',i,25)
-			summaryFile.write(statsOut)
-			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Per-atom Statistics:\n')
-			summaryFile.write('Top Dloss hits grouped by residue type:\n')
+			summaryFile.write('Top D{} hits grouped by residue type:\n'.format(metric))
 			n = self.combinedAtoms.getNumAtoms()*0.1 # take top 10% of atoms here
-			statsOut = self.combinedAtoms.breakdownTopNatomsBy('loss','Standard',i,n,['basetype','atomtype'])
+			statsOut = self.combinedAtoms.breakdownTopNatomsBy(metric,normType,i,n,['basetype','atomtype'])
 			summaryFile.write(statsOut)
 
-			# standard Dmean statistics
 			summaryFile.write('\n-----------------------\n')
 			summaryFile.write('Per-residue Statistics:\n')
-			summaryFile.write('Dmean metric ranked by mean:\n')
-			statsOut = self.combinedAtoms.getPerResidueStats('mean','Standard',i,'mean','all')
+			summaryFile.write('D{} metric ranked by mean value:\n'.format(metric))
+			statsOut = self.combinedAtoms.getPerResidueStats(metric,normType,i,'mean','all')
 			summaryFile.write(statsOut[0])
+
 			summaryFile.write('\n-----------------------\n')
 			summaryFile.write('Per-chain Statistics:\n')
-			summaryFile.write('Dmean metric ranked by mean:\n')
-			statsOut = self.combinedAtoms.getPerChainStats('mean','Standard',i,'mean','all')
+			summaryFile.write('D{} metric ranked by mean value:\n'.format(metric))
+			statsOut = self.combinedAtoms.getPerChainStats(metric,normType,i,'mean','all')
 			summaryFile.write(statsOut[0])
-			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Per-atom-type Statistics:\n')
-			summaryFile.write('Dmean metric ranked by mean value:\n')
-			statsOut = self.combinedAtoms.getPerAtmtypeStats('mean','Standard',i,'mean',25)
-			summaryFile.write(statsOut[0])
+
+			# also plot a barplot of damage metric for each susceptible residue type
+			for set in [1,2]:
+				for b in ('Box','Bar'):
+					self.combinedAtoms.susceptAtmComparisonBarplot(metric,normType,i,set,b)
 		summaryFile.close()
+
+		# additionally write top damage sites to .pdb file for each dataset
+		self.damSitesPDB = []
+		for i in range(numDsets): 
+			damPDB = self.combinedAtoms.getTopNAtomsPDBfile(metric,normType,i,25,self.where+self.initialPDB)
+			self.damSitesPDB.append(damPDB)
+
+	def colorByMetric(self,metric,normType,dataset,singleResidue):
+		# for the initial pdb file in damage series, convert the Bfactor column 
+		# to values for the specified metric.
+		# If 'singleResidue' is specified (use 3-letter residue code) then the average 
+		# density metric for each atom within this residue is calculated within the structure
+		# and only this is output to resulting PDB file, otherwise use ''
+		if normType == 'Calpha normalised': 
+			self.combinedAtoms.calcAdditionalMetrics(metric,normType,'Calpha')
+
+		pdbIn = open(self.where+self.initialPDB,'r')
+		fileOut = self.outputDir+self.initialPDB.strip('.pdb')+'_{}D{}_{}.pdb'.format(normType.replace(" ",""),metric,dataset)
+		if singleResidue != '':
+			fileOut = fileOut.strip('.pdb')+'-{}.pdb'.format(singleResidue)
+
+		pdbOut = open(fileOut,'w')
+		pdbOut.write('REMARK\tBfactor column replaced by {} D{} metric values\n'.format(normType,metric))
+		for l in pdbIn.readlines():
+			if l.split()[0] in ('CRYST1','SCALE1','SCALE2','SCALE3'):
+				pdbOut.write(l)
+			elif 'ATOM' in l.split()[0]:
+				break
+		pdbIn.close()
+
+		if singleResidue == '':
+			for atm in self.combinedAtoms.atomList:
+				dens = atm.densMetric[metric][normType]['values'][dataset]
+				if not np.isnan(dens): # don't include atoms for which not calculated properly
+					l = writePDBline(atm,dens)
+					pdbOut.write(l+'\n')
+		else:
+			atmDic = self.combinedAtoms.getAvMetricPerAtmInRes(singleResidue,metric,normType,dataset)
+			for atm in self.combinedAtoms.atomList:
+				if atm.basetype == singleResidue:
+					resNum = atm.residuenum # save the residue number now
+					break
+			for atm in self.combinedAtoms.atomList:
+				if atm.residuenum == resNum:
+					dens = atmDic[atm.atomtype]
+					l = writePDBline(atm,dens)
+					pdbOut.write(l+'\n')
+		pdbOut.write('END')
+		pdbOut.close()
+
+	def visualiseDamSites(self,dataset,metric,software,size):
+		# open coot/pymol to view top damage sites
+		# size is the density metric scale factor used when visualising damage sites as spheres 
+		# of vdw = size*{density metric} within pymol
+		if software not in ('coot','pymol'):
+			print "Damage sites can be visualised in either 'coot' or 'pymol"
+			print "Please make sure the paths to these programs are correctly set up before proceeding"
+			return
+		try: self.damSitesPDB
+		except AttributeError:
+			return "Must run .summaryStats('loss','Standard') before damage sites can be read in {}".format(software)
+		if software == 'coot':
+			os.system('coot -pdb {} -pdb2 {}'.format(self.where+self.initialPDB,self.damSitesPDB[dataset]))
+		else:
+			# need to write script for pymol to run with
+			damSitesTag = (self.damSitesPDB[dataset].split('/')[-1]).strip('.pdb')
+			structureTag = self.initialPDB.strip('.pdb')
+			scriptName = self.outputDir+'runPymolScript.pml'
+			pymolScript = open(scriptName,'w')
+			pymolScript.write('load {}\n'.format(self.where+self.initialPDB)+\
+							  'load {}\n'.format(self.damSitesPDB[dataset])+\
+							  'hide lines\nshow cartoon\n'+\
+							  'set antialias, 1\n'+\
+							  'set ray_trace_mode, 0\n'+\
+							  'set cartoon_fancy_helices, 1\n'+\
+							  'set cartoon_side_chain_helper, on\n'+\
+							  'set ray_opaque_background, 0\n'+\
+							  'show sphere, {}\n'.format(damSitesTag)+\
+							  'alter {}, vdw=b*{}\n'.format(damSitesTag,size)+\
+							  'rebuild\n'+\
+							  'select nearDamage, {} w. 4 of {}\n'.format(structureTag,damSitesTag)+\
+							  'show sticks, nearDamage\n'+\
+							  'set stick_transparency, 0.6\n'+\
+							  'color red, {}\n'.format(damSitesTag)+\
+							  'color white, {}\n'.format(structureTag))
+			pymolScript.close()
+			os.system('pymol {}'.format(scriptName))
 
 	def sensAtomPlots(self):
 		# set of plots investigating damage progression for sensitive atoms within structure
@@ -291,7 +429,7 @@ class eTrack(object):
 		except attributeError:
 			print 'Unable to find space group from file: {}'.format(pdbFile)
 			return False
-		return True
+		return self.spaceGroup
 
 	def fillerLine(self):
 		print '---------------------------------------------------------------'	
