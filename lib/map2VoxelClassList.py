@@ -5,12 +5,11 @@ import os
 import sys
 import mmap
 import numpy as np
+from logFile import logFile
 
-def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices):
-    # append to log file for this eTrack run 
-    logfileName = '{}{}_log.txt'.format(dirOut,pdbname)
-    logfile = open(logfileName,'a')
-    
+def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices,log):
+    # read .map file of either density or atom-tagged type
+
     # define 'rho' electron map object
     rho = MapInfo()
 
@@ -43,7 +42,12 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices):
         rho.density[d] = unpack('f',bmf.read(4))[0] 
 
     s = rho.getHeaderInfo()
-    logfile.write(s)
+
+    # write to log file if specified 
+    if log != '':
+        if os.path.exists(log.logFile):
+            for l in s.split('\n'): log.writeToLog(l)
+    else: print s
 
     # next find .map file size, to calculate the last nx*ny*nz bytes of 
     # file (corresponding to the position of the 3D electron density 
@@ -115,8 +119,6 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices):
         else:
             print 'Unknown map type --> terminating script'
             sys.exit()
-
-    logfile.close()           
     bmf.close()
     
     # as a check that file has been read correctly, check that the min 
