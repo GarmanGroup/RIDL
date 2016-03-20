@@ -225,7 +225,6 @@ class MapInfo:
         s += self.getCelldimsString() +'\n'
         s += self.getAxisString() +'\n'
         s += self.getDensityString()
-        print s
         return s
 
 
