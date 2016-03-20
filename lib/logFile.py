@@ -15,7 +15,10 @@ class logFile():
 		currentTime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
 		with open(self.logFile, "a") as logfile:
 			logfile.write('{}\t{}\n'.format(self.getTime(),logstring))
-			print logstring
+			if logstring.startswith('Running'):
+				print '\n'+logstring
+			else:
+				print logstring
 
 	def getTime(self):
 		return strftime("%Y-%m-%d %H:%M:%S", gmtime())
