@@ -35,26 +35,26 @@ class run():
 
 	def writeBlankInputFile(self):
 		# Need to create input file for a generic damage series to be completed by the user
-		inputString = self.writeInputFile('where <input file location>',
+		inputString = self.writeInputFile('inDir <input file location>',
+										  'outDir <output file location>',
 										  'damageset_name <consistent name of series, e.g. for TRAP1.pdb, TRAP2.pdb, this is TRAP>',
 										  'damageset_num <dataset numbers, e.g. 1,2 for TRAP. Can be letters corresponding to pdb series>',
 										  'initialPDB <initial dataset pdb file e.g. TRAP1.pdb>',
 										  'doses <list of doses, length must match length of damageset_num above>',
 										  'PKLMULTIFILE <if already processed in ETRACK, can specify single output .pkl for series>')	
 
-	def writeInputFile(self,where,damageset_name,damageset_num,initialPDB,doses,PKLMULTIFILE):
+	def writeInputFile(self,inDir,outDir,damageset_name,damageset_num,initialPDB,doses,PKLMULTIFILE):
 		# write a generic input file for a damage series here
-		inputString = 'where {}\n'.format(where)+\
+		inputString = 'inDir {}\n'.format(inDir)+\
+					  'outDir {}\n'.format(outDir)+\
 					  'damageset_name {}\n'.format(damageset_name)+\
 					  'damageset_num {}\n'.format(damageset_num)+\
 					  'initialPDB {}\n'.format(initialPDB)+\
 					  'doses {}\n'.format(doses)
 		if PKLMULTIFILE != '':
 			inputString += 'PKLMULTIFILE {}'.format(PKLMULTIFILE)
-
 		inputFile  = open(self.inputFileName,'w')
 		inputFile.write(inputString)
 		inputFile.close()	
-
 
 

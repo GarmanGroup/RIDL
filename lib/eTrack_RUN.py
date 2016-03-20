@@ -11,10 +11,11 @@ import numpy as np
 class eTrack(object):
 	# A class for retrieving the eTrack input text file information and running 
 	# the eTrack pipeline functions separately or together in full pipeline
-	def __init__(self, where = "", pdbNames = [], pklFiles = [], initialPDB = "",
+	def __init__(self, inDir = "",outDir = "",pdbNames = [], pklFiles = [], initialPDB = "",
 				 seriesName = "", pklSeries = "",doses=[],plot = False):
 
-		self.where 			= where 		# the input and output file directory
+		self.inDir 			= inDir 		# the input file directory
+		self.outDir  		= outDir 		# the output file directory
 		self.pdbNames 		= pdbNames 		# the list of pdb codes for series
 		self.pklFiles 		= pklFiles 		# list of pkl files from map_processing
 		self.initialPDB 	= initialPDB 	# the first dataset pdb code
@@ -85,13 +86,15 @@ class eTrack(object):
 
 		pklFiles = [] # preallocate pklFiles list for post_processing pipeline step below
 		
-		# read in input file and determine location 'where' and name of input files
+		# read input file and determine location and name of input files
 		inputfile = open(inputfilename,'r')
 		for line in inputfile.readlines():
 			l = line.split()
 			if '#' == line[0]: continue
-			elif 'where' in l[0]:
-				self.where 		= l[1]
+			elif 'inDir' in l[0]:
+				self.inDir 	= l[1]
+			elif 'outDir' in l[0]:
+				self.outDir 	= l[1]
 			elif 'damageset_name' in l[0]:
 				self.seriesName = l[1]
 			elif 'damageset_num' in l[0]:
@@ -107,11 +110,13 @@ class eTrack(object):
 			elif 'plot' in l[0]:
 				self.plot = True
 
-		# check that an output directory has been found and make subdirectories if present
-		if os.path.isdir(self.where) == False:
-			print 'Input file location: {} does not exist. Please select an appropriate directory'.format(self.where)
-			return False
-		self.outputDir 		= '{}ETRACK_output/'.format(self.where)
+		# check that an input/output directories have been found and make subdirectories if present
+		for dir in ([[self.inDir,'Input'],[self.outDir,'Output']]):
+			if os.path.isdir(dir[0]) == False:
+				print '{} file location: {} does not exist. Please select an appropriate directory'.format(dir[1],dir[0])
+				return False
+
+		self.outputDir 		= '{}ETRACK_output/'.format(self.outDir)
 		self.outputPlotDir 	= '{}plots/'.format(self.outputDir)
 
 		# add pkl file names as attribute if specified in input file
@@ -140,7 +145,7 @@ class eTrack(object):
 			# derive per-atom density metrics from maps
 			mapfilname1 	= '{}_atoms.map'.format(dataset)
 			mapfilname2 	= '{}_density.map'.format(dataset)
-			maps2DensMets 	= maps2DensMetrics(self.where,self.outputDir,dataset,	
+			maps2DensMets 	= maps2DensMetrics(self.inDir,self.outputDir,dataset,	
 											   mapfilname1,'atom_map',
 											   mapfilname2,'density_map',
 											   self.plot)
@@ -161,7 +166,7 @@ class eTrack(object):
 
 		# next read in the pdb structure file as list of atom objects
 		print 'Reading in initial pdb file...'
-		initialPDBlist = PDBtoList(self.where+self.initialPDB,[])
+		initialPDBlist = PDBtoList(self.inDir+self.initialPDB,[])
 
 		# retrieve object lists of atoms for each damage set
 		self.fillerLine()
@@ -300,7 +305,7 @@ class eTrack(object):
 		# additionally write top damage sites to .pdb file for each dataset
 		self.damSitesPDB = []
 		for i in range(numDsets): 
-			damPDB = self.combinedAtoms.getTopNAtomsPDBfile(metric,normType,i,25,self.where+self.initialPDB)
+			damPDB = self.combinedAtoms.getTopNAtomsPDBfile(metric,normType,i,25,self.inDir+self.initialPDB)
 			self.damSitesPDB.append(damPDB)
 
 	def colorByMetric(self,metric,normType,dataset,singleResidue):
@@ -312,7 +317,7 @@ class eTrack(object):
 		if normType == 'Calpha normalised': 
 			self.combinedAtoms.calcAdditionalMetrics(metric,normType,'Calpha')
 
-		pdbIn = open(self.where+self.initialPDB,'r')
+		pdbIn = open(self.inDir+self.initialPDB,'r')
 		fileOut = self.outputDir+self.initialPDB.strip('.pdb')+'_{}D{}_{}.pdb'.format(normType.replace(" ",""),metric,dataset)
 		if singleResidue != '':
 			fileOut = fileOut.strip('.pdb')+'-{}.pdb'.format(singleResidue)
@@ -358,14 +363,14 @@ class eTrack(object):
 		except AttributeError:
 			return "Must run .summaryStats('loss','Standard') before damage sites can be read in {}".format(software)
 		if software == 'coot':
-			os.system('coot -pdb {} -pdb2 {}'.format(self.where+self.initialPDB,self.damSitesPDB[dataset]))
+			os.system('coot -pdb {} -pdb2 {}'.format(self.inDir+self.initialPDB,self.damSitesPDB[dataset]))
 		else:
 			# need to write script for pymol to run with
 			damSitesTag = (self.damSitesPDB[dataset].split('/')[-1]).strip('.pdb')
 			structureTag = self.initialPDB.strip('.pdb')
 			scriptName = self.outputDir+'runPymolScript.pml'
 			pymolScript = open(scriptName,'w')
-			pymolScript.write('load {}\n'.format(self.where+self.initialPDB)+\
+			pymolScript.write('load {}\n'.format(self.inDir+self.initialPDB)+\
 							  'load {}\n'.format(self.damSitesPDB[dataset])+\
 							  'hide lines\nshow cartoon\n'+\
 							  'set antialias, 1\n'+\
@@ -418,8 +423,8 @@ class eTrack(object):
 				self.combinedAtoms.plotSusceptibleAtoms(metric,'Standard',False,'y',aTypes)
 
 	def getSpaceGroup(self):
-		pdbFile = self.where+self.initialPDB
-		pdbin = open(self.where+self.initialPDB,'r')
+		pdbFile = self.inDir+self.initialPDB
+		pdbin = open(self.inDir+self.initialPDB,'r')
 		for line in pdbin.readlines():
 			if line.split()[0] == 'CRYST1':
 				self.spaceGroup = line[55:66].replace(' ','')
