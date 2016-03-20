@@ -15,6 +15,7 @@ class pipeline():
 		self.outputDir	= outputDir
 		self.inputFile 	= inputFile
 		self.jobName 	= jobName
+		self.findFilesInDir() # find files initially in working dir
 
 	def runPipeline(self):
 
@@ -24,7 +25,7 @@ class pipeline():
 			return 1
 
 		# create log file
-		self.runLog = logFile('{}/{}_runLog_2.txt'.format(self.outputDir,self.jobName))
+		self.runLog = logFile('{}/{}_runLog2.log'.format(self.outputDir,self.jobName))
 
 		# run pdbcur job 
 		pdbcur = PDBCURjob(self.pdbcurPDBinputFile,self.outputDir,self.runLog)
@@ -50,11 +51,17 @@ class pipeline():
 			return 4
 
 		# run FFT job
-		sfallMap = mapTools(sfall.outputMapFile)
-		axes = [sfallMap.fastaxis,sfallMap.medaxis,sfallMap.slowaxis]
-		gridSamps = [sfallMap.gridsamp1,sfallMap.gridsamp2,sfallMap.gridsamp3]
-		labelsInit = ['FP_'+self.initPDB,'SIGFP_'+self.initPDB,'FOM_'+self.initPDB,'PHIC_'+self.initPDB]
-		labelsLater = ['FP_'+self.laterPDB,'SIGFP_'+self.laterPDB,'FOM_'+self.laterPDB,'PHIC_'+self.laterPDB]
+		sfallMap 	= mapTools(sfall.outputMapFile)
+		axes 		= [sfallMap.fastaxis,sfallMap.medaxis,sfallMap.slowaxis]
+		gridSamps 	= [sfallMap.gridsamp1,sfallMap.gridsamp2,sfallMap.gridsamp3]
+
+		if self.densMapType in ('DIFF','SIMPLE'):
+			labelsInit 	= ['FP_'+self.initPDB,'SIGFP_'+self.initPDB,'FOM_'+self.initPDB,'PHIC_'+self.initPDB]
+			labelsLater = ['FP_'+self.laterPDB,'SIGFP_'+self.laterPDB,'FOM_'+self.laterPDB,'PHIC_'+self.laterPDB]
+
+		if self.densMapType == '2FOFC':
+			labelsInit 	= ['','','','']
+			labelsLater = ['FWT_{}'.format(self.laterPDB),'','','PHIC']
 		
 		if self.densMapType != 'END':
 			fft = FFTjob(self.densMapType,self.FOMweight,self.reorderedPDBFile,self.inputMtzFile,
@@ -113,6 +120,7 @@ class pipeline():
 		if success is False:
 			return 9
 		else:
+			self.cleanUpDir()
 			return 0
 
 	def readInputFile(self):
@@ -221,5 +229,19 @@ class pipeline():
 
 		self.runLog.writeToLog('---> success!')
 		return True
+
+	def cleanUpDir(self):
+		# give option to clean up working directory 
+		print 'Cleaning up working directory\n'
+		# move txt files to subdir
+		os.system('mkdir {}/txtFiles'.format(self.outputDir))
+		for file in os.listdir(self.outputDir): 
+			if file.endswith('.txt') and file not in self.filesInDir:
+				os.system('mv {}/{} {}/txtFiles/{}'.format(self.outputDir,file,self.outputDir,file))
+
+	def findFilesInDir(self):
+		# find files initially in working directory
+		self.filesInDir = os.listdir(self.outputDir)
+
 
 
