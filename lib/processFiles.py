@@ -14,12 +14,12 @@ class processFiles():
 		self.checkOutputDirExists()
 		self.findFilesInDir()
 		self.writePipeline1Inputs()
-		self.writePipeline2Inputs()
 		success = self.runPipeline1()
 		if success == True:
+			self.writePipeline2Inputs()
 			success = self.runPipeline2()
 			if success == True:
-				success = self.cleanUpDirectory()
+				success = self.cleanUpDir()
 		return success
 
 	def readMainInputFile(self):
@@ -47,7 +47,8 @@ class processFiles():
 		requiredProps = ['name1','mtz1','mtzlabels1','pdb1','RfreeFlag1',
 						 'name2','mtz2','mtzlabels2','pdb2',
 						 'name3','mtz3','mtzlabels3',''
-						 'sfall_VDWR','densMapType','dir','FFTmapWeight']
+						 'sfall_VDWR','densMapType','dir',
+						 'FFTmapWeight','deleteMtzs']
 
 		for prop in requiredProps:
 			try:
@@ -74,18 +75,21 @@ class processFiles():
 		self.pipe1FileName 	= self.dir+'/'+self.inputFile.split('.')[0]+'_cadscaleit.txt'
 
 		fileOut1 = open(self.pipe1FileName,'w')
-		inputString = 'filename1 {}\n'.format(self.mtz1)+\
-					  'labels1 {}\n'.format(self.mtzlabels1)+\
-					  'label1rename {}\n'.format(self.name1)+\
+		inputString = 'mtzIn1 {}\n'.format(self.mtz1)+\
+					  'Mtz1LabelName {}\n'.format(self.mtzlabels1)+\
+					  'Mtz1LabelRename {}\n'.format(self.name1)+\
 					  'RfreeFlag1 {}\n'.format(self.RfreeFlag1)+\
-					  'filename2 {}\n'.format(self.mtz2)+\
-					  'labels2 {}\n'.format(self.mtzlabels2)+\
-					  'label2rename {}\n'.format(self.name2)+\
-					  'filename3 {}\n'.format(self.mtz3)+\
-					  'labels3 {}\n'.format(self.mtzlabels3)+\
-					  'label3rename {}\n'.format(self.name3)+\
-					  'inputPDBfile {}\n'.format(self.pdb1)+\
+					  'mtzIn2 {}\n'.format(self.mtz2)+\
+					  'Mtz2LabelName {}\n'.format(self.mtzlabels2)+\
+					  'Mtz2LabelRename {}\n'.format(self.name2)+\
+					  'mtzIn3 {}\n'.format(self.mtz3)+\
+					  'Mtz3LabelName {}\n'.format(self.mtzlabels3)+\
+					  'Mtz3LabelRename {}\n'.format(self.name3)+\
+					  'inputPDBfile {}\n'.format(self.pdb2)+\
+					  'densMapType {}\n'.format(self.densMapType)+\
+					  'deleteMtzs {}\n'.format(self.deleteMtzs)+\
 					  'END'
+
 		fileOut1.write(inputString)
 		fileOut1.close()
 		self.jobName = '{}-{}'.format(self.name2,self.name1)
@@ -94,12 +98,17 @@ class processFiles():
 
 		self.pipe2FileName 	= self.dir+'/'+self.inputFile.split('.')[0]+'_sfallfft.txt'
 
+		if self.densMapType != '2FOFC':
+			mtzIn = '{}_SCALEITcombined.mtz'.format(self.jobName)
+		else:
+			mtzIn = '{}_sigmaa.mtz'.format(self.name2)
+
 		fileOut2 = open(self.pipe2FileName,'w')
 		inputString = 'pdbIN {}\n'.format(self.pdb2)+\
 					  'initialPDB {}\n'.format(self.name1)+\
 					  'laterPDB {}\n'.format(self.name2)+\
 					  'sfall_VDWR {}\n'.format(self.sfall_VDWR)+\
-					  'mtzIN {}/{}_SCALEITcombined.mtz\n'.format(self.dir,self.jobName)+\
+					  'mtzIN {}/{}\n'.format(self.dir,mtzIn)+\
 					  'densMapType {}\n'.format(self.densMapType)+\
 					  'FFTmapWeight {}\n'.format(self.FFTmapWeight)+\
 					  'END'
@@ -130,13 +139,15 @@ class processFiles():
 		# find files initially in working directory
 		self.filesInDir = os.listdir(self.dir)
 
-	def cleanUpDirectory(self):
+	def cleanUpDir(self):
 		# after successful completion of pipeline clean up working directory
-		print 'Cleaning up directory'
+		print '\nCleaning up working directory'
 
-		# distinguish between FFT and END map output formats
-		if self.densMapType in ('SIMPLE','DIFF'): densMapProg = 'fft'
-		elif self.densMapType in ('END'): densMapProg = 'END_switchedAxes'
+		# distinguish between FFT and END map output formats depending on program used (FFT/END shellscript)
+		if self.densMapType == 'END':
+			densMapProg = 'END_switchedAxes'
+		else:
+			densMapProg = 'fft'
 
 		params 			= [self.dir,self.dsetName]
 		renameParams	= [self.dir,self.name2]
