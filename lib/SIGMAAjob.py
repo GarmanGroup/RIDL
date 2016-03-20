@@ -3,10 +3,11 @@ import os
 
 class SIGMAAjob():
 	# run SIGMAA job to combine generate FOM weights if not present in input mtz file
-	def __init__(self,inputMtz,MtzLabelName,RfreeFlag,inputPDB,outputDir,runLog):
+	def __init__(self,inputMtz,MtzLabelNameIn,MtzLabelNameOut,RfreeFlag,inputPDB,outputDir,runLog):
 
 		self.inputMtz 			= inputMtz # mtz containing initial dataset Fs
-		self.LabelName 			= MtzLabelName
+		self.LabelName 			= MtzLabelNameIn
+		self.LabelRename 		= MtzLabelNameOut
 		self.RfreeFlag			= RfreeFlag
 		self.tmpMtz				= outputDir+'/'+(inputMtz.split('/')[-1]).split('.mtz')[0]+'.tmp'
 		self.outputMtz			= self.tmpMtz.split('.tmp')[0]+'_sigmaa.mtz'
@@ -50,6 +51,7 @@ class SIGMAAjob():
     						  'XYZIN -\n'+\
     						  'HKLIN\n'+\
 							  'symmetry {}\n'.format(self.spaceGroup)+\
+							  'NOSCALE\n'+\
 							  'end'
 					
 		self.outputLogfile = 'SIGMAAlogfile1.txt'
@@ -61,13 +63,13 @@ class SIGMAAjob():
 			return
 
 		self.commandInput1 	= 	'sigmaa '+\
-								'HKLIN {} '.format(self.tmpMtz)+\
+								'HKLIN {} '.format(self.tmpMtz )+\
 								'HKLOUT {} '.format(self.outputMtz)
 
 		self.commandInput2 	= 'title {}\n'.format(title)+\
 							  'LABIN  FP=F{} SIGFP=SIGF{} FC=FC PHIC=PHIC\n'.format(self.LabelName,self.LabelName)+\
 							  'labout -\n'+\
-   							  'DELFWT=DELFWT FWT=FWT WCMB=FOM{}\n'.format(self.LabelName)+\
+   							  'DELFWT=DELFWT_{} FWT=FWT_{} WCMB=FOM_{}\n'.format(self.LabelRename,self.LabelRename,self.LabelRename)+\
 							  'ranges 20 -\n'+\
     						  '1000\n'+\
 							  'symmetry "{}"\n'.format(self.spaceGroup)+\
