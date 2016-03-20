@@ -7,11 +7,11 @@ class combinedAtom(StructurePDB):
 	# A subclass extension for a collection of multiple different dose pdb file structures as 
 	# defined by the StructurePDB class. This class adds additonal attributes and methods
 	def __init__(self,atomnum = 0,residuenum = 0,atomtype = "",basetype = "",chaintype = "",
-				 X_coord = 0,Y_coord = 0,Z_coord = 0,atomidentifier = "",
+				 X_coord = 0,Y_coord = 0,Z_coord = 0,atomID = "",
 				 numsurroundatoms = 0,numsurroundprotons = 0,densMetric = {},partialInfo=False):
 
 		super(combinedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,X_coord,
-										   Y_coord,Z_coord,atomidentifier,numsurroundatoms,numsurroundprotons)
+										   Y_coord,Z_coord,atomID,numsurroundatoms,numsurroundprotons)
 
 		self.densMetric = {} # dictionary of density metrics to be filled
 
@@ -144,17 +144,17 @@ class combinedAtom(StructurePDB):
 		# accessibility for each atom within a pdb file and writes value in Bfactor column
 
 		# check if atom already has solvent accessibility calculated
-		try:
-			self.solventAccess
-			return self.solventAccess
-		except AttributeError:
+		# try:
+		# 	self.solventAccess
+		# 	return self.solventAccess
+		# except AttributeError:
 			# if not already calculated then..
-			openFile =  open(str(inputPDBfile), "r")
-			for line in openFile.readlines():
-				if (self.atomtype == str(line[12:16].strip())
-					and self.residuenum == int(line[22:26].strip())
-					and self.chaintype == str(line[21])  
-					and self.basetype == str(line[17:20].strip())):
-					self.solventAccess = str(line[60:66].strip()) 
-					return self.solventAccess
+		openFile =  open(str(inputPDBfile), "r")
+		for line in openFile.readlines():
+			if (self.atomtype == str(line[12:16].strip())
+				and self.residuenum == int(line[22:26].strip())
+				and self.chaintype == str(line[21])  
+				and self.basetype == str(line[17:20].strip())):
+				self.solventAccess = str(line[60:66].strip()) 
+				return self.solventAccess
 		openFile.close()
