@@ -2,8 +2,9 @@ from ccp4Job import ccp4Job,checkInputsExist
 from mapTools import mapTools
 
 class FFTjob():
+	def __init__(self,mapType,FOMweight,inputPDBname,inputMtzFile,
+				 outputDir,axes,gridSamps,labels1,labels2,runLog):
 
-	def __init__(self,mapType,FOMweight,inputPDBname,inputMtzFile,outputDir,axes,gridSamps,labels1,labels2,runLog):
 		self.mapType 		= mapType
 		self.FOMweight		= FOMweight
 		self.inputMtzFile 	= inputMtzFile
@@ -42,32 +43,41 @@ class FFTjob():
 			return False
 			
 	def runFFT(self):
-
+		# run FFT job using the external ccp4Job class
 		self.commandInput1 = 'fft '+\
 				 			 'HKLIN {} '.format(self.inputMtzFile)+\
 			 	 			 'MAPOUT {} '.format(self.outputMapFile)+\
 			 	 			 'SYMINFO syminfo.lib '
 
-		# can distinguish here between SIMPLE and DIFFERENCE map types
-		if self.mapType == 'SIMPLE':
-			F2Scale = 0.0
-		else:
-			F2Scale = 1.0
-
-		#if a FOM is specified exists the weighting is applied to the map
+		# if FOM is specified the weighting is applied to the map
 		if self.FOMweight in ('True','TRUE','true'):
 			FOMstring  = 'W={}'.format(self.FOM2)
 			FOMstring2 = 'W2={}'.format(self.FOM2)
 		else:
-			FOMstring = ''
+			FOMstring,FOMstring2 = '',''
+
+		# if DIFFERENCE or SIMPLE map types map type chosen
+		if self.mapType in ('DIFF','SIMPLE'):
+			labinStr 	= 'LABIN F1={} SIG1={} F2={} SIG2={} '.format(self.F1,self.SIG1,self.F2,self.SIG2)
+			phiStr  	= 'PHI={} {} PHI2={} {}\n'.format(self.PHI2,FOMstring,self.PHI2,FOMstring2)
+			# can distinguish here between SIMPLE and DIFFERENCE map types
+			if self.mapType == 'SIMPLE': 
+				F2Scale = 0.0
+			else: 
+				F2Scale = 1.0
+			scaleStr 	= 'SCALE F1 1.0 0.0 F2 {} 0.0\n'.format(F2Scale)
+
+		# choose sigmaa-derived FWT and PHIC for 2FOFC map setting
+		if self.mapType == '2FOFC':
+			labinStr 	= 'LABIN F1={}'.format(self.F1)
+			phiStr 		= 'PHI={}'.format(self.PHI1)
+			scaleStr 	= 'SCALE F1 1.0 0.0'
 
 		self.commandInput2 = 	'AXIS {} {} {}\n'.format(self.fastAxis,self.medAxis,self.slowAxis)+\
 				 			 	'title FTT DENSITY MAP RUN\n'+\
 				 				'grid {} {} {}\n'.format(self.gridSamp1,self.gridSamp2,self.gridSamp3)+\
 				 				'xyzlim 0 1 0 1 0 1\n'+\
-								'LABIN F1={} SIG1={} F2={} SIG2={} '.format(self.F1,self.SIG1,self.F2,self.SIG2)+\
-								'PHI={} {} PHI2={} {}\n'.format(self.PHI2,FOMstring,self.PHI2,FOMstring2)+\
-								'SCALE F1 1.0 0.0 F2 {} 0.0\n'.format(F2Scale)+\
+								'{} {}\n{}\n'.format(labinStr,phiStr,scaleStr)+\
 								'END'
 
 		self.outputLogfile = 'FFTlogfile.txt'
