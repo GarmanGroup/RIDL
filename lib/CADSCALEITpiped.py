@@ -14,9 +14,10 @@ class pipeline():
 		# specify where output files should be written
 		self.outputDir 			= where
 		self.makeOutputDir()
+		self.findFilesInDir() 	# find files initially in working dir
 		self.txtInputFile 		= inputFile
 		self.jobName 			= jobName
-		self.runLog 			= logFile('{}/{}_runLog_1.txt'.format(self.outputDir,jobName))
+		self.runLog 			= logFile('{}/{}_runLog1.log'.format(self.outputDir,jobName))
 
 		# specify output files for parts of pipeline
 		self.CADoutputMtz 		= '{}/{}_CADcombined.mtz'.format(self.outputDir,self.jobName)
@@ -36,15 +37,30 @@ class pipeline():
 		if success is False:
 			return 1
 
+		# copy input mtz files to working directory and rename
+		self.moveInputMtzs()
+
 		# run SIGMAA job
-		sigmaa = SIGMAAjob(self.SIGMAAinputMtz,self.Mtz1LabelName,self.RfreeFlag,
+		if self.densMapType == '2FOFC':
+			mtzLbls_in  = self.Mtz2LabelName
+			mtzLbls_out = self.Mtz2LabelRename
+		else: 
+			mtzLbls_in  = self.Mtz1LabelName
+			mtzLbls_out = self.Mtz1LabelRename
+
+		sigmaa = SIGMAAjob(self.SIGMAAinputMtz,mtzLbls_in,mtzLbls_out,self.RfreeFlag1,
 						   self.inputPDBfile,self.outputDir,self.runLog)	
 		success = sigmaa.run()
-		if success is False:
+		if success is False: 
 			return 2
-		self.CADinputMtz1 = sigmaa.outputMtz
+
+		# if 2FO-FC map required, use FWT column from sigmaa-output mtz (we are done here)
+		if self.densMapType == '2FOFC':
+			self.cleanUpDir()
+			return 0
 
 		# run CAD job 
+		self.CADinputMtz1 = sigmaa.outputMtz
 		cad = CADjob(self.CADinputMtz1,self.CADinputMtz2,self.CADinputMtz3,
 					 self.Mtz1LabelName,self.Mtz2LabelName,self.Mtz3LabelName,
 					 self.Mtz1LabelRename,self.Mtz2LabelRename,self.Mtz3LabelRename,
@@ -61,12 +77,12 @@ class pipeline():
 		if success is False:
 			return 4
 
-		# end of pipeline reached	
+		# end of pipeline reached
+		self.cleanUpDir()	
 		return 0
 
 	def readInputs(self):
-		# open input file and parse inputs for CAD job
-
+		# open input file and parse inputs for CAD job.
 		# if Input.txt not found, flag error
 		if self.checkFileExists(self.txtInputFile) is False:
 			self.runLog.writeToLog('Required input file {} not found..'.format(self.txtInputFile))
@@ -76,35 +92,74 @@ class pipeline():
 
 		# parse input file
 		inputFile = open(self.txtInputFile,'r')
-		for line in inputFile.readlines():
-			if line.split()[0] == 'END':
+		for l in inputFile.readlines():
+			try:
+				l.split()[1]
+			except IndexError:
+				continue # ignore blank lines
+			if l.strip()[0] == '#':
+				continue # ignore commented lines
+			if l.split()[0] == 'END':
 				break
-			elif line[0] == '#':
-				continue
-			elif line.split()[0] == 'filename1':
-				self.SIGMAAinputMtz 	= line.split()[1]
-			elif line.split()[0] == 'labels1':
-				self.Mtz1LabelName 		= line.split()[1]
-			elif line.split()[0] == 'RfreeFlag1':
-				self.RfreeFlag 			= line.split()[1]
-			elif line.split()[0] == 'filename2':
-				self.CADinputMtz2 		= line.split()[1]
-			elif line.split()[0] == 'labels2':
-				self.Mtz2LabelName 		= line.split()[1]
-			elif line.split()[0] == 'filename3':
-				self.CADinputMtz3 		= line.split()[1]
-			elif line.split()[0] == 'labels3':
-				self.Mtz3LabelName 		= line.split()[1]
-			elif line.split()[0] == 'label1rename':
-				self.Mtz1LabelRename 	= line.split()[1]
-			elif line.split()[0] == 'label2rename':
-				self.Mtz2LabelRename 	= line.split()[1]
-			elif line.split()[0] == 'label3rename':
-				self.Mtz3LabelRename 	= line.split()[1]
-			elif line.split()[0] == 'inputPDBfile':
-				self.inputPDBfile 		= line.split()[1]
+			setattr(self,l.split()[0],l.split()[1])
 		inputFile.close()
+
+		# check that all required properties have been found
+		requiredProps = ['mtzIn1','Mtz1LabelName','RfreeFlag1','Mtz1LabelRename',
+						 'mtzIn2','Mtz2LabelName','Mtz2LabelRename',
+						 'mtzIn3','Mtz3LabelName','Mtz3LabelRename',
+						 'inputPDBfile','densMapType','deleteMtzs']
+
+		for prop in requiredProps:
+			try:
+				getattr(self,prop)
+			except AttributeError:
+				print 'Necessary input not found: {}'.format(prop)
+				return False
+		print 'All necessary inputs found in input file'
 		return True
+
+	def moveInputMtzs(self):
+		# move input mtz files to working directory and rename as suitable
+		if self.densMapType == '2FOFC':
+			self.SIGMAAinputMtz  = '{}/{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
+			os.system('cp {} {}'.format(self.mtzIn2,self.SIGMAAinputMtz))
+		else:
+			self.SIGMAAinputMtz  = '{}/{}.mtz'.format(self.outputDir,self.Mtz1LabelRename.strip())
+			self.CADinputMtz2 	 = '{}/{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
+			self.CADinputMtz3    = '{}/{}.mtz'.format(self.outputDir,self.Mtz3LabelRename.strip())
+			os.system('cp {} {}'.format(self.mtzIn1,self.SIGMAAinputMtz))
+			os.system('cp {} {}'.format(self.mtzIn2,self.CADinputMtz2))
+			os.system('cp {} {}'.format(self.mtzIn3,self.CADinputMtz3))
+
+	def deleteNonFinalMtzs(self):
+		return
+		# give option to delete all mtz files within output directory except the final 
+		# resulting mtz for job - used to save room if necessary
+		if self.deleteMtzs != 'TRUE': 
+			return
+		if self.densMapType == '2FOFC':
+			fileEnd = 'sigmaa.mtz'
+		else:
+			fileEnd = 'SCALEITcombined.mtz'
+		for f in os.listdir(self.outputDir): 
+			if (f.endswith('.mtz') and not f.endswith(fileEnd)) or f.endswith('.tmp'):
+				os.system('rm {}/{}'.format(self.outputDir,f))
+
+	def cleanUpDir(self):
+		# give option to clean up working directory 
+		# delete non-final mtz files
+		print 'Cleaning up working directory\n'
+		self.deleteNonFinalMtzs()
+		# move txt files to subdir
+		os.system('mkdir {}/txtFiles'.format(self.outputDir))
+		for file in os.listdir(self.outputDir): 
+			if file.endswith('.txt') and file not in self.filesInDir:
+				os.system('mv {}/{} {}/txtFiles/{}'.format(self.outputDir,file,self.outputDir,file))
+
+	def findFilesInDir(self):
+		# find files initially in working directory
+		self.filesInDir = os.listdir(self.outputDir)
 
 	def checkFileExists(self,filename):
 		# method to check if file exists
