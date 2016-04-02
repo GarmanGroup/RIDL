@@ -213,7 +213,8 @@ class damageSeriesAnalysis():
 			for j,(res, color) in enumerate(zip(resGroup, sns.color_palette('hls', len(resGroup)))):
 				datax = plotData['-'.join(resGroup)][res]
 				print 'number of {} atoms = {}'.format(res,len(datax))
-				self.ETRACK.et.combinedAtoms.plotHist(plotType,300,datax,'average,{}'.format(res),color)
+				self.ETRACK.et.combinedAtoms.plotHist(plotType=plotType,datax=datax,
+													  lbl='average,{}'.format(res),color=color)
 			plt.legend()
 			plt.xlabel('{} D{} per atom'.format(normType,densMet),fontsize=18)
 			plt.ylabel('Norm-frequency',fontsize=18)
