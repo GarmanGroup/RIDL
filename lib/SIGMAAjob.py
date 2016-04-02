@@ -67,9 +67,9 @@ class SIGMAAjob():
 								'HKLOUT {} '.format(self.outputMtz)
 
 		self.commandInput2 	= 'title {}\n'.format(title)+\
-							  'LABIN  FP=F{} SIGFP=SIGF{} FC=FC PHIC=PHIC\n'.format(self.LabelName,self.LabelName)+\
+							  'LABIN  FP=F{} SIGFP=SIGF{} FC=FC PHIC=PHIC\n'.format(*([self.LabelName]*2))+\
 							  'labout -\n'+\
-   							  'DELFWT=DELFWT_{} FWT=FWT_{} WCMB=FOM_{}\n'.format(self.LabelRename,self.LabelRename,self.LabelRename)+\
+   							  'DELFWT=DELFWT{} FWT=FWT{} WCMB=FOM{}\n'.format(*([self.LabelRename]*3))+\
 							  'ranges 20 -\n'+\
     						  '1000\n'+\
 							  'symmetry "{}"\n'.format(self.spaceGroup)+\
@@ -83,12 +83,18 @@ class SIGMAAjob():
 		job = ccp4Job('SIGMAA',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMtz)
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self):
+	def provideFeedback(self,includeDir=False):
 		# provide some feedback
+		if includeDir is False:
+			fileIn  = self.inputMtz.split('/')[-1]
+			fileOut = self.outputMtz.split('/')[-1]
+		else:
+			fileIn  = self.inputMtz
+			fileOut = self.outputMtz
 		print '--------------------------'
 		print 'SIGMAA Summary:'
-		print 'Input mtz file: {}'.format(self.inputMtz)
-		print 'Output mtz file: {}'.format(self.outputMtz)
+		print 'Input mtz file: {}'.format(fileIn)
+		print 'Output mtz file: {}'.format(fileOut)
 		print '--------------------------'
 
 	def getSpaceGroup(self):
