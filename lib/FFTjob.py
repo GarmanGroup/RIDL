@@ -50,7 +50,7 @@ class FFTjob():
 			 	 			 'SYMINFO syminfo.lib '
 
 		# if FOM is specified the weighting is applied to the map
-		if self.FOMweight in ('True','TRUE','true'):
+		if self.FOMweight == 'recalculate' or 'preset,' in self.FOMweight:
 			FOMstring  = 'W={}'.format(self.FOM2)
 			FOMstring2 = 'W2={}'.format(self.FOM2)
 		else:
@@ -86,12 +86,20 @@ class FFTjob():
 		job = ccp4Job('FFT',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMapFile)
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self):
+	def provideFeedback(self,includeDir=False):
 		# provide some feedback
+		if includeDir is False:
+			fileIn  = self.inputMtzFile.split('/')[-1]
+			fileOut = self.outputMapFile.split('/')[-1]
+		else:
+			fileIn  = self.inputMtzFile
+			fileOut = self.outputMapFile
 		print '--------------------------'
 		print 'FFT Summary:'
-		print 'Input mtz file: {}'.format(self.inputMtzFile)
-		print 'Output map file: {}'.format(self.outputMapFile)
+		print 'Input mtz file: {}'.format(fileIn)
+		print 'Output map file: {}'.format(fileOut)
 		Map = mapTools(self.outputMapFile)
 		Map.printMapInfo()
 		print '--------------------------'
+
+
