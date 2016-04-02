@@ -9,15 +9,16 @@ class pipeline():
 	# class to run CAD job to combine F and SIGF columns from
 	# two merged mtz files, then to scale the 2nd datasets F 
 	# structure factors against the 1st datasets
-	def __init__(self,where,inputFile,jobName):
+	def __init__(self,outputDir='',inputFile='',jobName='untitled-job'):
 
 		# specify where output files should be written
-		self.outputDir 			= where
+		self.outputDir 			= outputDir
 		self.makeOutputDir()
-		self.findFilesInDir() 	# find files initially in working dir
+		self.findFilesInDir() 	
 		self.txtInputFile 		= inputFile
 		self.jobName 			= jobName
-		self.runLog 			= logFile('{}/{}_runLog1.log'.format(self.outputDir,jobName))
+		self.runLog 			= logFile(fileName='{}/{}_runLog1.log'.format(self.outputDir,jobName),
+										  fileDir=self.outputDir)
 
 		# specify output files for parts of pipeline
 		self.CADoutputMtz 		= '{}/{}_CADcombined.mtz'.format(self.outputDir,self.jobName)
@@ -40,31 +41,36 @@ class pipeline():
 		# copy input mtz files to working directory and rename
 		self.moveInputMtzs()
 
-		# run SIGMAA job
-		if self.densMapType == '2FOFC':
-			mtzLbls_in  = self.Mtz2LabelName
-			mtzLbls_out = self.Mtz2LabelRename
-		else: 
-			mtzLbls_in  = self.Mtz1LabelName
-			mtzLbls_out = self.Mtz1LabelRename
+		# run SIGMAA job if required to generate a new FOM weight column
+		if self.FFTmapWeight == 'recalculate':
 
-		sigmaa = SIGMAAjob(self.SIGMAAinputMtz,mtzLbls_in,mtzLbls_out,self.RfreeFlag1,
-						   self.inputPDBfile,self.outputDir,self.runLog)	
-		success = sigmaa.run()
-		if success is False: 
-			return 2
+			if self.densMapType == '2FOFC':
+				mtzLbls_in  = self.Mtz2LabelName
+				mtzLbls_out = self.Mtz2LabelRename
+			else: 
+				mtzLbls_in  = self.Mtz1LabelName
+				mtzLbls_out = self.Mtz1LabelName
 
-		# if 2FO-FC map required, use FWT column from sigmaa-output mtz (we are done here)
-		if self.densMapType == '2FOFC':
-			self.cleanUpDir()
-			return 0
+			sigmaa = SIGMAAjob(self.SIGMAAinputMtz,mtzLbls_in,mtzLbls_out,self.RfreeFlag1,
+							   self.inputPDBfile,self.outputDir,self.runLog)	
+			success = sigmaa.run()
+			if success is False: 
+				return 2
+
+			# if 2FO-FC map required, use FWT column from sigmaa-output mtz (we are done here)
+			if self.densMapType == '2FOFC':
+				self.cleanUpDir()
+				return 0
+
+			self.CADinputMtz1 = sigmaa.outputMtz
+		else:
+			self.CADinputMtz1 = self.SIGMAAinputMtz
 
 		# run CAD job 
-		self.CADinputMtz1 = sigmaa.outputMtz
 		cad = CADjob(self.CADinputMtz1,self.CADinputMtz2,self.CADinputMtz3,
 					 self.Mtz1LabelName,self.Mtz2LabelName,self.Mtz3LabelName,
 					 self.Mtz1LabelRename,self.Mtz2LabelRename,self.Mtz3LabelRename,
-					 self.CADoutputMtz,self.outputDir,self.runLog)
+					 self.CADoutputMtz,self.outputDir,self.runLog,self.FFTmapWeight)
 		success = cad.run()
 		if success is False:
 			return 3
@@ -136,7 +142,7 @@ class pipeline():
 		return
 		# give option to delete all mtz files within output directory except the final 
 		# resulting mtz for job - used to save room if necessary
-		if self.deleteMtzs != 'TRUE': 
+		if self.deleteMtzs.lower() != 'true': 
 			return
 		if self.densMapType == '2FOFC':
 			fileEnd = 'sigmaa.mtz'
@@ -149,7 +155,7 @@ class pipeline():
 	def cleanUpDir(self):
 		# give option to clean up working directory 
 		# delete non-final mtz files
-		print 'Cleaning up working directory\n'
+		print 'Cleaning up working directory...\n'
 		self.deleteNonFinalMtzs()
 		# move txt files to subdir
 		os.system('mkdir {}/txtFiles'.format(self.outputDir))
