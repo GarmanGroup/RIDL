@@ -224,7 +224,7 @@ class combinedAtomList(object):
 			values = atm.densMetric[metric]['Standard']['values']
 			atm.getDensMetricInfo(metric,'Standardised',(values-meand)/stdd)
 
-	def writeMetric2File(self,where,metric,normType,groupBy):
+	def writeMetric2File(self,where,groupBy,metric,normType):
 		# write all metric values to a .csv file to location 'where'
 		# 'groupBy' takes values 'none','residue','atomtype'
 
@@ -239,7 +239,10 @@ class combinedAtomList(object):
 			csvfile.write('index,atominfo,')
 		metricLength = self.atomList[0].getNumDatasets(metric)
 		for i in range(0,metricLength):
-			csvfile.write('{}'.format(str(i+1)))
+			if groupBy == 'none':
+				csvfile.write('{}'.format(str(i+1)))
+			else:
+				csvfile.write('{} (mean),{} (std dev)'.format(str(i+1),str(i+1)))
 			if i != metricLength-1: csvfile.write(',')
 		csvfile.write('\n')
 
@@ -267,7 +270,7 @@ class combinedAtomList(object):
 		else:
 			self.atomList.sort(key=lambda x: x.atomnum) # sort atom list by atom number
 			for atom in self.atomList:
-				csvfile.write('{},{}'.format(atom.atomnum,atom.getAtomID()))
+				csvfile.write('{},{},'.format(atom.atomnum,atom.getAtomID()))
 				csvfile.write(','.join(map(str,atom.densMetric[metric][normType]['values'])))
 				csvfile.write('\n')
 		csvfile.close()
@@ -490,17 +493,17 @@ class combinedAtomList(object):
 				totalDic[atomID] = self.getNumAtomsOfType(by,atts)
 			else:
 				countDic[atomID] += 1
-		outputString  = 'Partition of atom {} D{} values by {}\n'.format(normType,metric,' & '.join(by))
+		headerString  = 'Partition of atom {} D{} values by {}.\n'.format(normType,metric,' & '.join(by))
 		fracOfTotal   = round((float(n)/self.getNumAtoms())*100,2) # n as fraction of total atoms
-		outputString += 'For dataset {}, top {} ({}%) atoms included\n'.format(dataset,n,fracOfTotal)
-		outputString += 'Type\t\tFraction\tPercent(%)\n'
+		headerString += 'For dataset {}, top {} ({}%) atoms included.\n'.format(dataset,n,fracOfTotal)
+		outputString  = 'Type\t\tFraction\tPercent(%)'
 
 		keys = countDic.keys()
 		keys.sort()
 		for key in keys:
-			outputString += '{}\t\t{}/{}\t\t{}%\n'.format(key,countDic[key],totalDic[key],
+			outputString += '\n{}\t\t{}/{}\t\t{}%'.format(key,countDic[key],totalDic[key],
 											  				   round((float(countDic[key])/totalDic[key])*100,2))
-		return outputString
+		return headerString,outputString
 
 	def getNumAtomsOfType(self,atts,vals):
 		# get number of atoms with attribute 'att' at specified value 'val'
@@ -551,9 +554,10 @@ class combinedAtomList(object):
 		statsDic['returnOrder'] = ['mean','std','#atoms','outliers','skew','ratio']
 		return statsDic
 
-	def reportStats(self,stats,name,sortby,n,normType):
+	def reportStats(self,stats,name,sortby,n,normType,format='txt'):
 		# format stats defined in 'stats' dictionary into an output string. 'sortby' specifies how 
 		# the output should be ranked. 'n' is number of entries to print (specify an integer or 'all')
+		# format takes values in ('txt','html')
 		sortbyDict   = self.getStatsForList([1,1])
 		headerOrder  = sortbyDict['returnOrder']
 		headerString = '{}\t\t{}\t\t{}\t\t{}\t\t{}\t{}\t\t{}\n'.format(name,*headerOrder)
@@ -579,9 +583,9 @@ class combinedAtomList(object):
 			sortedList1.reverse()
 
 		if n != 'all':
-			stringOut =	'\n'.join(sortedList1[:n]) + '\n'
+			stringOut =	'\n'.join(sortedList1[:n])
 		else:
-			stringOut =	'\n'.join(sortedList1) + '\n'	
+			stringOut =	'\n'.join(sortedList1)	
 		return headerString+stringOut
 
 	def calcDiscreteDistMode(self,metricList):
@@ -653,12 +657,14 @@ class combinedAtomList(object):
 	def getNumDatasets(self):
 		return self.atomList[0].getNumDatasets()
 
-	def graphMetricDistn(self,metric,normType,average,plotType,resiType,save):
+	def graphMetricDistn(self,metric='loss',normType='Standard',valType='average',
+						 plotType='both',resiType='all',save=True,fileType='png'):
 		# histogram/kde plot of density metric per atom
 		# plotType is 'histogram' or 'kde'
 		# resiType is 'all' or list of residue types
 		# save is Boolian to save or not
-		# if 'average' is True, then the average over multiple datasets in damage series taken
+		# 'valType' takes values 'average' (compute average),'all' (plot all datasets),
+		# or 'n' for int (not str) n (plot dataset n)
 
 		# attempt to find atoms of type 'resiType' and flag if not all found
 		if resiType != 'all':
@@ -683,30 +689,42 @@ class combinedAtomList(object):
 		ax = plt.subplot(111)
 
 		plotData = {}
-		if average is False:
+		if valType == 'all':
 			numDsets = self.getNumDatasets()
 			for j,(i, color) in enumerate(zip(range(numDsets), sns.color_palette('Blues', numDsets))):
 				if resiType == 'all':
-					datax = [atm.densMetric[metric][normType]['values'][i] for atm in self.atomList]
-					self.plotHist(plotType,300,datax,'Dataset {}'.format(i),color)
-					plotData[resiType] = datax
+						datax = [atm.densMetric[metric][normType]['values'][i] for atm in self.atomList]
+						self.plotHist(plotType=plotType,datax=datax,
+									  lbl='Dataset {}'.format(i),color=color)
+						plotData[resiType] = datax
 				else:
 					for res in resiType:
 						datax = [atm.densMetric[metric][normType]['values'][i] for atm in self.atomList if atm.basetype == res]
 						if len(datax) > 0:
-							self.plotHist(plotType,300,datax,'Dataset {},{}'.format(i,res),color)
+							self.plotHist(plotType=plotType,datax=datax,
+										  lbl='Dataset {},{}'.format(i,res),color=color)
 						plotData[res] = datax					
 		else:
 			self.calcAdditionalMetrics(metric,normType,'average')
 			if resiType == 'all':
-				datax = [atm.densMetric[metric][normType]['average'] for atm in self.atomList]
-				self.plotHist(plotType,300,datax,'average','r')
+				if valType == 'average':
+					datax = [atm.densMetric[metric][normType]['average'] for atm in self.atomList]
+					lbl = 'average'
+				else:
+					datax = [atm.densMetric[metric][normType]['values'][valType] for atm in self.atomList]
+					lbl = 'Dataset '+valType
+				self.plotHist(plotType=plotType,datax=datax,lbl=lbl,color='r')
 				plotData[resiType] = datax
 			else:
 				for j,(res, color) in enumerate(zip(resiType, sns.color_palette('hls', len(resiType)))):
-					datax = [atm.densMetric[metric][normType]['average'] for atm in self.atomList if atm.basetype == res]
+					if valType == 'average':
+						datax = [atm.densMetric[metric][normType]['average'] for atm in self.atomList if atm.basetype == res]
+						lbl = 'average, {}'.format(res)
+					else:
+						datax = [atm.densMetric[metric][normType]['values'][valType] for atm in self.atomList if atm.basetype == res]
+						lbl = 'Dataset {}, {}'.format(valType,res)
 					if len(datax) > 0:
-						self.plotHist(plotType,300,datax,'average,{}'.format(res),color)
+						self.plotHist(plotType=plotType,datax=datax,lbl=lbl,color=color)
 					plotData[res] = datax	
 
 		plt.legend()
@@ -717,15 +735,17 @@ class combinedAtomList(object):
 		if not save: 
 			plt.show()
 		else:
-			saveName = '{}{}_{}D{}-{}.png'.format(self.outputDir,''.join(resiType),normType.replace(" ",""),metric,plotType)
-			if average is True:
-				saveName = saveName.replace('.png','-average.png')
+			saveName = '{}{}_{}D{}-{}.{}'.format(self.outputDir,''.join(resiType),
+												 normType.replace(" ",""),metric,
+												 plotType,fileType)
+			if valType != 'all':
+				saveName = saveName.replace('.'+fileType,'-{}.'.format(valType,fileType))
 			fig.savefig(saveName)
 		return plotData
 
-	def plotHist(self,plotType,nBins,datax,lbl,color):
+	def plotHist(self,plotType='both',nBins=300,datax=[],lbl='',color='b'):
 		# plot histogram or kde plot for datax and give current label
-		# 'nBins' is number of bins (only used if plotType == 'hist')
+		# 'nBins' is number of bins (only used if plotType is 'hist' or 'both')
 		if plotType == 'hist':
 			plt.hist(datax, nBins, histtype="stepfilled", alpha=.7,label=lbl,color=color)
 		elif plotType == 'kde':
@@ -809,9 +829,11 @@ class combinedAtomList(object):
 		else:
 			f.savefig('{}{}_D{}_{}_{}_{}.png'.format(self.outputDir,normType,densMet,baseType,residueNum,atomType))
 
-	def plotSusceptibleAtoms(self,densMet,normType,errorbars,save,susAtms):
+	def plotSusceptibleAtoms(self,densMet='loss',normType='Standard',
+							 errorbars=True,save='y',susAtms=[],fileType='png'):
 		from matplotlib import cm
-		if susAtms == []: susAtms = [['GLU','CD'],['ASP','CG'],['TYR','OH'],['CYS','SG'],['MET','SD']]
+		if susAtms == []: 
+			susAtms = [['GLU','CD'],['ASP','CG'],['TYR','OH'],['CYS','SG'],['MET','SD']]
 		sDic = {}
 		for s in susAtms:
 			findAtms = self.getAtom('',s[0],'',s[1])
@@ -850,7 +872,7 @@ class combinedAtomList(object):
 			plt.show()
 		else:
 			i = 0
-			fname = lambda x: '{}{}_D{}_susceptResis_{}.png'.format(self.outputDir,normType,densMet,x)
+			fname = lambda x: '{}{}_D{}_susceptResis_{}.{}'.format(self.outputDir,normType,densMet,x,fileType)
 			while os.path.isfile(fname(i)):
 				i += 1 
 			f.savefig(fname(i))
@@ -958,7 +980,8 @@ class combinedAtomList(object):
 
 		atoms = self.getAtom('',resiType,'',atomtype)
 		datax = [atm.densMetric[metric][normType]['Half-dose']['Half-dose'] for atm in atoms if atm.densMetric[metric][normType]['Half-dose']['Half-dose'] < 100 ]
-		self.plotHist(plotType,nBins,datax,'',colour)
+		self.plotHist(plotType=plotType,nBins=nBins,datax=datax,
+					  lbl='',colour=colour)
 		plt.xlabel('Half-dose (MGy)')
 		plt.ylabel('Normed frequency')
 		plt.title('Half-dose distribution: {}-{}'.format(resiType,atomtype))
@@ -1255,32 +1278,6 @@ class combinedAtomList(object):
 		pdbIn.close()
 		pdbOut.close()
 
-		# # Need to generate symmetry related copies of each molecule in both pdb files (using PDBSET)
-		# count = 0
-		# for pdb in (pdbName,strippedPdb):
-		# 	count += 1
-		# 	commandInput1 = 'pdbset XYZIN "{}" XYZOUT "{}"'.format(pdb,pdb.strip('.pdb')+'_pdbset.pdb')
-		# 	commandInput2 = 'symgen {}\nend'.format(symmetrygroup)
-		# 	run = ccp4Job('pdbset',commandInput1,commandInput2,self.outputDir,'pdbsetRun{}.txt'.format(count),'')
-
-		# 	# remove all atoms in output pdb that are not within 5 Angstrom of initial model
-		# 	pdbIn = open(pdb.strip('.pdb')+'_pdbset.pdb','r')
-		# 	pdbOut = open(pdb.strip('.pdb')+'_pdbset_editted.pdb','w')
-		# 	print 'removing unwanted atoms from {}'.format(pdb)
-		# 	for l in pdbIn.readlines():
-		# 		if l.split()[0] != 'ATOM':
-		# 			pdbOut.write(l)
-		# 		else:
-		# 			xyz = np.array([float(l[30:38].strip()),float(l[38:46].strip()),float(l[46:54].strip())])
-		# 			for atm in self.atomList:
-		# 				atm_xyz = np.array([atm.X_coord,atm.Y_coord,atm.Z_coord])
-		# 				dist = np.linalg.norm(atm_xyz-xyz)
-		# 				if dist < 8:
-		# 					pdbOut.write(l)
-		# 					break
-		# 	pdbIn.close()
-		# 	pdbOut.close()
-
 		#  run AREAIMOL in CCP4 to calculate solvent accessibility for each pdb file
 		count = 0
 		for pdb in (pdbName,strippedPdb):
@@ -1340,7 +1337,6 @@ class combinedAtomList(object):
 
 		return solvAccDic,plotData
 
-
 	def calculateLocalDloss(self,resType,atomType,distance,densMet,normType,weighted):
 		# for a given residue, calculate the average density metric (for a specified metric)
 		# within a given region of space around that particular residue.
@@ -1383,7 +1379,6 @@ class combinedAtomList(object):
 							 'D{}Scatter_{}-{}_localEnvironmentComparison.png'.format(densMet,resType,atomType),
 							  False,False,'')
 		return plotData
-
 
 	def getAvMetricPerAtmInRes(self,resType,densMet,normType,dataset):
 		# for specified residue type, calculate the average metric for each atom type within the residue
