@@ -1,19 +1,34 @@
-import sys
+import sys,os
 sys.path.insert(0,'./lib')
 from processFiles import processFiles
 
 class process():
 	# process pdb & mtz files to generate suitable density map files for subsequent analysis
-	def __init__(self):
-		self.inputFile = 'fullInput.txt'
+	def __init__(self,inputFile='fullInput.txt',run=True):
+		self.inputFile = inputFile
+		self.titleCaption('ETRACK file preparation')
+
+		if run is True:
+			self.run()
 
 	def setInputFile(self,name):
 		# specify input file name as required
 		self.inputFile = name
 		print 'Input file name set as "{}"'.format(self.inputFile)
 
+	def checkInputFileExists(self):
+		if os.path.isfile(self.inputFile) and os.access(self.inputFile,os.R_OK):
+			print "Input file exists and is readable"
+			return True
+		else:
+			print "Either input file is missing or is not readable"
+			return False
+
 	def run(self):
 		# run to process files with the specified input file
+		success = self.checkInputFileExists()
+		if success is False: 
+			return success
 		pro = processFiles(self.inputFile)
 		success = pro.runProcessing()
 		return success
@@ -66,27 +81,38 @@ class process():
 		f.write(string)
 		f.close()
 
-	def howToWriteInputFile(self):
+	def howToWriteInputFile(self,printStr=True):
 		# information on how write the input file
-		infoString 	= 	'dir --> full path to output working directory\n'+\
-						'INITIALDATASET\n'+\
-						'name1 --> assign a name to your low dose damage set\n'+\
-						'mtz1 --> full path to the low dose mtz file\n'+\
-						'mtzlabels1 --> F & SIGF column labels (look in low dose mtz file), if "FP_X" then type "P_X" here for example\n'+\
-						'pdb1 --> full path to the low dose pdb file\n'+\
-						'RfreeFlag1 --> the Rfree flag label within the low dose mtz file (e.g. "FreeR_flag")\n\n'+\
-						'LATERDATASET\n'+\
-						'name2 --> assign a name to your high dose damage set (e.g. pdb code)\n'+\
-						'mtz2 --> full path to the high dose mtz file\n'+\
-						'mtzlabels2 --> F & SIGF column labels (look in high dose mtz file), if "FP_X" then type "P_X" here for example\n'+\
-						'pdb2 --> full path to the high dose pdb file\n\n'+\
-						'PHASEDATASET\n'+\
-						'name3 --> assign a name to your low dose damage set (same as INITIALDATASET above)\n'+\
-						'mtz3 --> full path to the low dose mtz file (same as INITIALDATASET above)\n'+\
-						'mtzlabels3 --> PHI phase column labels (look in low dose mtz file), if "PHIC_X" then type "C_X" here for example\n\n'+\
-						'MAPINFO\n'+\
-						'For difference map analysis, do not change this parameters'
-		print infoString
+		infoString 	= """
+*** Information on how to successfully write an input file for job ***
+
+FILELOCATION
+	dir 		: full path to output working directory
+
+INITIALDATASET
+	name1 		: assign a name to your low dose damage set
+	mtz1  		: full path to the low dose mtz file
+	mtzlabels1	: F & SIGF column labels (look in low dose mtz file), if "FP_X" then type "P_X"
+	pdb1 		: full path to the low dose pdb file
+	RfreeFlag1 	: the Rfree flag label within the low dose mtz file (e.g. "FreeR_flag")
+
+LATERDATASET
+	name2 		: assign a name to your high dose damage set (e.g. pdb code)
+	mtz2 		: full path to the high dose mtz file
+	mtzlabels2 	: F & SIGF column labels (look in high dose mtz file), if "FP_X" then type "P_X"
+	pdb2 		: full path to the high dose pdb file
+
+PHASEDATASET
+	name3 		: assign a name to your low dose damage set (same as INITIALDATASET above)
+	mtz3 		: full path to the low dose mtz file (same as INITIALDATASET above)
+	mtzlabels3 	: PHI phase column labels (look in low dose mtz file), if "PHIC_X" then type "C_X"
+
+MAPINFO
+	For difference map analysis, do not change this parameters
+	"""
+		if printStr is True:
+			print infoString
+		return infoString
 
 	def writeTestInputFile(self,dataset):
 		# write an input file for the test case on the github README.md
@@ -120,3 +146,9 @@ class process():
 					'FFTmapWeight True'
 		f.write(string)
 		f.close()
+
+	def fillerLine(self):
+		print '---------------------------------------------------------------'	
+
+	def titleCaption(self,title):
+		print '\n\n||========================== {} ==========================||'.format(title)
