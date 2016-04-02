@@ -57,12 +57,20 @@ class SFALLjob():
 		job = ccp4Job('SFALL',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMapFile)
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self):
+	def provideFeedback(self,includeDir=False):
 		# provide some feedback
+		if includeDir is False:
+			fileIn  = self.inputPDBfile.split('/')[-1]
+			fileOut = self.outputMapFile.split('/')[-1]
+		else:
+			fileIn  = self.inputPDBfile
+			fileOut = self.outputMapFile
 		print '--------------------------'
 		print 'SFALL Summary:'
-		print 'Input pdb file: {}'.format(self.inputPDBfile)
-		print 'Output map file: {}'.format(self.outputMapFile)
+		print 'Input pdb file: {}'.format(fileIn)
+		print 'Output map file: {}'.format(fileOut)
 		Map = mapTools(self.outputMapFile)
 		Map.printMapInfo()
 		print '--------------------------'
+
+

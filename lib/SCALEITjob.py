@@ -53,10 +53,16 @@ class SCALEITjob():
 		job = ccp4Job('SCALEIT',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMtz)
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self):
+	def provideFeedback(self,includeDir=False):
 		# provide some feedback
+		if includeDir is False:
+			fileIn  = self.inputMtz.split('/')[-1]
+			fileOut = self.outputMtz.split('/')[-1]
+		else:
+			fileIn  = self.inputMtz
+			fileOut = self.outputMtz
 		print '--------------------------'
 		print 'SCALEIT Summary:'
-		print 'Input mtz files: {}'.format(self.inputMtz)
-		print 'Output mtz file: {}'.format(self.outputMtz)
+		print 'Input mtz file: {}'.format(fileIn)
+		print 'Output mtz file: {}'.format(fileOut)
 		print '--------------------------'

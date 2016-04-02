@@ -48,14 +48,26 @@ class PDBCURjob():
 		job = ccp4Job('PDBCUR',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputPDBfile)
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self):
+	def provideFeedback(self,includeDir=False):
 		# provide some feedback
-		for file in (self.inputPDBfile,self.outputPDBfile):
+
+		print '--------------------------'
+		print 'PDBCUR Summary:'
+		files = {'Input':self.inputPDBfile,
+				 'Output':self.outputPDBfile}
+		for k in files.keys():
+			if includeDir is False:
+				f = files[k].split('/')[-1]
+			else:
+				f = files[k]
+			print '{} pdb file: {}'.format(k,f)
+
 			# determine initial number of atoms in pdb file
-			pdbin = open(file,'r')
+			pdbin = open(files[k],'r')
 			counter = 0
 			for line in pdbin.readlines():
 				if 'ATOM' in line[0:5]:
 					counter += 1
 			pdbin.close()
-			print 'number of atoms in {} pdb file: {}'.format(file,counter)
+			print '\t# atoms in file: {}'.format(counter)
+		print '--------------------------'

@@ -97,14 +97,25 @@ class MAPMASKjob():
 			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
 			return False
 
-	def feedback(self):
+	def feedback(self,includeDir=False):
 		# provide some feedback
+		if includeDir is False:
+			fileIn1  = self.inputMapFile.split('/')[-1]
+			if self.inputMapFile2 != '':
+				fileIn2  = self.inputMapFile2.split('/')[-1]
+			fileOut = self.outputMapFile.split('/')[-1]
+		else:
+			fileIn1  = self.inputMapFile
+			if self.inputMapFile2 != '':
+				fileIn2  = self.inputMapFile2
+			fileOut = self.outputMapFile
+
 		print '--------------------------'
 		print 'MAPMASK Summary:'
-		print 'Input map file: {}'.format(self.inputMapFile)
+		print 'Input map file: {}'.format(fileIn1)
 		if self.inputMapFile2 != '':
-			print 'Input map 2 file: {}'.format(self.inputMapFile2)
-		print 'Output map file: {}'.format(self.outputMapFile)
+			print 'Input map 2 file: {}'.format(fileIn2)
+		print 'Output map file: {}'.format(fileOut)
 		Map = mapTools(self.outputMapFile)
 		Map.printMapInfo()
 		print '--------------------------'
