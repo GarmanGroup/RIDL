@@ -28,18 +28,19 @@ class vxls_of_atm():
         self.atmnum = atmnum
 
 class maps2DensMetrics():
-    def __init__(self,filesIn,filesOut,pdbname,mapfilname1,maptype1,mapfilname2,maptype2,plot):
+    def __init__(self,filesIn='',filesOut='',pdbName='',mapFileName1='',
+                 mapType1='atom_map',mapFileName2='',mapType2='density_map',plot=False):
         self.filesIn = filesIn
         self.filesOut = filesOut # output directory
-        self.pdbname = pdbname
-        self.map1 = {'filename':mapfilname1,'type':maptype1}
-        self.map2 = {'filename':mapfilname2,'type':maptype2}
+        self.pdbName = pdbName
+        self.map1 = {'filename':mapFileName1,'type':mapType1}
+        self.map2 = {'filename':mapFileName2,'type':mapType2}
         self.plot = plot
 
     def maps2atmdensity(self):
         self.printTitle()
         # write a log file for this eTrack run
-        self.log = logFile('{}{}_log-mapProcessing.txt'.format(self.filesOut,self.pdbname))
+        self.log = logFile('{}{}_log-mapProcessing.txt'.format(self.filesOut,self.pdbName))
         self.log.writeToLog('eTrack run - map processing\n')
         self.log.writeToLog('input directory: {}'.format(self.filesIn))        
         self.log.writeToLog('output directory: {}\n'.format(self.filesOut))        
@@ -59,15 +60,15 @@ class maps2DensMetrics():
 
     def readPDBfile(self):
         # read in pdb file info here
-        logfile = open('{}{}_log.txt'.format(self.filesOut,self.pdbname),'a')
+        logfile = open('{}{}_log.txt'.format(self.filesOut,self.pdbName),'a')
 
         self.startTimer()
         self.log.writeToLog('Reading in pdb file...')
-        self.log.writeToLog('pdb name: {}{}.pdb'.format(self.filesIn,self.pdbname))
+        self.log.writeToLog('pdb name: {}{}.pdb'.format(self.filesIn,self.pdbName))
 
         # next read in the pdb structure file:
         # run function to fill PDBarray list with atom objects from structure
-        self.PDBarray = PDBtoList('{}{}.pdb'.format(self.filesIn,self.pdbname),[])
+        self.PDBarray = PDBtoList('{}{}.pdb'.format(self.filesIn,self.pdbName),[])
         self.success()
         self.stopTimer()
 
@@ -85,7 +86,7 @@ class maps2DensMetrics():
         self.fillerLine()
         self.log.writeToLog('Reading in Atom map file...')
         self.log.writeToLog('Atom map name: {}{}'.format(self.filesIn,self.map1['filename']))
-        self.atmmap,self.atom_indices = readMap(self.filesIn,self.filesOut,self.pdbname,
+        self.atmmap,self.atom_indices = readMap(self.filesIn,self.filesOut,self.pdbName,
                                                 self.map1['filename'],self.map1['type'],[],self.log)  
 
         self.success()
@@ -111,7 +112,7 @@ class maps2DensMetrics():
         self.log.writeToLog('Reading in Density map file...')
         self.log.writeToLog('Density map name: {}{}'.format(self.filesIn,self.map2['filename']))
         
-        self.densmap = readMap(self.filesIn,self.filesOut,self.pdbname,
+        self.densmap = readMap(self.filesIn,self.filesOut,self.pdbName,
                                self.map2['filename'],self.map2['type'],
                                self.atom_indices,self.log)  
         self.success()
@@ -199,7 +200,7 @@ class maps2DensMetrics():
         self.log.writeToLog('Plotting histogram plots of voxels per atom...')
         self.log.writeToLog('Plots written to "{}plots"'.format(self.filesOut))
         for plotType in ('histogram','kde'):
-            plotVxlsPerAtm(self.pdbname,self.filesOut,self.vxlsPerAtom,plotType)
+            plotVxlsPerAtm(self.pdbName,self.filesOut,self.vxlsPerAtom,plotType)
         self.stopTimer()
 
     def calculateDensMetrics(self):
@@ -242,24 +243,24 @@ class maps2DensMetrics():
                     ['min90tile','min95tile'],['max90tile','max95tile'],
                     ['std','range'],['mean','range'])
         for pVars in plotVars:
-            edens_scatter(self.filesOut,pVars,self.PDBarray,self.pdbname)
+            edens_scatter(self.filesOut,pVars,self.PDBarray,self.pdbName)
 
     def plotPerResidueBoxPlots(self):
         # perform residue analysis for datatset, outputting boxplots for each atom specific
         # to each residue, and also a combined boxplot across all residues in structures.
         for densMet in ('mean','min','max'):
-            residueArray = densper_resatom_NOresidueclass(self.filesOut,self.PDBarray,'y',densMet,self.pdbname)
+            residueArray = densper_resatom_NOresidueclass(self.filesOut,self.PDBarray,'y',densMet,self.pdbName)
 
         minresnum = 0
         sideormain = ['sidechain','mainchain']
-        densper_res(self.filesOut,residueArray,minresnum,sideormain,'min',self.pdbname)
+        densper_res(self.filesOut,residueArray,minresnum,sideormain,'min',self.pdbName)
 
         # remove residueArray now to save memory 
         residueArray = []
         self.stopTimer()
 
     def pickleAtomList(self):
-        self.pklFileName = save_objectlist(self.PDBarray,self.pdbname)
+        self.pklFileName = save_objectlist(self.PDBarray,self.pdbName)
 
     def startTimer(self):
         self.timeStart = time.time()
