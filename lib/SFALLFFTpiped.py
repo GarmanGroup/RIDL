@@ -11,7 +11,7 @@ from logFile import logFile
 
 class pipeline():
 
-	def __init__(self,outputDir,inputFile,jobName):
+	def __init__(self,outputDir='',inputFile='',jobName='untitled-job'):
 		self.outputDir	= outputDir
 		self.inputFile 	= inputFile
 		self.jobName 	= jobName
@@ -25,7 +25,8 @@ class pipeline():
 			return 1
 
 		# create log file
-		self.runLog = logFile('{}/{}_runLog2.log'.format(self.outputDir,self.jobName))
+		self.runLog = logFile(fileName='{}/{}_runLog2.log'.format(self.outputDir,self.jobName),
+							  fileDir=self.outputDir)
 
 		# run pdbcur job 
 		pdbcur = PDBCURjob(self.pdbcurPDBinputFile,self.outputDir,self.runLog)
@@ -132,34 +133,24 @@ class pipeline():
 			return False
 
 		inputFile = open(self.inputFile,'r')
+		props = {'pdbIN':'pdbcurPDBinputFile',
+				 'runname':'runName',
+				 'sfall_VDWR':'sfall_VDWR',
+				 'mtzIN':'inputMtzFile',
+				 'foldername':'outputDir',
+				 'initialPDB':'initPDB',
+				 'laterPDB':'laterPDB',
+				 'densMapType':'densMapType',
+				 'FFTmapWeight':'FOMweight'}
 
 		self.sfall_GRID = []
-		for line in inputFile.readlines():
-			if 'END' == line.split()[0]:
+		for l in inputFile.readlines():
+			if 'END' == l.split()[0]:
 				break
-			if 'pdbIN' == line.split()[0]:
-				self.pdbcurPDBinputFile = line.split()[1]
-			if 'runname' == line.split()[0]:
-				runname = line.split()[1]
-			if 'sfall_GRID' == line.split()[0]:
-				sfall_GRIDnx = line.split()[1]
-				sfall_GRIDny = line.split()[2]
-				sfall_GRIDnz = line.split()[3]
-				self.sfall_GRID = [sfall_GRIDnx,sfall_GRIDny,sfall_GRIDnz]
-			if 'sfall_VDWR' == line.split()[0]:
-				self.sfall_VDWR = line.split()[1]
-			if 'mtzIN' == line.split()[0]:
-				self.inputMtzFile = line.split()[1]
-			if 'foldername' == line.split()[0]:
-				self.outputDir = line.split()[1]
-			if 'initialPDB' == line.split()[0]:
-				self.initPDB = line.split()[1]
-			if 'laterPDB' == line.split()[0]:
-				self.laterPDB = line.split()[1]
-			if 'densMapType' == line.split()[0]:
-				self.densMapType = line.split()[1]
-			if 'FFTmapWeight' == line.split()[0]:
-				self.FOMweight = line.split()[1]
+			elif l.split()[0] in props.keys():
+				setattr(self,props[l.split()[0]],l.split()[1])
+			elif l.split()[0] == 'sfall_GRID':
+				self.sfall_GRID = l.split()[1:4]
 		return True
 
 	def renumberPDBFile(self):
@@ -232,7 +223,7 @@ class pipeline():
 
 	def cleanUpDir(self):
 		# give option to clean up working directory 
-		print 'Cleaning up working directory\n'
+		print 'Cleaning up working directory...\n'
 		# move txt files to subdir
 		os.system('mkdir {}/txtFiles'.format(self.outputDir))
 		for file in os.listdir(self.outputDir): 
