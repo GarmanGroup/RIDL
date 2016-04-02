@@ -1,24 +1,26 @@
 import sys
 sys.path.insert(0,'./lib')
 from eTrack_RUN import eTrack
-import numpy as np
 import os
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 class run():
 	# run the main ETRACK scripts to calculate per-atom density metrics for a series of increasing doses
-	def __init__(self):
-		self.inputFileName = 'e_Track_inputfile.txt'
+	def __init__(self,runAll = True,inputFileLoc = ''):
+		self.inputFileName = ''+'e_Track_inputfile.txt'
+		
+		if runAll is True:
+			self.runETRACK()
 
-	def runFull(self):
-		# run ETRACK from start to finish (map processing & post processing)
-		self.runETRACK(True,True,True)
-
-	def runETRACK(self,mapProcess,postProcess,retrieve):
+	def runETRACK(self,mapProcess=True,postProcess=True,retrieve=True):
 		# run the ETRACK processing for the currently defined input file
+		exists = self.checkInputFileExists()
+		if exists is False:
+			return
 		eT = eTrack()
-		eT.runPipeline(mapProcess,postProcess,retrieve,self.inputFileName)
+		eT.runPipeline(map_process = mapProcess,
+					   post_process = postProcess,
+					   retrieve_PDBmulti = retrieve,
+					   inputFileName = self.inputFileName)
 		self.et = eT
 
 	def defineDoseList(self,doses,names,version):
@@ -56,5 +58,13 @@ class run():
 		inputFile  = open(self.inputFileName,'w')
 		inputFile.write(inputString)
 		inputFile.close()	
+
+	def checkInputFileExists(self):
+		if os.path.isfile(self.inputFileName) and os.access(self.inputFileName,os.R_OK):
+			print "Input file exists and is readable"
+			return True
+		else:
+			print "Either input file is missing or is not readable"
+			return False
 
 
