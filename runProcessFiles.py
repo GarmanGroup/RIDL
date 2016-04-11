@@ -4,9 +4,10 @@ from processFiles import processFiles
 
 class process():
 	# process pdb & mtz files to generate suitable density map files for subsequent analysis
-	def __init__(self,inputFile='fullInput.txt',run=True):
+	def __init__(self,inputFile='fullInput.txt',run=True,proceedToETRACK=False):
 		self.inputFile = inputFile
 		self.titleCaption('ETRACK file preparation')
+		self.proceedToETRACK = proceedToETRACK
 
 		if run is True:
 			self.run()
@@ -29,7 +30,8 @@ class process():
 		success = self.checkInputFileExists()
 		if success is False: 
 			return success
-		pro = processFiles(self.inputFile)
+		pro = processFiles(inputFile=self.inputFile,
+						   proceedToETRACK=self.proceedToETRACK)
 		success = pro.runProcessing()
 		return success
 
@@ -61,18 +63,18 @@ class process():
 		string 	 = 	'dir {}\n'.format(outputDir)+\
 					'\nINITIALDATASET\n'+\
 					'name1 {}init\n'.format(pdb1)+\
-					'mtz1 {}/{}/{}.mtz\n'.format(inputFileDir,pdb1,pdb1)+\
+					'mtz1 {}{}/{}.mtz\n'.format(inputFileDir,pdb1,pdb1)+\
 					'mtzlabels1 P_{}\n'.format(pdb1)+\
-					'pdb1 {}/{}/{}.pdb\n'.format(inputFileDir,pdb1,pdb1)+\
+					'pdb1 {}{}/{}.pdb\n'.format(inputFileDir,pdb1,pdb1)+\
 					'RfreeFlag1 FreeR_flag\n'+\
 					'\nLATERDATASET\n'+\
 					'name2 {}\n'.format(pdb2)+\
-					'mtz2 {}/{}/{}.mtz\n'.format(inputFileDir,pdb2,pdb2)+\
+					'mtz2 {}{}/{}.mtz\n'.format(inputFileDir,pdb2,pdb2)+\
 					'mtzlabels2 P_{}\n'.format(pdb2)+\
-					'pdb2 {}/{}/{}.pdb\n'.format(inputFileDir,pdb2,pdb2)+\
+					'pdb2 {}{}/{}.pdb\n'.format(inputFileDir,pdb2,pdb2)+\
 					'\nPHASEDATASET\n'+\
 					'name3 {}init\n'.format(pdb1)+\
-					'mtz3 {}/{}/{}.mtz\n'.format(inputFileDir,pdb1,pdb1)+\
+					'mtz3 {}{}/{}.mtz\n'.format(inputFileDir,pdb1,pdb1)+\
 					'mtzlabels3 C_{}\n'.format(pdb1)+\
 					'\nMAPINFO\n'+\
 					'sfall_VDWR 1\n'+\
@@ -124,7 +126,7 @@ MAPINFO
 
 		self.setInputFile('testInput{}.txt'.format(dataset))
 		f = open(self.inputFile,'w')
-		string 	 =  'dir ./testOutput/ETRACK\n'+\
+		string 	 =  'dir ./testOutput/ETRACK/\n'+\
 					'INITIALDATASET\n'+\
 					'name1 1qidinit\n'+\
 					'mtz1 ./testOutput/1qid/1qid.mtz\n'+\
