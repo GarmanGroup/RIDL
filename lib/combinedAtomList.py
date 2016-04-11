@@ -1,6 +1,5 @@
 from combinedAtom import combinedAtom
 from CalphaWeight import CalphaWeight
-from progbar import progress
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,7 +47,7 @@ class combinedAtomList(object):
 
 		PDBdoses = []
 		numNotFoundAtoms = 0
-		print '------------------------------------------------'
+
 		print 'Locating common atoms to ALL datasets...:'
 		singDimAttrs = ('atomnum','residuenum','atomtype','basetype',
 					    'chaintype','X_coord','Y_coord','Z_coord')
@@ -88,8 +87,7 @@ class combinedAtomList(object):
 					self.datasetList[j].pop(indexindataset[j-1])
 
 			if atm_counter != len(self.datasetList) and self.partialDatasets is False:
-				print 'Atom not found in all datasets!'
-				print 'Atom: {}'.format(atomIndentifier)
+				print 'Atom "{}" not found in all datasets'.format(atomIndentifier)
 				print '---> not including atom in atom list...'
 				numNotFoundAtoms += 1
 				continue
@@ -105,17 +103,15 @@ class combinedAtomList(object):
 							newatom.getDensMetricInfo(metName,'Standard',atomDict[attr])
 
 				if atm_counter != len(self.datasetList):
-					print 'Atom not found in all datasets!'
-					print 'Atom: {}'.format(atomIndentifier)
+					print 'Atom "{}" not found in all datasets'.format(atomIndentifier)
 					print '---> including partial information in atom list...'
 					numNotFoundAtoms += 1
 				PDBdoses.append(newatom)
 
-		print '\n------------------------------------------------'   
 		if self.partialDatasets is True:
-			print 'Number of atoms not in all datasets: {}'.format(numNotFoundAtoms)
+			print '# atoms not in all datasets: {}'.format(numNotFoundAtoms)
 		else:
-			print 'Number of atoms removed since not in all datasets: {}'.format(numNotFoundAtoms)
+			print '# atoms removed since not in all datasets: {}'.format(numNotFoundAtoms)
 		print '---> Finished!'
 		self.atomList = PDBdoses
 
@@ -144,7 +140,7 @@ class combinedAtomList(object):
 		densStd = np.nanstd(densList,0)
 		return densMean,densStd
 
-	def getAtom(self,chain,restype,resnum,atomtype):
+	def getAtom(self,chain='',restype='',resnum='',atomtype='',printOutput=False):
 		# get atom(s) matching specified description if found
 		foundAtoms = []
 		for atom in self.atomList:
@@ -154,9 +150,11 @@ class combinedAtomList(object):
 						if atom.atomtype == atomtype or atomtype == '':
 							foundAtoms.append(atom)
 		if len(foundAtoms) != 0:
-			print 'Found {} atom(s) matching description'.format(len(foundAtoms))
+			if printOutput is True:
+				print 'Found {} atom(s) matching description'.format(len(foundAtoms))
 			return foundAtoms
-		print 'Atom matching description not found'
+		if printOutput is True:
+			print 'Atom matching description not found'
 		return False
 
 	def getDensMetrics(self):
@@ -172,36 +170,46 @@ class combinedAtomList(object):
 		# calculate Bfactor change between initial and each later dataset
 		findBchange(self.initialPDBList,self.atomList,'Bfactor')
 
-	def calcAdditionalMetrics(self,metric,normType,newMetric):
+	def calcAdditionalMetrics(self,metric='loss',normType='Standard',newMetric='Calpha normalised',printToScreen=False):
 		# calculate the Calpha weights for each dataset (see CalphaWeight class for details)
 		# for metric "metric" (loss, gain, mean etc.)
-		# 'newMetric' takes values ('Calpha','netChange','linreg','subtract1')
-		options = ['Calpha','netChange','linreg','subtract1','average']
-		if newMetric == 'Calpha':
-			print 'Calculating Calpha weights at each dataset...'
+		# 'newMetric' takes values in 'options' list
+		options = ['Calpha normalised','net','lin reg','dataset 1 subtracted','average']
+
+		if newMetric not in options:
+			print 'new metric type not recognised.. choose from: {}'.format(options)
+			return
+
+		# check if already calculated and skip if so
+		if newMetric == ('net','dataset 1 subtracted','Calpha normalised'):
+			args = [metric,newMetric,'values']
+		if newMetric in ('average','lin reg'):
+			args = [metric,normType,newMetric]
+		try:
+			self.atomList[0].densMetric[args[0]][args[1]][args[2]]
+			return
+		except (NameError,KeyError):
+			pass
+
+		if newMetric == 'Calpha normalised':
+			if printToScreen is True:
+				print 'Calculating Calpha weights at each dataset for metric: {}, normalisation: {}'.format(metric,normType)
 			CAweights = CalphaWeight(self.atomList)
 			CAweights.calculateWeights(metric)
 
 		# loop over all atoms in list and calculate additional metrics for each atom in atomList
-		counter = 0
-		numAtoms = self.getNumAtoms()
 		for atom in self.atomList:
-			counter += 1
-			progress(counter, numAtoms, suffix='') # unessential loading bar add-in
-			if newMetric == 'Calpha':
+			if newMetric == 'Calpha normalised':
 				atom.CalphaWeightedDensChange(CAweights,metric)
-			elif newMetric == 'linreg':
+			elif newMetric == 'lin reg':
 				atom.calcLinReg(self.numLigRegDatasets,'Standard',metric)
-			elif newMetric == 'netChange':
+			elif newMetric == 'net':
 				atom.calcNetChangeMetric('Standard')
-			elif newMetric == 'subtract1':
+			elif newMetric == 'dataset 1 subtracted':
 				atom.calcFirstDatasetSubtractedMetric('Standard',metric)
 			elif newMetric == 'average':
 				atom.calcAvMetric(normType,metric)
-			else:
-				print 'new metric type not recognised.. choose from: {}'.format(options)
-				return
-
+	
 	def calcVectorWeightedMetric(self,metric,normType,vector):
 		# for a specified metric calculate new vector-weighted values, where the metric over a series of doses
 		# is multiplied by a vector of per-dataset scalings
@@ -224,11 +232,11 @@ class combinedAtomList(object):
 			values = atm.densMetric[metric]['Standard']['values']
 			atm.getDensMetricInfo(metric,'Standardised',(values-meand)/stdd)
 
-	def writeMetric2File(self,where,groupBy,metric,normType):
+	def writeMetric2File(self,where='',groupBy='none',metric='loss',normType='Standard'):
 		# write all metric values to a .csv file to location 'where'
 		# 'groupBy' takes values 'none','residue','atomtype'
 
-		csvName = '{}{}-{}.csv'.format(where,metric,normType)
+		csvName = '{}{}-{}.csv'.format(where,metric,normType.replace(" ",""))
 		if groupBy in ('residue','atomtype'):
 			csvName = csvName.replace('.csv','_{}.csv'.format(groupBy))
 		csvfile = open(csvName,'w')
@@ -312,8 +320,10 @@ class combinedAtomList(object):
 
 		foundPairs = {}
 		for pair in pairs:
-			found = self.getAtom('',pair[0],'','')
-			if found == False: continue # don't proceed if no atoms of a residue type
+			found = self.getAtom(restype=pair[0])
+
+			if found == False: 
+				continue # don't proceed if no atoms of a residue type
 			output = self.findMetricRatio(metric,normType,*pair)
 			foundPairs['-'.join(pair)] = output[0]
 			fileout.write(output[1][rType]+'\n')
@@ -376,8 +386,9 @@ class combinedAtomList(object):
 		from matplotlib import cm
 		foundPairs = {}
 		for pair in pairs:
-			found = self.getAtom('',pair[0],'','')
-			if found == False: continue # don't proceed if no atoms of a residue type
+			found = self.getAtom(restype=pair[0])
+			if found == False: 
+				continue # don't proceed if no atoms of a residue type
 			output = self.findMetricRatio(metric,normType,*pair)
 			foundPairs['-'.join(pair)] = output[0]
 
@@ -658,7 +669,7 @@ class combinedAtomList(object):
 		return self.atomList[0].getNumDatasets()
 
 	def graphMetricDistn(self,metric='loss',normType='Standard',valType='average',
-						 plotType='both',resiType='all',save=True,fileType='png'):
+						 plotType='both',resiType='all',save=True,fileType='png',printToScreen=True):
 		# histogram/kde plot of density metric per atom
 		# plotType is 'histogram' or 'kde'
 		# resiType is 'all' or list of residue types
@@ -670,17 +681,20 @@ class combinedAtomList(object):
 		if resiType != 'all':
 			count = 0
 			for res in resiType:
-				atms = self.getAtom('',res,'','')
+				atms = self.getAtom(restype=res)
 				if atms is False: 
 					count += 1
 			if count > 0:
-				print 'Warning: not all selected residue types found!'
+				if printToScreen is True:
+					print 'Warning: not all selected residue types found!'
 
-		if plotType not in ('hist','kde','both'): return 'Unknown plotting type selected.. cannot plot..'
+		if plotType not in ('hist','kde','both'): 
+			return 'Unknown plotting type selected.. cannot plot..'
 
 		if normType == 'Calpha normalised':
-			self.calcAdditionalMetrics(metric,normType,'Calpha')
-		if self.checkMetricPresent(self.atomList[0],metric,normType) is False: return # check metric valid
+			self.calcAdditionalMetrics(metric=metric)
+		if self.checkMetricPresent(self.atomList[0],metric,normType) is False: 
+			return # check metric valid
 
 		# sns.set_palette("deep", desat=.6)
 		sns.set_style("whitegrid")
@@ -705,7 +719,7 @@ class combinedAtomList(object):
 										  lbl='Dataset {},{}'.format(i,res),color=color)
 						plotData[res] = datax					
 		else:
-			self.calcAdditionalMetrics(metric,normType,'average')
+			self.calcAdditionalMetrics(metric=metric,normType=normType,newMetric='average')
 			if resiType == 'all':
 				if valType == 'average':
 					datax = [atm.densMetric[metric][normType]['average'] for atm in self.atomList]
@@ -802,7 +816,8 @@ class combinedAtomList(object):
 			colormap = plt.cm.nipy_spectral
 			plt.gca().set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(foundAtoms))])			
 			for atom in foundAtoms:
-				if self.checkMetricPresent(atom,densMet,normType) is False: return # check metric valid
+				if self.checkMetricPresent(atom,densMet,normType) is False: 
+					return # check metric valid
 				y = atom.densMetric[densMet][normType]['values']
 				plt.plot(x,y,label=atom.getAtomID())
 
@@ -811,7 +826,8 @@ class combinedAtomList(object):
 			errorAttr 	= errorBarKey[errorBars]
 			yDict 		= {}
 			for atom in foundAtoms:
-				if self.checkMetricPresent(atom,densMet,normType) is False: return # check metric valid
+				if self.checkMetricPresent(atom,densMet,normType) is False: 
+					return # check metric valid
 				vals = atom.densMetric[densMet][normType]['values']
 				if getattr(atom,errorAttr) not in yDict.keys():
 					yDict[getattr(atom,errorAttr)] = [vals]
@@ -836,8 +852,9 @@ class combinedAtomList(object):
 			susAtms = [['GLU','CD'],['ASP','CG'],['TYR','OH'],['CYS','SG'],['MET','SD']]
 		sDic = {}
 		for s in susAtms:
-			findAtms = self.getAtom('',s[0],'',s[1])
-			if findAtms is False: continue
+			findAtms = self.getAtom(restype=s[0],atomtype=s[1])
+			if findAtms is False: 
+				continue
 			if not isinstance(findAtms,list): 
 				findAtms = [findAtms]
 			sDic['-'.join(s)] = findAtms
@@ -891,7 +908,7 @@ class combinedAtomList(object):
 		# 'shift' (Boolian) determines whether half dose is dose for density to reach half of initial density (=False)
 		# or half dose is dose for density to reach av(initial density,end density limit (=True)
 		# 'offset' (Boolian) determines whether exponential decay function is allowed a non-zero end density value
-		atom = self.getAtom(chain,restype,resnum,atomtype)
+		atom = self.getAtom(chain=chain,restype=restype,resnum=resnum,atomtype=atomtype)
 		atom = atom[0] # convert from list
 		if len(self.doseList) != self.getNumDatasets():
 			return 'need to specify doses list as class attribute before this can be calculated'
@@ -899,7 +916,7 @@ class combinedAtomList(object):
 
 	def calcHalfDoseForAtomtype(self,restype,atomtype,densMet,normType,shift,offset,n):
 		# call the above calcHalfDose method for instances of of restype and atomtype
-		atoms = self.getAtom('',restype,'',atomtype)
+		atoms = self.getAtom(restype=restype,atomtype=atomtype)
 		for atom in atoms:
 			self.calcHalfDose(atom.chaintype,restype,atom.residuenum,atomtype,densMet,normType,shift,offset)
 		print '--------------------'
@@ -935,8 +952,8 @@ class combinedAtomList(object):
 	def compareAtomHalfDoses(self,restype,atomtype1,atomtype2,densMet,normType,n):
 		# after above method calcHalfDoseForAtomtype is run for two atom types atomtype1 and atomtype2
 		# can compare half-doses between two atoms within same side-chain
-		atoms1 = self.getAtom('',restype,'',atomtype1)
-		atoms2 = self.getAtom('',restype,'',atomtype2)
+		atoms1 = self.getAtom(restype=restype,atomtype=atomtype1)
+		atoms2 = self.getAtom(restype=restype,atomtype=atomtype2)
 
 		residuals = [atom.densMetric[densMet][normType]['Half-dose']['Residuals'] for atom in atoms1]
 		certainties = [atom.densMetric[densMet][normType]['Half-dose']['Certainty'] for atom in atoms2]
@@ -967,28 +984,29 @@ class combinedAtomList(object):
 							 'D{}_halfDose{}_{}-{}.png'.format(densMet,restype,atomtype1,atomtype2),False,False,'')
 
 	# temporary method to do a specific plot:
-	def HalfDoseDistn(self,metric,normType,plotType,resiType,atomtype,save,nBins,colour):
+	def HalfDoseDistn(self,metric,normType,plotType,restype,atomtype,save,nBins,colour):
 		# histogram/kde plot of density metric per atom
 		# plotType is 'histogram' or 'kde'
 		# save is Boolian to save or not
 		if plotType not in ('hist','kde','both'): return 'Unknown plotting type selected.. cannot plot..'
-		if self.checkMetricPresent(self.atomList[0],metric,normType) is False: return # check metric valid
+		if self.checkMetricPresent(self.atomList[0],metric,normType) is False: 
+			return # check metric valid
 
 		sns.set_palette("deep", desat=.6)
 		sns.set_context(rc={"figure.figsize": (10, 6)})
 		fig = plt.figure()
 
-		atoms = self.getAtom('',resiType,'',atomtype)
+		atoms = self.getAtom(restype=restype,atomtype=atomtype)
 		datax = [atm.densMetric[metric][normType]['Half-dose']['Half-dose'] for atm in atoms if atm.densMetric[metric][normType]['Half-dose']['Half-dose'] < 100 ]
 		self.plotHist(plotType=plotType,nBins=nBins,datax=datax,
 					  lbl='',colour=colour)
 		plt.xlabel('Half-dose (MGy)')
 		plt.ylabel('Normed frequency')
-		plt.title('Half-dose distribution: {}-{}'.format(resiType,atomtype))
+		plt.title('Half-dose distribution: {}-{}'.format(restype,atomtype))
 		if not save: 
 			plt.show()
 		else:
-			fig.savefig('{}halfDoseDistn-{}{}.svg'.format(self.outputDir,resiType,atomtype))
+			fig.savefig('{}halfDoseDistn-{}{}.svg'.format(self.outputDir,restype,atomtype))
 
 	def compareSensAtoms(self,densMet,normType):
 		rSquaredDic = {}
@@ -1005,11 +1023,12 @@ class combinedAtomList(object):
 	def compareMetricsBetweenAtoms(self,restype,atomtype1,atomtype2,densMet,normType,dataset):
 		# for two atom types atomtype1 and atomtype2, compare density metric 
 		# between two atoms within same side-chain
-		atoms1 = self.getAtom('',restype,'',atomtype1)
-		atoms2 = self.getAtom('',restype,'',atomtype2)
+		atoms1 = self.getAtom(restype=restype,atomtype=atomtype1)
+		atoms2 = self.getAtom(restype=restype,atomtype=atomtype2)
 		if atoms1 is False or atoms2 is False: return False,0,{'x':[],'y':[]}
 
-		if dataset == 'av': self.calcAdditionalMetrics(densMet,normType,'average')
+		if dataset == 'av': 
+			self.calcAdditionalMetrics(metric=densMet,normType=normType,newMetric='average')
 
 		xData,yData = [],[]
 		for atom1 in atoms1:
@@ -1036,7 +1055,7 @@ class combinedAtomList(object):
 	def compareMetrics(self,restype,atomtype,metric1,metric2,normType1,normType2,dSet):
 		# for all atoms of type restype and atomtype plot scatter plot comparing metric1 and 2 for chosen dataset dSet
 		# set restype = '' and atomtype = '' to include all atoms
-		atoms = self.getAtom('',restype,'',atomtype)
+		atoms = self.getAtom(restype=restype,atomtype=atomtype)
 		xData,yData = [],[]
 		for atom in atoms:
 			xData.append(atom.densMetric[metric1][normType1]['values'][dSet])
@@ -1095,8 +1114,8 @@ class combinedAtomList(object):
 		# type1,type2 of form [['GLU','CD'],['ASP','CG'],..] depending on how many atom types required
 
 		atoms1,atoms2 = [],[]
-		for ind in type1: atoms1 += self.getAtom('',ind[0],'',ind[1])
-		for ind in type2: atoms2 += self.getAtom('',ind[0],'',ind[1])
+		for ind in type1: atoms1 += self.getAtom(restype=ind[0],atomtype=ind[1])
+		for ind in type2: atoms2 += self.getAtom(restype=ind[0],atomtype=ind[1])
 
 		densVals,minDists = [],[]
 		for atom1 in atoms1:
@@ -1143,7 +1162,7 @@ class combinedAtomList(object):
 			if success is False: return
 			logFile = self.outputDir+'/'+ncont.outputLogfile
 
-		atoms = self.getAtom('',restype,'',atomtype)
+		atoms = self.getAtom(restype=restype,atomtype=atomtype)
 		groupA,groupB,groupAContacts = [],[],[]
 		for atom in atoms:
 			nearCarboxyl = False
@@ -1169,7 +1188,7 @@ class combinedAtomList(object):
 							resNum = int(l[35:38].strip())
 							chain = l[32]
 							print 'contact found! - {}-{}-{}-{}'.format(chain,resNum,l[39:42],l[47:50])
-							contactAtom = self.getAtom(chain,l[39:42],resNum,l[47:50])
+							contactAtom = self.getAtom(chain=chain,restype=l[39:42],resnum=resNum,atomtype=l[47:50])
 							nearCarboxyl = True
 							break
 				readLog.close()
@@ -1236,7 +1255,7 @@ class combinedAtomList(object):
 	
 		plotData = {'x':[],'y':[],'y-error':[]}
 		for atm in keyAtomTypes:
-			foundAtms = self.getAtom('',atm[0],'',atm[1])
+			foundAtms = self.getAtom(restype=atm[0],atomtype=atm[1])
 			if foundAtms == False: continue 
 			for foundAtm in foundAtms:
 				atmId 	= '-'.join(atm)
@@ -1292,7 +1311,7 @@ class combinedAtomList(object):
 		partialPDB 	= strippedPdb.strip('.pdb')+'_areaimol.pdb'
 
 		# get Tyr-OH atoms in structure
-		TyrOHatms = self.getAtom('',resType,'',atomType)
+		TyrOHatms = self.getAtom(restype=resType,atomtype=atomType)
 
 		solvAccDic = {}
 		for atm in TyrOHatms:
@@ -1302,7 +1321,7 @@ class combinedAtomList(object):
 			TyrRingAtms = []
 			if resType == 'TYR' and atomType == 'OH':
 				for atmtype in ['CG','CD1','CD2','CE1','CE2','CZ']:
-					TyrRingAtms.append(self.getAtom(atm.chaintype,resType,atm.residuenum,atmtype)[0])
+					TyrRingAtms.append(self.getAtom(chain=atm.chaintype,restype=resType,resnum=atm.residuenum,atomtype=atmtype)[0])
 
 			for pdb in (fullPDB,partialPDB):
 				print pdb
@@ -1344,9 +1363,9 @@ class combinedAtomList(object):
 
 		plotData = {'x':[],'y':[]}
 		# find specified atoms within structure
-		atms = self.getAtom('',resType,'',atomType)
+		atms = self.getAtom(restype=resType,atomtype=atomType)
 		if atms is False: return plotData # don't continue if no atoms exist
-		self.calcAdditionalMetrics(densMet,normType,'average')
+		self.calcAdditionalMetrics(metric=densMet,normtype=normType,newMetric='average')
 
 		for atm in atms:
 			nearAtms = self.getAtomsWithinDist(atm,distance)
@@ -1382,7 +1401,7 @@ class combinedAtomList(object):
 
 	def getAvMetricPerAtmInRes(self,resType,densMet,normType,dataset):
 		# for specified residue type, calculate the average metric for each atom type within the residue
-		atms = self.getAtom('',resType,'','')
+		atms = self.getAtom(restype=resType)
 		if atms is False: 
 			return
 		atmDic,meanDic = {},{}
@@ -1450,8 +1469,8 @@ class combinedAtomList(object):
 		# compare calculated density metric values to calculated Bdamage values
 
 		# get required atoms in structure
-		atms = self.getAtom('',resType,'',atomType)
-		self.calcAdditionalMetrics(densMet,normType,'average')
+		atms = self.getAtom(restype=resType,atomtype=atomType)
+		self.calcAdditionalMetrics(metric=densMet,normType=normType,newMetric='average')
 
 		# retrieve Bdamage values from Bdamage run log file
 		BdamDic = self.parseBDamageFile(BDamageFile,atomType,resType)
