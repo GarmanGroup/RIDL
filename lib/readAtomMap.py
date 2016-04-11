@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 from deleteListIndices import multi_delete 
 from map2VoxelClassList import readMap
 import sys   
@@ -40,10 +39,14 @@ class maps2DensMetrics():
     def maps2atmdensity(self):
         self.printTitle()
         # write a log file for this eTrack run
-        self.log = logFile('{}{}_log-mapProcessing.txt'.format(self.filesOut,self.pdbName))
-        self.log.writeToLog('eTrack run - map processing\n')
-        self.log.writeToLog('input directory: {}'.format(self.filesIn))        
-        self.log.writeToLog('output directory: {}\n'.format(self.filesOut))        
+        self.log = logFile(fileName='{}{}_log-mapProcessing.txt'.format(self.filesIn,self.pdbName),
+                           fileDir=self.filesIn,
+                           printToScreen=True)
+        self.lgwrite(ln='eTrack run - map processing\n')
+
+        self.lgwrite(ln='input directory: {}'.format(self.filesIn),strip=False)        
+        self.lgwrite(ln=
+            'output directory: {}\n'.format(self.filesOut),strip=False)        
 
         self.readPDBfile()
         self.readAtomMap()
@@ -63,12 +66,12 @@ class maps2DensMetrics():
         logfile = open('{}{}_log.txt'.format(self.filesOut,self.pdbName),'a')
 
         self.startTimer()
-        self.log.writeToLog('Reading in pdb file...')
-        self.log.writeToLog('pdb name: {}{}.pdb'.format(self.filesIn,self.pdbName))
+        self.lgwrite(ln='Reading in pdb file...')
+        self.lgwrite(ln='pdb name: {}{}.pdb'.format(self.filesIn,self.pdbName))
 
         # next read in the pdb structure file:
         # run function to fill PDBarray list with atom objects from structure
-        self.PDBarray = PDBtoList('{}{}.pdb'.format(self.filesIn,self.pdbName),[])
+        self.PDBarray = PDBtoList('{}{}.pdb'.format(self.filesIn,self.pdbName))
         self.success()
         self.stopTimer()
 
@@ -84,11 +87,15 @@ class maps2DensMetrics():
         # read in the atom map
         self.startTimer()
         self.fillerLine()
-        self.log.writeToLog('Reading in Atom map file...')
-        self.log.writeToLog('Atom map name: {}{}'.format(self.filesIn,self.map1['filename']))
-        self.atmmap,self.atom_indices = readMap(self.filesIn,self.filesOut,self.pdbName,
-                                                self.map1['filename'],self.map1['type'],[],self.log)  
-
+        self.lgwrite(ln='Reading in atom-tagged map file...')
+        self.lgwrite(ln='Atom map name: {}{}'.format(self.filesIn,self.map1['filename']))
+        self.atmmap,self.atom_indices = readMap(self.filesIn,
+                                                self.filesOut,
+                                                self.pdbName,
+                                                self.map1['filename'],
+                                                self.map1['type'],
+                                                [],
+                                                self.log)  
         self.success()
         self.stopTimer()
 
@@ -102,19 +109,22 @@ class maps2DensMetrics():
         
         # find set of atoms numbers not present (i.e atoms not assigned to voxels)
         Atms_notpres = set(range(1,num_atoms+1)) - set(uniq_atms)
-        self.log.writeToLog('Number of atoms not assigned to voxels: {}'.format(len(Atms_notpres)))
+        self.lgwrite(ln='Number of atoms not assigned to voxels: {}'.format(len(Atms_notpres)))
 
         
     def readDensityMap(self):
         # read in the density map
         self.startTimer()
         self.fillerLine()
-        self.log.writeToLog('Reading in Density map file...')
-        self.log.writeToLog('Density map name: {}{}'.format(self.filesIn,self.map2['filename']))
+        self.lgwrite(ln='Reading in Density map file...')
+        self.lgwrite(ln='Density map name: {}{}'.format(self.filesIn, self.map2['filename']))
         
-        self.densmap = readMap(self.filesIn,self.filesOut,self.pdbName,
-                               self.map2['filename'],self.map2['type'],
-                               self.atom_indices,self.log)  
+        self.densmap = readMap(self.filesIn,
+                               self.filesOut,self.pdbName,
+                               self.map2['filename'],
+                               self.map2['type'],
+                               self.atom_indices,
+                               self.log)  
         self.success()
         self.stopTimer()
 
@@ -127,21 +137,21 @@ class maps2DensMetrics():
         solvNumVxls      = totalNumVxls - structureNumVxls
         solvMean         = (totalNumVxls*totalMean - structureNumVxls*structureMean)/solvNumVxls
 
-        self.log.writeToLog('For voxels assigned to structure:')
-        self.log.writeToLog('mean structure density : {}'.format(structureMean))
-        self.log.writeToLog('max structure density : {}'.format(max(self.densmap.vxls_val)))
-        self.log.writeToLog('min structure density : {}'.format(min(self.densmap.vxls_val)))
-        self.log.writeToLog('std structure density : {}'.format(np.std(self.densmap.vxls_val)))
-        self.log.writeToLog('# voxels included : {}'.format(structureNumVxls))
-        self.log.writeToLog('For voxels assigned to solvent:')
-        self.log.writeToLog('mean solvent-region density : {}'.format(solvMean))
-        self.log.writeToLog('# voxels included : {}'.format(solvNumVxls))
+        self.lgwrite(ln='For voxels assigned to structure:')
+        self.lgwrite(ln='\tmean structure density : {}'.format(round(structureMean,4)))
+        self.lgwrite(ln='\tmax structure density : {}'.format(round(max(self.densmap.vxls_val)),4))
+        self.lgwrite(ln='\tmin structure density : {}'.format(round(min(self.densmap.vxls_val)),4))
+        self.lgwrite(ln='\tstd structure density : {}'.format(round(np.std(self.densmap.vxls_val)),4))
+        self.lgwrite(ln='\t# voxels included : {}'.format(structureNumVxls))
+        self.lgwrite(ln='\nFor voxels assigned to solvent:')
+        self.lgwrite(ln='\tmean solvent-region density : {}'.format(round(solvMean),4))
+        self.lgwrite(ln='\t# voxels included : {}'.format(solvNumVxls))
 
     def checkMapCompatibility(self):
         # check that atom-tagged and density map can be combined successfully
         self.fillerLine()
         # print 'Checking that maps have same dimensions and sampling properties...' 
-        self.log.writeToLog('Checking that maps have same dimensions and sampling properties...' )
+        self.lgwrite(ln='Checking that maps have same dimensions and sampling properties...' )
 
         self.startTimer()
         # Check that the maps have the same dimensions, grid sampling,..
@@ -151,11 +161,11 @@ class maps2DensMetrics():
             self.atmmap.nxyz != self.densmap.nxyz or
             self.atmmap.type != self.densmap.type):
 
-            self.log.writeToLog('Incompatible map properties --> terminating script')
+            self.lgwrite(ln='Incompatible map properties --> terminating script')
             sys.exit()
 
         elif self.atmmap.celldims != self.densmap.celldims:
-            self.log.writeToLog('Not exact same map grid dimensions..')
+            self.lgwrite(ln='Not exact same map grid dimensions..')
 
             # now check if grid dims same to a specific dp and consider continuing
             stop = True
@@ -165,26 +175,26 @@ class maps2DensMetrics():
                     if np.round(self.atmmap.celldims[key],i) == np.round(self.densmap.celldims[key],i):
                         count += 1
                 if count == 6:
-                    self.log.writeToLog('Map grid dimensions same to {}dp --> continuing with processing anyway'.format(i))
+                    self.lgwrite(ln='Map grid dimensions same to {}dp --> continuing with processing anyway'.format(i))
                     stop = False
                     break
             if stop == True:
-                self.log.writeToLog('Map grid dimensions still not same to 0dp --> terminating script')
+                self.lgwrite(ln='Map grid dimensions still not same to 0dp --> terminating script')
                 sys.exit()
 
         else:
             self.success()
-            self.log.writeToLog('The atom and density map are of compatible format!')
+            self.lgwrite(ln='The atom and density map are of compatible format!')
         self.stopTimer()
 
         self.fillerLine()
-        self.log.writeToLog('Total number of voxels assigned to atoms: {}'.format(len(self.atmmap.vxls_val)))
+        self.lgwrite(ln='Total number of voxels assigned to atoms: {}'.format(len(self.atmmap.vxls_val)))
 
     def createVoxelList(self):
         # create dictionary of voxels with atom numbers as keys 
         self.startTimer()
         self.fillerLine()
-        self.log.writeToLog('Combining voxel density and atom values...')
+        self.lgwrite(ln='Combining voxel density and atom values...')
         vxl_list = {atm:[] for atm in self.atmmap.vxls_val}
         for atm,dens in zip(self.atmmap.vxls_val,self.densmap.vxls_val):
             vxl_list[atm].append(dens)
@@ -197,17 +207,20 @@ class maps2DensMetrics():
     def plotDensHistPlots(self):
         # histogram & kde plots of number of voxels per atom
         self.startTimer()
-        self.log.writeToLog('Plotting histogram plots of voxels per atom...')
-        self.log.writeToLog('Plots written to "{}plots"'.format(self.filesOut))
-        for plotType in ('histogram','kde'):
-            plotVxlsPerAtm(self.pdbName,self.filesOut,self.vxlsPerAtom,plotType)
+        self.lgwrite(ln='Plotting histogram plots of voxels per atom...')
+        self.lgwrite(ln='Plots written to "{}plots"'.format(self.filesOut))
+        for p in ('histogram','kde'):
+            plotVxlsPerAtm(pdbName=self.pdbName,
+                           where=self.filesOut,
+                           vxlsPerAtom=self.vxlsPerAtom,
+                           plotType=p)
         self.stopTimer()
 
     def calculateDensMetrics(self):
         # determine density summary metrics per atom
         self.fillerLine()
         self.startTimer()
-        self.log.writeToLog('Calculating electron density statistics per atom...')
+        self.lgwrite(ln='Calculating electron density statistics per atom...')
         for atom in self.PDBarray:
             atomVxls = self.vxlsPerAtom[atom.atomnum]
             if len(atomVxls) != 0:
@@ -221,7 +234,6 @@ class maps2DensMetrics():
                 atom.min95tile      = np.percentile(atomVxls,5)
                 atom.max95tile      = np.percentile(atomVxls,95)
                 atom.numvoxels      = len(atomVxls)
-        
         self.success()
         self.stopTimer()
 
@@ -235,11 +247,13 @@ class maps2DensMetrics():
     def plotDensScatterPlots(self):
         # plot scatter plots for density metrics 
         self.startTimer()
-        self.fillerLine()
+        self.fillerLine(style='line')
         # print 'Plotting scatter plots for electron density statistics...'
-        self.log.writeToLog('Plotting scatter plots for electron density statistics...')
-        plotVars = (['mean','max'],['mean','median'],['mean','min'],['min','max'],
-                    ['mean','std'],['std','rsd'],['min','min90tile'],['max','max90tile'],
+        self.lgwrite(ln='Plotting scatter plots for electron density statistics...')
+        plotVars = (['mean','max'],['mean','median'],
+                    ['mean','min'],['min','max'],
+                    ['mean','std'],['std','rsd'],
+                    ['min','min90tile'],['max','max90tile'],
                     ['min90tile','min95tile'],['max90tile','max95tile'],
                     ['std','range'],['mean','range'])
         for pVars in plotVars:
@@ -248,12 +262,16 @@ class maps2DensMetrics():
     def plotPerResidueBoxPlots(self):
         # perform residue analysis for datatset, outputting boxplots for each atom specific
         # to each residue, and also a combined boxplot across all residues in structures.
+        self.fillerLine(style='line')
         for densMet in ('mean','min','max'):
-            residueArray = densper_resatom_NOresidueclass(self.filesOut,self.PDBarray,'y',densMet,self.pdbName)
-
-        minresnum = 0
-        sideormain = ['sidechain','mainchain']
-        densper_res(self.filesOut,residueArray,minresnum,sideormain,'min',self.pdbName)
+            residueArray = densper_resatom_NOresidueclass(where=self.filesOut,
+                                                          PDBarray=self.PDBarray,
+                                                          plot=True,
+                                                          densMet=densMet,
+                                                          pdbName=self.pdbName)
+        densper_res(where=self.filesOut,
+                    residueArray=residueArray,
+                    pdbName=self.pdbName)
 
         # remove residueArray now to save memory 
         residueArray = []
@@ -267,24 +285,30 @@ class maps2DensMetrics():
 
     def stopTimer(self):
         elapsedTime = time.time() - self.timeStart
-        self.log.writeToLog('section time: {}s\n'.format(round(elapsedTime,3)))
-
+        self.lgwrite(ln='section time: {}s\n'.format(round(elapsedTime,3)))
         sys.stdout.flush()
 
     def success(self):
-        self.log.writeToLog('---> success')
+        self.lgwrite(ln='---> success')
 
-    def fillerLine(self):
-        print '\n------------------------------------------------'
+    def fillerLine(self,style='stars'):
+        if style == 'stars':
+            print '\n***'
+        elif style == 'line':
+            print '\n'+'-'*30
+        elif style == 'blank':
+            print '\n'
 
-    def printTitle(self):
-        print '\n================================================'
-        print '------------------------------------------------'
-        print '|||              eTrack run                  |||'
-        print '------------------------------------------------'
-        print '================================================\n'
+    def printTitle(self,title='eTrack run'):
+        print '\n'+'='*50
+        print '-'*50
+        print '|||'+' '*15+title+' '*15+'|||'
+        print '-'*50
+        print '='*50+'\n'
 
-
+    def lgwrite(self,ln='',strip=True):
+        # write line to log file
+        self.log.writeToLog(str=ln,strip=strip)
 
 
 
