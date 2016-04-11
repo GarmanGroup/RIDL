@@ -215,7 +215,11 @@ class MapInfo:
 
     def getParamString(self,title,orderedKeys,mapAttr):
         s = title +(40-len(title))*'.'
-        for val in orderedKeys: s += str(mapAttr[val])+' '
+        for val in orderedKeys:
+            if isinstance(mapAttr[val],int):
+                s += str(mapAttr[val])+' '
+            else:
+                s += str(round(mapAttr[val],3))+' '
         return s
 
     def getHeaderInfo(self):

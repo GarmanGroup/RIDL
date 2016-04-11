@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jan 14 22:32:33 2015
-
-@author: charlie
-"""
 from boxPlotter import residue_violinplotter
 import sys
 
@@ -26,7 +20,6 @@ def res2atomsbytype(PDBarray,res_type):
     # create an object for this residue type
     y = residuetype()
     y.name = res_type
-    
     
     # list to collect all the distinct 'residue number' + 'chain type' strings.
     spec_res_indicator = []
@@ -59,16 +52,14 @@ def res2atomsbytype(PDBarray,res_type):
     
     return y    
     
-    
-def densper_resatom_NOresidueclass(where,PDBarray,toplot,densmet,pdbname):
+def densper_resatom_NOresidueclass(where='',PDBarray=[],plot=False,densMet='mean',pdbName=''):
     # this function plots violin plots of atom density for each residue 
     # type, and also outputs a list of residue objects (see residuetype
     # class)
 
     # KEY:
     # 'PDBarray' is list of atoms of structure
-    # 'toplot' takes values 'y' and 'n' to determine whether individual 
-    # boxplots plotted
+    # 'plot' (boolian) determines whether individual boxplots plotted
     # 'densmet' takes values 'mean','median','max','min' to determine 
     # metric of electron density
         
@@ -91,10 +82,8 @@ def densper_resatom_NOresidueclass(where,PDBarray,toplot,densmet,pdbname):
         res_obj = res2atomsbytype(PDBarray,res)
                  
         print '------------SUMMARY---------------'
-        print 'Total number of residues of type %s: %s'\
-        %(res_obj.name,str(res_obj.frequency))
-        print 'Maximum size of residue calculated to be: %s'\
-        %str(res_obj.atm_names) 
+        print 'Total number of residues of type {}: {}'.format(res_obj.name,str(res_obj.frequency))
+        print 'Maximum size of residue calculated to be: {}'.format(res_obj.atm_names) 
       
         # determine the density metric to use and create list of densities
         # from 'atms_bytype' attribute for the residue object
@@ -122,7 +111,7 @@ def densper_resatom_NOresidueclass(where,PDBarray,toplot,densmet,pdbname):
                 
         # call the boxplotting function to plot boxplot of atom type
         # against electron density change for given residue type
-        if toplot in ('y','Y','YES','Yes','yes'):
+        if plot is True:
             print 'Plotting now...'
             residue_violinplotter(where,dens_list,
                                   res_obj.atm_names,
@@ -135,10 +124,10 @@ def densper_resatom_NOresidueclass(where,PDBarray,toplot,densmet,pdbname):
     return residueArray
     
     
-def densper_res(where,residueArray,minresnum,sideormain,densmet,pdbname):  
+def densper_res(where='',residueArray=[],minResNum=0,sideormain=['sidechain','mainchain'],densmet='min',pdbName=''):  
     # plots a boxplot for each residue detailing the electron density 
     # distn. 
-    # 'minresnum' is the threshold for the min number of residues of a 
+    # 'minResNum' is the threshold for the min number of residues of a 
     # given type that need to be present in structure to be included in 
     # the end plot
     # 'sideormain' specifies whether 'sidechain' only, 'mainchain' only, 
@@ -153,7 +142,7 @@ def densper_res(where,residueArray,minresnum,sideormain,densmet,pdbname):
     for res in residueArray:
         # only residue types with more than a specified frequency will be
         # included in the plot
-        if res.frequency > minresnum:
+        if res.frequency > minResNum:
             
             print str(res.name) + ' -----> '\
             + str(res.frequency)
@@ -189,9 +178,10 @@ def densper_res(where,residueArray,minresnum,sideormain,densmet,pdbname):
             residue_label.append(res.name)
             
     print 'Plotting all present residues now......'
-    residue_violinplotter(where,densitylist,
+    residue_violinplotter(where,
+                          densitylist,
                           residue_label,
                           densmet,
                           'ALL'+str(sideormain),
-                          pdbname,
+                          pdbName,
                           densmet)

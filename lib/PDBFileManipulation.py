@@ -7,11 +7,11 @@ from operator import sub,truediv
 from random import randint
 from progbar import progress
 
-def PDBtoList(pdbfilename,PDBarray):
+def PDBtoList(pdbFileName=''):
     # this function inputs a pdb file name and returns an list of pdb objects, 
     # organised following the StructurePDB class
-    
-    pdbin = open(str(pdbfilename), "r")
+    PDBarray = []
+    pdbin = open(pdbFileName, "r")
     lines = pdbin.readlines()
     print 'Reading PDB file and converting to list of objects'
     for line in lines:

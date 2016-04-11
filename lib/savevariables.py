@@ -29,7 +29,7 @@ def retrieve_objectlist(fileName):
     
     #to determine number of atoms saved to file from file name:
     num_atoms = (fileName.split('/')[-1]).split('_')[0]
-    print '\nNumber of atoms in file: ' + str(num_atoms)
+    print 'Number of atoms in file: ' + str(num_atoms)
         
     #to retrieve list from file to new list:
     PDBretrieved = []    
