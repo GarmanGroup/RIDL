@@ -1,11 +1,12 @@
 from time import gmtime, strftime
 
 class logFile():
-	def __init__(self,fileName,fileDir):
+	def __init__(self,fileName='untitled-log',fileDir='',printToScreen=False):
 		self.logFile = fileName
 		self.createLogFile()
-		self.fileDir = fileDir+'/' # where majority of files come from
+		self.fileDir = fileDir # where majority of files come from
 		self.allocateDir()
+		self.printToScreen = printToScreen
 
 	def createLogFile(self):
 		log = open(self.logFile,'w')
@@ -19,17 +20,20 @@ class logFile():
 		log.write('All files come from the following directory unless otherwise given:\n"{}"\n'.format(self.fileDir))
 		log.close()
 
-	def writeToLog(self,logstring,printToScreen=False):
+	def writeToLog(self,str='',strip=True):
 		# write string to current log file
 
 		# strip away the common directory name 
-		logstring = logstring.replace(self.fileDir,'')
+		if strip is True:
+			logstring = str.replace(self.fileDir,'')
+		else:
+			logstring = str
 
 		currentTime = strftime("%Y-%m-%d %H:%M:%S", gmtime())
 		with open(self.logFile, "a") as logfile:
 			logfile.write('{}\t{}\n'.format(self.getTime(),logstring))
 
-			if printToScreen is True:
+			if self.printToScreen is True:
 				if logstring.startswith('Running'):
 					print '\n'+logstring
 				else:
