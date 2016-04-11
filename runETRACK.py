@@ -6,13 +6,14 @@ import os
 class run():
 	# run the main ETRACK scripts to calculate per-atom density metrics for a series of increasing doses
 	def __init__(self,runAll = True,inputFileLoc = ''):
-		self.inputFileName = ''+'e_Track_inputfile.txt'
+		self.inputFileName = inputFileLoc+'e_Track_inputfile.txt'
 		
 		if runAll is True:
 			self.runETRACK()
 
 	def runETRACK(self,mapProcess=True,postProcess=True,retrieve=True):
 		# run the ETRACK processing for the currently defined input file
+		print 'Running main ETRACK script...'
 		exists = self.checkInputFileExists()
 		if exists is False:
 			return
@@ -45,12 +46,12 @@ class run():
 										  'doses <list of doses, length must match length of damageset_num above>',
 										  'PKLMULTIFILE <if already processed in ETRACK, can specify single output .pkl for series>')	
 
-	def writeInputFile(self,inDir,outDir,damageset_name,damageset_num,initialPDB,doses,PKLMULTIFILE):
+	def writeInputFile(self,inDir='',outDir='',damageset_name='',laterDatasets='',initialPDB='',doses='',PKLMULTIFILE=''):
 		# write a generic input file for a damage series here
 		inputString = 'inDir {}\n'.format(inDir)+\
 					  'outDir {}\n'.format(outDir)+\
 					  'damageset_name {}\n'.format(damageset_name)+\
-					  'damageset_num {}\n'.format(damageset_num)+\
+					  'laterDatasets {}\n'.format(laterDatasets)+\
 					  'initialPDB {}\n'.format(initialPDB)+\
 					  'doses {}\n'.format(doses)
 		if PKLMULTIFILE != '':
@@ -65,6 +66,7 @@ class run():
 			return True
 		else:
 			print "Either input file is missing or is not readable"
+			print 'Check whether "{}" is a suitable input file'.format(self.inputFileName)
 			return False
 
 
