@@ -17,13 +17,13 @@ class pipeline():
 		self.findFilesInDir() 	
 		self.txtInputFile 		= inputFile
 		self.jobName 			= jobName
-		self.runLog 			= logFile(fileName='{}/{}_runLog1.log'.format(self.outputDir,jobName),
+		self.runLog 			= logFile(fileName='{}{}_runLog1.log'.format(self.outputDir,jobName),
 										  fileDir=self.outputDir)
 
 		# specify output files for parts of pipeline
-		self.CADoutputMtz 		= '{}/{}_CADcombined.mtz'.format(self.outputDir,self.jobName)
+		self.CADoutputMtz 		= '{}{}_CADcombined.mtz'.format(self.outputDir,self.jobName)
 		self.SCALEITinputMtz 	= self.CADoutputMtz
-		self.SCALEIToutputMtz 	= '{}/{}_SCALEITcombined.mtz'.format(self.outputDir,self.jobName)
+		self.SCALEIToutputMtz 	= '{}{}_SCALEITcombined.mtz'.format(self.outputDir,self.jobName)
 
 	def makeOutputDir(self):
 		# if the above sub directory does not exist, make it
@@ -91,10 +91,10 @@ class pipeline():
 		# open input file and parse inputs for CAD job.
 		# if Input.txt not found, flag error
 		if self.checkFileExists(self.txtInputFile) is False:
-			self.runLog.writeToLog('Required input file {} not found..'.format(self.txtInputFile))
+			self.runLog.writeToLog(str='Required input file {} not found..'.format(self.txtInputFile))
 			return False
 
-		self.runLog.writeToLog('Reading inputs from {}'.format(self.txtInputFile))
+		self.runLog.writeToLog(str='Reading inputs from {}'.format(self.txtInputFile))
 
 		# parse input file
 		inputFile = open(self.txtInputFile,'r')
@@ -122,18 +122,17 @@ class pipeline():
 			except AttributeError:
 				print 'Necessary input not found: {}'.format(prop)
 				return False
-		print 'All necessary inputs found in input file'
 		return True
 
 	def moveInputMtzs(self):
 		# move input mtz files to working directory and rename as suitable
 		if self.densMapType == '2FOFC':
-			self.SIGMAAinputMtz  = '{}/{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
+			self.SIGMAAinputMtz  = '{}{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
 			os.system('cp {} {}'.format(self.mtzIn2,self.SIGMAAinputMtz))
 		else:
-			self.SIGMAAinputMtz  = '{}/{}.mtz'.format(self.outputDir,self.Mtz1LabelRename.strip())
-			self.CADinputMtz2 	 = '{}/{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
-			self.CADinputMtz3    = '{}/{}.mtz'.format(self.outputDir,self.Mtz3LabelRename.strip())
+			self.SIGMAAinputMtz  = '{}{}.mtz'.format(self.outputDir,self.Mtz1LabelRename.strip())
+			self.CADinputMtz2 	 = '{}{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
+			self.CADinputMtz3    = '{}{}.mtz'.format(self.outputDir,self.Mtz3LabelRename.strip())
 			os.system('cp {} {}'.format(self.mtzIn1,self.SIGMAAinputMtz))
 			os.system('cp {} {}'.format(self.mtzIn2,self.CADinputMtz2))
 			os.system('cp {} {}'.format(self.mtzIn3,self.CADinputMtz3))
@@ -150,7 +149,7 @@ class pipeline():
 			fileEnd = 'SCALEITcombined.mtz'
 		for f in os.listdir(self.outputDir): 
 			if (f.endswith('.mtz') and not f.endswith(fileEnd)) or f.endswith('.tmp'):
-				os.system('rm {}/{}'.format(self.outputDir,f))
+				os.system('rm {}{}'.format(self.outputDir,f))
 
 	def cleanUpDir(self):
 		# give option to clean up working directory 
@@ -158,10 +157,10 @@ class pipeline():
 		print 'Cleaning up working directory...\n'
 		self.deleteNonFinalMtzs()
 		# move txt files to subdir
-		os.system('mkdir {}/txtFiles'.format(self.outputDir))
+		os.system('mkdir {}txtFiles/'.format(self.outputDir))
 		for file in os.listdir(self.outputDir): 
 			if file.endswith('.txt') and file not in self.filesInDir:
-				os.system('mv {}/{} {}/txtFiles/{}'.format(self.outputDir,file,self.outputDir,file))
+				os.system('mv {}{} {}txtFiles/{}'.format(self.outputDir,file,self.outputDir,file))
 
 	def findFilesInDir(self):
 		# find files initially in working directory
@@ -172,7 +171,7 @@ class pipeline():
 		if os.path.isfile(filename) is False:
 			ErrorString = 'File {} not found'.format(filename)
 			print ErrorString
-			self.runLog.writeToLog(ErrorString)
+			self.runLog.writeToLog(str=ErrorString)
 			return False
 		else:
 			return True

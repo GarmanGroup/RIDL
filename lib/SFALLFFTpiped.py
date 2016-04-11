@@ -25,7 +25,7 @@ class pipeline():
 			return 1
 
 		# create log file
-		self.runLog = logFile(fileName='{}/{}_runLog2.log'.format(self.outputDir,self.jobName),
+		self.runLog = logFile(fileName='{}{}_runLog2.log'.format(self.outputDir,self.jobName),
 							  fileDir=self.outputDir)
 
 		# run pdbcur job 
@@ -94,7 +94,8 @@ class pipeline():
 		# switch END map axes to match SFALL atom-tagged map if required
 		if self.densMapType == 'END':
 			mapmask_ENDmap = MAPMASKjob(inputDensMap,'',self.outputDir,self.runLog)
-			success = mapmask_ENDmap.switchAxisOrder(axes,self.spaceGroup)
+			success = mapmask_ENDmap.switchAxisOrder(order=axes,
+													 symGroup=self.spaceGroup)
 			if success is False:
 				return 7.0
 			else: inputDensMap = mapmask_ENDmap.outputMapFile
@@ -156,7 +157,7 @@ class pipeline():
 	def renumberPDBFile(self):
 		# reorder atoms in pdb file since some may be missing now after
 		# pdbcur has been run
-		self.runLog.writeToLog('Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
+		self.runLog.writeToLog(str='Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
 		self.reorderedPDBFile = (self.PDBCURoutputFile).split('_pdbcur.pdb')[0]+'_reordered.pdb'
 
 		pdbin = open(self.PDBCURoutputFile,'r')
@@ -174,19 +175,19 @@ class pipeline():
 				pdbout.write(line[11:80]+'\n')
 		pdbin.close()
 		pdbout.close()
-		self.runLog.writeToLog('Output pdb file: {}'.format(self.reorderedPDBFile))
+		self.runLog.writeToLog(str='Output pdb file: {}'.format(self.reorderedPDBFile))
 
 	def getSpaceGroup(self):
 		pdbin = open(self.reorderedPDBFile,'r')
 		for line in pdbin.readlines():
 			if line.split()[0] == 'CRYST1':
 				self.spaceGroup = line[55:66].replace(' ','')
-				self.runLog.writeToLog('Retrieving space group from file: {}'.format(self.PDBCURoutputFile))
-				self.runLog.writeToLog('Space group determined to be {}'.format(self.spaceGroup))
+				self.runLog.writeToLog(str='Retrieving space group from file: {}'.format(self.PDBCURoutputFile))
+				self.runLog.writeToLog(str='Space group determined to be {}'.format(self.spaceGroup))
 		try:
 			self.spaceGroup
 		except attributeError:
-			self.runLog.writeToLog('Unable to find space group from file: {}'.format(self.PDBCURoutputFile))
+			self.runLog.writeToLog(str='Unable to find space group from file: {}'.format(self.PDBCURoutputFile))
 			return False
 		return True
 
@@ -194,41 +195,41 @@ class pipeline():
 		# this function determines whether the atom map and density map calculated using SFALL and FFT
 		# are compatible - meaning the grid dimensions/filtering are the same and the ordering of the
 		# fast, medium, and slow axes are identical.
-		self.runLog.writeToLog('Checking that atom map (SFALL) and density map (FFT) are compatible...')
+		self.runLog.writeToLog(str='Checking that atom map (SFALL) and density map (FFT) are compatible...')
 
 		if (sfallMap.gridsamp1 != fftMap.gridsamp1 or
 			sfallMap.gridsamp2 != fftMap.gridsamp2 or
 			sfallMap.gridsamp3 != fftMap.gridsamp3):
-			self.runLog.writeToLog('Incompatible grid sampling found...')
+			self.runLog.writeToLog(str='Incompatible grid sampling found...')
 			return False
 
 		if (sfallMap.fastaxis != fftMap.fastaxis or
 			sfallMap.medaxis != fftMap.medaxis or
 			sfallMap.slowaxis != fftMap.slowaxis):
-			self.runLog.writeToLog('Incompatible fast,med,slow axes ordering found...')
+			self.runLog.writeToLog(str='Incompatible fast,med,slow axes ordering found...')
 			return False
 
 		if (sfallMap.numCols != fftMap.numCols or
 			sfallMap.numRows != fftMap.numRows or
 			sfallMap.numSecs != fftMap.numSecs):
-			self.runLog.writeToLog('Incompatible number of rows, columns and sections...')
+			self.runLog.writeToLog(str='Incompatible number of rows, columns and sections...')
 			return False
 
 		if sfallMap.getMapSize() != fftMap.getMapSize():
-			self.runLog.writeToLog('Incompatible map file sizes')
+			self.runLog.writeToLog(str='Incompatible map file sizes')
 			return False
 
-		self.runLog.writeToLog('---> success!')
+		self.runLog.writeToLog(str='---> success!')
 		return True
 
 	def cleanUpDir(self):
 		# give option to clean up working directory 
 		print 'Cleaning up working directory...\n'
 		# move txt files to subdir
-		os.system('mkdir {}/txtFiles'.format(self.outputDir))
+		os.system('mkdir {}txtFiles/'.format(self.outputDir))
 		for file in os.listdir(self.outputDir): 
 			if file.endswith('.txt') and file not in self.filesInDir:
-				os.system('mv {}/{} {}/txtFiles/{}'.format(self.outputDir,file,self.outputDir,file))
+				os.system('mv {}{} {}txtFiles/{}'.format(self.outputDir,file,self.outputDir,file))
 
 	def findFilesInDir(self):
 		# find files initially in working directory
