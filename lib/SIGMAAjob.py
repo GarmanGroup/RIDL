@@ -1,4 +1,4 @@
-from ccp4Job import ccp4Job,checkInputsExist
+from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 import os
 
 class SIGMAAjob():
@@ -37,6 +37,7 @@ class SIGMAAjob():
 
 	def runSIGMAA(self):
 		title = 'run of sigma-a'
+		fillerLine()
 										 
 		self.commandInput1 	= 	'sfall '+\
 								'HKLIN {} '.format(self.inputMtz)+\
@@ -91,11 +92,10 @@ class SIGMAAjob():
 		else:
 			fileIn  = self.inputMtz
 			fileOut = self.outputMtz
-		print '--------------------------'
+
 		print 'SIGMAA Summary:'
 		print 'Input mtz file: {}'.format(fileIn)
 		print 'Output mtz file: {}'.format(fileOut)
-		print '--------------------------'
 
 	def getSpaceGroup(self):
 		pdbin = open(self.inputPDB,'r')

@@ -28,8 +28,8 @@ class ccp4Job():
 												   self.outputLogfile))
 
 		# move ccp4 job input and log files to working sub directory
-		os.system('mv {}inputfile.txt {}/{}inputfile.txt'.format(self.jobName,self.outputDir,self.jobName))
-		os.system('mv {} {}/{}'.format(self.outputLogfile,self.outputDir,self.outputLogfile))
+		os.system('mv {}inputfile.txt {}{}inputfile.txt'.format(self.jobName,self.outputDir,self.jobName))
+		os.system('mv {} {}{}'.format(self.outputLogfile,self.outputDir,self.outputLogfile))
 
 	def checkJobSuccess(self):
 		# job success checked, based on whether output files exist
@@ -51,3 +51,14 @@ def checkInputsExist(inputFiles,runLog):
 		for fileName in inputFiles:
 			runLog.writeToLog('{}'.format(fileName))	
 		return True
+
+def fillerLine(long=True,linebreak=True):
+	if long is True:
+		ln = '--------------------------'*2
+	else:
+		ln = '--------------------------'
+	if linebreak is True:
+		ln = '\n'+ln
+	print ln
+
+

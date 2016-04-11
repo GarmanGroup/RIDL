@@ -1,4 +1,4 @@
-from ccp4Job import ccp4Job,checkInputsExist
+from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 import os
 
 class CADjob():
@@ -42,6 +42,8 @@ class CADjob():
 			return False
 
 	def runCAD(self):
+		fillerLine()
+		self.printPurpose()
 		title = 'run of cad'
 										 
 		self.commandInput1 	= 	'cad '+\
@@ -98,8 +100,12 @@ class CADjob():
 			fileIn2  = self.inputMtz2
 			fileIn3  = self.inputMtz3
 			fileOut = self.outputMtz
-		print '--------------------------'
+
 		print 'CAD Summary:'
 		print 'Input mtz files: {}\n{}{}\n{}{}'.format(fileIn1,' '*17,fileIn2,' '*17,fileIn3)
 		print 'Output mtz file: {}'.format(fileOut)
-		print '--------------------------'
+
+	def printPurpose(self,include=True):
+		# provide a summary of what this does (within ETRACK) to the command line
+		str = 'Combining relevant columns from multiple input mtz files into 1 single mtz file'
+		print str

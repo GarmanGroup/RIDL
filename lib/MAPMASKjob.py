@@ -1,4 +1,4 @@
-from ccp4Job import ccp4Job,checkInputsExist
+from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 from mapTools import mapTools
 
 class MAPMASKjob():
@@ -26,8 +26,10 @@ class MAPMASKjob():
 			   'SYMINFO syminfo.lib '
 		self.commandInput1 = ci1
 
-	def switchAxisOrder(self,order,symGroup):
+	def switchAxisOrder(self,order=[],symGroup="",includeDir=False):
 		# switch the axis order of an input .map file. order = [1,2,3] for example
+		fillerLine()
+		self.printPurpose(mode='switch axes')
 		self.defineCorrectOutputMap(True)
 		xyz = {'1':'X','2':'Y','3':'Z'}
 		axisOrder = [xyz[str(i)] for i in order]
@@ -36,7 +38,12 @@ class MAPMASKjob():
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
 
-		self.runLog.writeToLog('Switching map "{}" axis ordering to {}'.format(self.inputMapFile,axisOrder))
+		if includeDir is False:
+			map1 = self.inputMapFile.split('/')[-1]
+		else:
+			map1 = self.inputMapFile
+
+		self.runLog.writeToLog('Switching map "{}" axis ordering to {}'.format(map1,axisOrder))
 		self.defineCommandInput()
 		self.commandInput2 = 'SYMMETRY {}\nAXIS {}\nEND'.format(symGroup,' '.join(axisOrder))
 		self.outputLogfile = 'MAPMASKlogfile.txt'
@@ -48,14 +55,21 @@ class MAPMASKjob():
 		success = self.provideFeedback()
 		return success
 
-	def crop2AsymUnit(self):
+	def crop2AsymUnit(self,includeDir=False):
 		# Crop map 1 to asymmetric unit
+		fillerLine()
+		self.printPurpose(mode='crop to asym')
 		self.defineCorrectOutputMap(False)
 		inputFiles = [self.inputMapFile]
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
 
-		self.runLog.writeToLog('Cropping map "{}" to asym unit'.format(self.inputMapFile))
+		if includeDir is False:
+			map1 = self.inputMapFile.split('/')[-1]
+		else:
+			map1 = self.inputMapFile
+
+		self.runLog.writeToLog('Cropping map "{}" to asym unit'.format(map1))
 		self.defineCommandInput()
 		self.commandInput2 = 'EXTEND\nXYZLIM ASU\nEND'
 		self.outputLogfile = 'MAPMASKlogfile.txt'
@@ -67,14 +81,20 @@ class MAPMASKjob():
 		success = self.provideFeedback()
 		return success
 
-	def cropMap2Map(self):
+	def cropMap2Map(self,includeDir=False):
 		# Crop map 1 to map 2
+		fillerLine()
+		self.printPurpose(mode='crop to map')
 		self.defineCorrectOutputMap(False)
 		inputFiles = [self.inputMapFile,self.inputMapFile2]
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			 return False
 
-		self.runLog.writeToLog('Cropping map "{}" to map "{}"'.format(self.inputMapFile,self.inputMapFile2))
+		maps = [self.inputMapFile,self.inputMapFile2]
+		if includeDir is False:
+			maps = [m.split('/')[-1] for m in maps]
+
+		self.runLog.writeToLog('Cropping map "{}" to map "{}"'.format(*maps))
 		self.defineCommandInput()
 		self.commandInput2 = 'EXTEND\nXYZLIM MATCH\nEND'
 		self.outputLogfile = 'MAPMASKlogfile.txt'
@@ -110,7 +130,6 @@ class MAPMASKjob():
 				fileIn2  = self.inputMapFile2
 			fileOut = self.outputMapFile
 
-		print '--------------------------'
 		print 'MAPMASK Summary:'
 		print 'Input map file: {}'.format(fileIn1)
 		if self.inputMapFile2 != '':
@@ -118,4 +137,20 @@ class MAPMASKjob():
 		print 'Output map file: {}'.format(fileOut)
 		Map = mapTools(self.outputMapFile)
 		Map.printMapInfo()
-		print '--------------------------'
+
+	def printPurpose(self,include=True,mode='switch axes',includeDir=False):
+		# provide a summary of what this does (within ETRACK) to the command line
+		
+		maps = [self.inputMapFile,self.inputMapFile2]
+		if includeDir is False:
+			maps = [m.split('/')[-1] for m in maps]
+
+		if mode == 'switch axes':
+			str = 'Switching map "{}" axis ordering to {}'.format(maps[0],axisOrder)
+		if mode == 'crop to asym':
+			str = 'Cropping map "{}" to asym unit'.format(maps[0])
+		if mode == 'crop to map':
+			str = 'Cropping map "{}" to map "{}"'.format(*maps)
+		print str
+
+

@@ -1,4 +1,4 @@
-from ccp4Job import ccp4Job,checkInputsExist
+from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 from mapTools import mapTools
 
 class FFTjob():
@@ -44,6 +44,8 @@ class FFTjob():
 			
 	def runFFT(self):
 		# run FFT job using the external ccp4Job class
+		fillerLine()
+		self.printPurpose()
 		self.commandInput1 = 'fft '+\
 				 			 'HKLIN {} '.format(self.inputMtzFile)+\
 			 	 			 'MAPOUT {} '.format(self.outputMapFile)+\
@@ -94,12 +96,23 @@ class FFTjob():
 		else:
 			fileIn  = self.inputMtzFile
 			fileOut = self.outputMapFile
-		print '--------------------------'
+
 		print 'FFT Summary:'
 		print 'Input mtz file: {}'.format(fileIn)
 		print 'Output map file: {}'.format(fileOut)
 		Map = mapTools(self.outputMapFile)
 		Map.printMapInfo()
-		print '--------------------------'
+
+	def printPurpose(self,include=True):
+		# provide a summary of what this does (within ETRACK) to the command line
+		if self.mapType == 'DIFF':
+			str = 'Generating Fourier difference map over crystal unit cell,\n'
+		if self.mapType == 'SIMPLE':
+			str = 'Generating Fobs electron density map over crystal unit cell,\n'
+		if self.mapType == '2FOFC':
+			str = 'Generating 2Fo-Fc electron density map over crystal unit cell,\n'
+		str += 'with same grid sampling dimensions as SFALL-output atom-tagged .map file'
+		print str
+
 
 

@@ -1,4 +1,4 @@
-from ccp4Job import ccp4Job,checkInputsExist
+from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 import os
 
 class PDBCURjob():
@@ -29,6 +29,8 @@ class PDBCURjob():
 		# (for two conformations with 0.5 occupancy, the first - A is chosen and occupancy
 		# set to 1.00). Also remove all anisou info from file - since it is not needed for 
 		# current analysis
+		fillerLine()
+		self.printPurpose()
 		self.jobName = 'PDBCUR'
 
 		# run PDBCUR from command line
@@ -51,7 +53,6 @@ class PDBCURjob():
 	def provideFeedback(self,includeDir=False):
 		# provide some feedback
 
-		print '--------------------------'
 		print 'PDBCUR Summary:'
 		files = {'Input':self.inputPDBfile,
 				 'Output':self.outputPDBfile}
@@ -70,4 +71,8 @@ class PDBCURjob():
 					counter += 1
 			pdbin.close()
 			print '\t# atoms in file: {}'.format(counter)
-		print '--------------------------'
+
+	def printPurpose(self,include=True):
+		# provide a summary of what this does (within ETRACK) to the command line
+		str = 'Stripping hydrogens, removing secondary conformations, and removing anisotropic B-factors'
+		print str

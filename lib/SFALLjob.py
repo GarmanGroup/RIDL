@@ -1,4 +1,4 @@
-from ccp4Job import ccp4Job,checkInputsExist
+from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 from mapTools import mapTools
 
 class SFALLjob():
@@ -29,6 +29,9 @@ class SFALLjob():
 			return False
 
 	def runSFALL(self):
+		# run SFALL job using the external ccp4Job class
+		fillerLine()
+		self.printPurpose()
 		title = 'run of sfall'
 
 		self.commandInput1 = 'sfall '+\
@@ -65,12 +68,16 @@ class SFALLjob():
 		else:
 			fileIn  = self.inputPDBfile
 			fileOut = self.outputMapFile
-		print '--------------------------'
+
 		print 'SFALL Summary:'
 		print 'Input pdb file: {}'.format(fileIn)
 		print 'Output map file: {}'.format(fileOut)
 		Map = mapTools(self.outputMapFile)
 		Map.printMapInfo()
-		print '--------------------------'
+
+	def printPurpose(self,include=True):
+		# provide a summary of what this does (within ETRACK) to the command line
+		str = 'Creating atom-tagged .map file over unit cell for model "{}"'.format(self.inputPDBfile.split('/')[-1])
+		print str
 
 

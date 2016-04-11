@@ -1,4 +1,4 @@
-from ccp4Job import ccp4Job,checkInputsExist
+from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 import os
 
 class SCALEITjob():
@@ -28,6 +28,8 @@ class SCALEITjob():
 
 	def runSCALEIT(self):
 		# run SCALEIT job to scale 2nd dataset Fs against 1st datasets
+		fillerLine()
+		self.printPurpose()
 		title = 'run of scaleit'
 
 		# run SCALEIT from command line
@@ -61,8 +63,14 @@ class SCALEITjob():
 		else:
 			fileIn  = self.inputMtz
 			fileOut = self.outputMtz
-		print '--------------------------'
+
 		print 'SCALEIT Summary:'
 		print 'Input mtz file: {}'.format(fileIn)
 		print 'Output mtz file: {}'.format(fileOut)
-		print '--------------------------'
+
+	def printPurpose(self,include=True):
+		# provide a summary of what this does (within ETRACK) to the command line
+		str = 'Scaling 2nd dataset Fobs column against 1st dataset (low dose) Fobs'
+		print str
+
+

@@ -38,8 +38,8 @@ class mapTools():
 
 	def printMapInfo(self):
 		numVoxels = self.getMapSize()
-		string 	=  	'Number of columns, rows, sections ......  {} {} {}\n'.format(self.numCols,self.numRows,self.numSecs)+\
-					'Grid sampling on x, y, z ...............  {} {} {}\n'.format(self.gridsamp1,self.gridsamp2,self.gridsamp3)+\
-					'Fast, medium, slow axes ................  {} {} {}\n'.format(self.fastaxis,self.medaxis,self.slowaxis)+\
-					'Number of map voxels ...................  {}'.format(numVoxels)
+		string 	=  	'\tNumber of columns, rows, sections ......  {} {} {}\n'.format(self.numCols,self.numRows,self.numSecs)+\
+					'\tGrid sampling on x, y, z ...............  {} {} {}\n'.format(self.gridsamp1,self.gridsamp2,self.gridsamp3)+\
+					'\tFast, medium, slow axes ................  {} {} {}\n'.format(self.fastaxis,self.medaxis,self.slowaxis)+\
+					'\tNumber of map voxels ...................  {}'.format(numVoxels)
 		print string
