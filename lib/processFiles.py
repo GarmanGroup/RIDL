@@ -2,10 +2,12 @@ from CADSCALEITpiped import pipeline as pipe1
 from SFALLFFTpiped import pipeline as pipe2
 import os
 import shutil
+from runETRACK import run as runETRACK
 
 class processFiles():
-	def __init__(self,inputFile):
-		self.inputFile = inputFile
+	def __init__(self,inputFile='',proceedToETRACK=False):
+		self.inputFile 		 = inputFile
+		self.proceedToETRACK = proceedToETRACK
 
 	def runProcessing(self):
 		success = self.readMainInputFile()
@@ -32,6 +34,11 @@ class processFiles():
 			for i in range(self.numDsets):
 				self.getCurrentInputParams(jobNumber=i)
 				success = self.runPipelines()
+
+		if success is True:
+			if self.proceedToETRACK is True:
+				self.writeETRACKInputFile()
+
 		return success
 
 	def runPipelines(self):
@@ -186,9 +193,14 @@ class processFiles():
 
 	def checkOutputDirExists(self):
 		# check whether output directory exists and make if not
+		if self.dir.endswith('/') is False:
+			print 'Working directory specified in input file must end in "/" - appending'
+			self.dir += '/'
+
 		if not os.path.exists(self.dir):
 			print 'Output directory "{}" not found, making directory'.format(self.dir)
 			os.makedirs(self.dir)
+		print 'Working directory set to "{}"'.format(self.dir)
 
 	def getCurrentInputParams(self,jobNumber=0):
 		# select correct input parameters if multiple jobs within main input file.
@@ -217,7 +229,7 @@ class processFiles():
 
 	def writePipeline1Inputs(self):
 
-		self.pipe1FileName 	= self.dir+'/'+self.inputFile.split('.')[0]+'_cadscaleit.txt'
+		self.pipe1FileName 	= self.dir+self.inputFile.split('.')[0]+'_cadscaleit.txt'
 
 		props = {'mtzIn1':'mtz1',
 				 'Mtz1LabelName':'mtzlabels1_current',
@@ -246,12 +258,12 @@ class processFiles():
 
 	def writePipeline2Inputs(self):
 
-		self.pipe2FileName 	= self.dir+'/'+self.inputFile.split('.')[0]+'_sfallfft.txt'
+		self.pipe2FileName 	= self.dir+self.inputFile.split('.')[0]+'_sfallfft.txt'
 
 		if self.densMapType != '2FOFC':
-			self.mtzIn = '{}/{}_SCALEITcombined.mtz'.format(self.dir,self.jobName)
+			self.mtzIn = '{}{}_SCALEITcombined.mtz'.format(self.dir,self.jobName)
 		else:
-			self.mtzIn = '{}/{}_sigmaa.mtz'.format(self.dir,self.name2_current)
+			self.mtzIn = '{}{}_sigmaa.mtz'.format(self.dir,self.name2_current)
 
 		props = {'pdbIN':'pdb2_current',
 				 'initialPDB':'name1_current',
@@ -313,22 +325,24 @@ class processFiles():
 		params 			= [self.dir,self.dsetName]
 		renameParams	= [self.dir,self.name2_current]
 		keyLogFiles 	= [self.p1.runLog.logFile,self.p2.runLog.logFile]
-		mapFiles 		= ['{}/{}_{}_cropped_cropped.map'.format(self.dir,self.dsetName,densMapProg),
-						   '{}/{}_sfall_cropped.map'.format(*params)]
-		pdbFiles 		= ['{}/{}_reordered.pdb'.format(*params)]
+		mapFiles 		= ['{}{}_{}_cropped_cropped.map'.format(self.dir,self.dsetName,densMapProg),
+						   '{}{}_sfall_cropped.map'.format(*params)]
+		pdbFiles 		= ['{}{}_reordered.pdb'.format(*params)]
 		outputFiles 	= mapFiles + pdbFiles
-		renameFiles 	= ['{}/{}_density.map'.format(*renameParams),
-					  	   '{}/{}_atoms.map'.format(*renameParams),
-					   	   '{}/{}.pdb'.format(*renameParams)]
+		renameFiles 	= ['{}{}_density.map'.format(*renameParams),
+					  	   '{}{}_atoms.map'.format(*renameParams),
+					   	   '{}{}.pdb'.format(*renameParams)]
 
-		subdir = '{}/{}_additionalFiles'.format(self.dir,self.jobName)
+		subdir = '{}{}_additionalFiles/'.format(self.dir,self.jobName)
 		os.system('mkdir {}'.format(subdir))
 
 		for file in os.listdir(self.dir): 
+			if file.endswith('_additionalFiles'):
+				continue
 			if file not in self.filesInDir:
-				fileName = '{}/{}'.format(self.dir,file)
-				if fileName not in keyLogFiles+mapFiles+pdbFiles+[subdir]:
-					os.system('mv {} {}/{}'.format(fileName,subdir,file))
+				fileName = '{}{}'.format(self.dir,file)
+				if fileName not in keyLogFiles+mapFiles+pdbFiles:
+					os.system('mv {} {}{}'.format(fileName,subdir,file))
 
 		for file in os.listdir(subdir):
 			remove = False
@@ -339,13 +353,16 @@ class processFiles():
 			if removePdbs is True and file.endswith('.pdb'):
 					remove = True
 			if remove is True:
-				os.system('rm {}/{}'.format(subdir,file))
+				os.system('rm {}{}'.format(subdir,file))
 
 		shutil.make_archive(subdir, 'zip', subdir)
 		os.system('rm -rf {}'.format(subdir))
 
 		# rename final map files
 		for i in range(3): os.system('mv {} {}'.format(outputFiles[i],renameFiles[i]))
+
+		# move initial dataset pdb files to working directory
+		self.moveInitialPDBfile()
 
 		# check that resulting files are found
 		self.findFilesInDir()
@@ -354,3 +371,37 @@ class processFiles():
 				print 'Not all key output files found'
 				return False
 		return True
+
+	def moveInitialPDBfile(self):
+		# copy the initial dataset pdb file to the working directory (useful if further ETRACK jobs to be run)
+		if self.multiDatasets == False or self.repeatedFile1InputsUsed == True:
+			os.system('cp {} {}{}'.format(self.pdb1,self.dir,self.pdb1.split('/')[-1]))
+		else:
+			for pdb in self.pdb1.split(','):
+				os.system('cp {} {}{}'.format(pdb,self.dir,pdb.split('/')[-1]))
+
+	def writeETRACKInputFile(self,write=True,run=True):
+		# writes an input file for the run of ETRACK after this processing pipeline has completed.
+		# allows the user to immediately run the rest of the program, IF the user did specify 
+		# all required datasets within a damage series. If the user only processed a subset of 
+		# required datasets within a damage series, another ETRACK input file will need to be manually 
+		# created to run the rest of the program with ALL datasets within the damage series included.
+		if write is False:
+			return
+
+		r = runETRACK(runAll=False)
+		seriesName = self.dir.split('/')[-2]
+		doses = ','.join(map(str,range(len(self.name2.split(','))))) # TODO: implement proper doses here
+
+		r.writeInputFile(inDir=self.dir,
+						 outDir=self.dir,
+						 damageset_name=seriesName,
+						 laterDatasets=self.name2,
+						 initialPDB=self.pdb1.split('/')[-1],
+						 doses=doses)
+		os.system('mv {} {}{}'.format(r.inputFileName,self.dir,r.inputFileName))
+
+		if run is True:
+			r = runETRACK(inputFileLoc=self.dir)
+
+
