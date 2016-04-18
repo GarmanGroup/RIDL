@@ -2,12 +2,17 @@ from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 import os
 
 class PDBCURjob():
+	
+	def __init__(self,
+				 inputPDBfile = '',
+				 outputDir    = './',
+				 runLog       = ''):
 
-	def __init__(self,inputPDBfile,outputDir,runLog):
-		self.inputPDBfile 	= inputPDBfile
-		self.outputPDBfile 	= '{}/{}_pdbcur.pdb'.format(outputDir,inputPDBfile.split('/')[-1].split('.pdb')[0])
-		self.outputDir 		= outputDir
-		self.runLog 			= runLog
+		self.inputPDBfile  = inputPDBfile
+		self.outputPDBfile = '{}/{}_pdbcur.pdb'.format(outputDir,inputPDBfile.split('/')[-1].split('.pdb')[0])
+		self.outputDir 	   = outputDir
+		self.runLog 	   = runLog
+
 		self.runLog.writeToLog('Running PDBCUR job')
 
 	def run(self):
@@ -47,7 +52,13 @@ class PDBCURjob():
 		self.outputLogfile = 'PDBCURlogfile.txt'
 
 		# run PDBCUR job
-		job = ccp4Job('PDBCUR',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputPDBfile)
+		job = ccp4Job(jobName       = 'PDBCUR',
+			  commandInput1 = self.commandInput1,
+			  commandInput2 = self.commandInput2,
+			  outputDir     = self.outputDir,
+			  outputLog     = self.outputLogfile,
+			  outputFile    = self.outputPDBfile)
+
 		self.jobSuccess = job.checkJobSuccess()
 
 	def provideFeedback(self,includeDir=False):

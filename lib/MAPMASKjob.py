@@ -3,11 +3,17 @@ from mapTools import mapTools
 
 class MAPMASKjob():
 
-	def __init__(self,inputMapFile,inputMapFile2,outputDir,runLog):
-		self.inputMapFile 	= inputMapFile 
-		self.inputMapFile2 	= inputMapFile2
+	def __init__(self,
+				 mapFile1  = '',
+				 mapFile2  = '',
+				 outputDir = './',
+				 runLog    = ''):
+
+		self.inputMapFile 	= mapFile1 
+		self.inputMapFile2 	= mapFile2
 		self.outputDir 		= outputDir
 		self.runLog			= runLog
+		
 		self.runLog.writeToLog('Running MAPMASK job')
 
 	def defineCorrectOutputMap(self,switch):
@@ -49,8 +55,13 @@ class MAPMASKjob():
 		self.outputLogfile = 'MAPMASKlogfile.txt'
 
 		# run MAPMASK job
-		job = ccp4Job('MAPMASK_switchAxisOrder',self.commandInput1,self.commandInput2,
-					  self.outputDir,self.outputLogfile,self.outputMapFile)
+		job = ccp4Job(jobName       = 'MAPMASK_switchAxisOrder',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.outputMapFile)
+
 		self.jobSuccess = job.checkJobSuccess()
 		success = self.provideFeedback()
 		return success
@@ -75,8 +86,13 @@ class MAPMASKjob():
 		self.outputLogfile = 'MAPMASKlogfile.txt'
 
 		# run MAPMASK job
-		job = ccp4Job('MAPMASK_crop2AsymUnit',self.commandInput1,self.commandInput2,
-					  self.outputDir,self.outputLogfile,self.outputMapFile)
+		job = ccp4Job(jobName       = 'MAPMASK_crop2AsymUnit',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.outputMapFile)
+
 		self.jobSuccess = job.checkJobSuccess()
 		success = self.provideFeedback()
 		return success
@@ -100,8 +116,13 @@ class MAPMASKjob():
 		self.outputLogfile = 'MAPMASKlogfile.txt'
 
 		# run MAPMASK job
-		job = ccp4Job('MAPMASK_cropMap2Map',self.commandInput1,self.commandInput2,
-					  self.outputDir,self.outputLogfile,self.outputMapFile)
+		job = ccp4Job(jobName       = 'MAPMASK_cropMap2Map',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.outputMapFile)
+
 		self.jobSuccess = job.checkJobSuccess()
 		success = self.provideFeedback()
 		return success

@@ -3,7 +3,14 @@ import os
 
 class SCALEITjob():
 	# run SCALEIT job to scale 2nd dataset Fs against 1st datasets	
-	def __init__(self,inputMtz,outputMtz,Mtz1Label,Mtz2Label,outputDir,runLog):
+	def __init__(self,
+				 inputMtz  = '',
+				 outputMtz = 'scaleit.mtz',
+				 Mtz1Label = '',
+				 Mtz2Label = '',
+				 outputDir = '',
+				 runLog    = ''):
+
 		self.inputMtz 	= inputMtz
 		self.outputMtz 	= outputMtz
 		self.Mtz1Label 	= Mtz1Label
@@ -52,7 +59,13 @@ class SCALEITjob():
 		self.outputLogfile = 'SCALEITlogfile.txt'
 
 		# run SCALEIT job
-		job = ccp4Job('SCALEIT',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMtz)
+		job = ccp4Job(jobName       = 'SCALEIT',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.outputMtz)
+
 		self.jobSuccess = job.checkJobSuccess()
 
 	def provideFeedback(self,includeDir=False):

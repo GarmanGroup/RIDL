@@ -57,7 +57,13 @@ class SFALLjob():
 		self.outputLogfile = 'SFALLlogfile.txt'
 
 		# run SFALL job
-		job = ccp4Job('SFALL',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMapFile)
+		job = ccp4Job(jobName       = 'SFALL',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.outputMapFile)
+
 		self.jobSuccess = job.checkJobSuccess()
 
 	def provideFeedback(self,includeDir=False):

@@ -3,17 +3,25 @@ import os
 
 class SIGMAAjob():
 	# run SIGMAA job to combine generate FOM weights if not present in input mtz file
-	def __init__(self,inputMtz,MtzLabelNameIn,MtzLabelNameOut,RfreeFlag,inputPDB,outputDir,runLog):
+	def __init__(self,
+				 inputMtz 		 = '',
+				 MtzLabelNameIn  = '',
+				 MtzLabelNameOut = '',
+				 RfreeFlag		 = '',
+				 inputPDB		 = '',
+				 outputDir       = './',
+				 runLog          = ''):
 
-		self.inputMtz 			= inputMtz # mtz containing initial dataset Fs
-		self.LabelName 			= MtzLabelNameIn
-		self.LabelRename 		= MtzLabelNameOut
-		self.RfreeFlag			= RfreeFlag
-		self.tmpMtz				= outputDir+'/'+(inputMtz.split('/')[-1]).split('.mtz')[0]+'.tmp'
-		self.outputMtz			= self.tmpMtz.split('.tmp')[0]+'_sigmaa.mtz'
-		self.inputPDB			= inputPDB
-		self.outputDir			= outputDir
-		self.runLog 			= runLog
+		self.inputMtz 	 = inputMtz # mtz containing initial dataset Fs
+		self.LabelName 	 = MtzLabelNameIn
+		self.LabelRename = MtzLabelNameOut
+		self.RfreeFlag	 = RfreeFlag
+		self.tmpMtz		 = outputDir+'/'+(inputMtz.split('/')[-1]).split('.mtz')[0]+'.tmp'
+		self.outputMtz	 = self.tmpMtz.split('.tmp')[0]+'_sigmaa.mtz'
+		self.inputPDB	 = inputPDB
+		self.outputDir	 = outputDir
+		self.runLog 	 = runLog
+		
 		self.runLog.writeToLog('Running SIGMAA job')
 
 	def run(self):
@@ -58,7 +66,13 @@ class SIGMAAjob():
 		self.outputLogfile = 'SIGMAAlogfile1.txt'
 
 		# run SFALL job within SIGMAA routine
-		job = ccp4Job('SFALL',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.tmpMtz)
+		job = ccp4Job(jobName       = 'SFALL',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.tmpMtz)
+
 		self.jobSuccess = job.checkJobSuccess()
 		if self.jobSuccess is False:
 			return
@@ -81,7 +95,13 @@ class SIGMAAjob():
 		self.outputLogfile = 'SIGMAAlogfile2.txt'
 
 		# run SIGMAA next
-		job = ccp4Job('SIGMAA',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMtz)
+		job = ccp4Job(jobName       = 'SIGMAA',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.outputMtz)
+
 		self.jobSuccess = job.checkJobSuccess()
 
 	def provideFeedback(self,includeDir=False):
