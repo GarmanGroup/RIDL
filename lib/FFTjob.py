@@ -2,13 +2,23 @@ from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 from mapTools import mapTools
 
 class FFTjob():
-	def __init__(self,mapType,FOMweight,inputPDBname,inputMtzFile,
-				 outputDir,axes,gridSamps,labels1,labels2,runLog):
+	
+	def __init__(self,
+				 mapType   = 'DIFF',
+				 FOMweight = False,
+				 pdbFile   = '',
+				 mtzFile   = '',
+				 outputDir = './',
+				 axes      = [1,2,3],
+				 gridSamps = [0,0,0],
+				 labels1   = ['','','',''],
+				 labels2   = ['','','',''],
+				 runLog    = ''):
 
 		self.mapType 		= mapType
 		self.FOMweight		= FOMweight
-		self.inputMtzFile 	= inputMtzFile
-		self.outputMapFile 	= '{}_fft.map'.format(inputPDBname.split('_reordered.pdb')[0])
+		self.inputMtzFile 	= mtzFile
+		self.outputMapFile 	= '{}-{}-fft.map'.format(pdbFile.split('_reordered.pdb')[0],mapType)
 		self.outputDir		= outputDir
 		XYZ 				= ['X','Y','Z']
 		self.fastAxis 		= XYZ[int(axes[0])-1]
@@ -39,7 +49,8 @@ class FFTjob():
 			self.runLog.writeToLog('{}'.format(self.outputMapFile))
 			return True
 		else:
-			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
+			str = 'Job did not run successfully, see job log file "{}"'.format(self.outputLogfile)
+			self.runLog.writeToLog(str)
 			return False
 			
 	def runFFT(self):
@@ -75,6 +86,12 @@ class FFTjob():
 			phiStr 		= 'PHI={}'.format(self.PHI1)
 			scaleStr 	= 'SCALE F1 1.0 0.0'
 
+		# for case of FC map generation
+		if self.mapType == 'FC':
+			labinStr 	= 'LABIN F1={}'.format(self.F1)
+			phiStr 		= 'PHI={}'.format(self.PHI1)
+			scaleStr 	= 'SCALE F1 1.0 0.0'
+
 		self.commandInput2 = 	'AXIS {} {} {}\n'.format(self.fastAxis,self.medAxis,self.slowAxis)+\
 				 			 	'title FTT DENSITY MAP RUN\n'+\
 				 				'grid {} {} {}\n'.format(self.gridSamp1,self.gridSamp2,self.gridSamp3)+\
@@ -85,7 +102,13 @@ class FFTjob():
 		self.outputLogfile = 'FFTlogfile.txt'
 
 		# run FFT job
-		job = ccp4Job('FFT',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMapFile)
+		job = ccp4Job(jobName       = 'FFT',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.outputMapFile)
+
 		self.jobSuccess = job.checkJobSuccess()
 
 	def provideFeedback(self,includeDir=False):
@@ -111,6 +134,8 @@ class FFTjob():
 			str = 'Generating Fobs electron density map over crystal unit cell,\n'
 		if self.mapType == '2FOFC':
 			str = 'Generating 2Fo-Fc electron density map over crystal unit cell,\n'
+		if self.mapType == 'FC':
+			str = 'Generating Fcalc electron density map over crystal unit cell,\n'
 		str += 'with same grid sampling dimensions as SFALL-output atom-tagged .map file'
 		print str
 
