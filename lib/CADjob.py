@@ -3,29 +3,42 @@ import os
 
 class CADjob():
 	# run CAD job to combine F and SIGF columns from two merged mtz files
-	def __init__(self,inputMtz1,inputMtz2,inputMtz3,Mtz1LabelName,Mtz2LabelName,Mtz3LabelName,
-				 Mtz1LabelRename,Mtz2LabelRename,Mtz3LabelRename,outputMtz,outputDir,runLog,FOMWeight):
+	
+	def __init__(self,
+				 inputMtz1       = '',
+				 inputMtz2       = '',
+				 inputMtz3       = '',
+				 Mtz1LabelName   = '',
+				 Mtz2LabelName   = '',
+				 Mtz3LabelName   = '',
+				 Mtz1LabelRename = '',
+				 Mtz2LabelRename = '',
+				 Mtz3LabelRename = '',
+				 outputMtz       = '',
+				 outputDir       = './',
+				 runLog          = '',
+				 FOMWeight       = 'False'):
 
-		self.inputMtz1 			= inputMtz1 # mtz containing initial dataset Fs
-		self.inputMtz2 			= inputMtz2 # mtz containing later dataset Fs
-		self.inputMtz3 			= inputMtz3 # mtz containing phases
-		self.labels 			= [Mtz1LabelName,Mtz2LabelName,Mtz3LabelName]
-		self.renameLabels 		= [Mtz1LabelRename,Mtz2LabelRename,Mtz3LabelRename]
-		self.outputMtz			= outputMtz
-		self.outputDir			= outputDir
-		self.runLog 			= runLog
+		self.inputMtz1 	  = inputMtz1 # mtz containing initial dataset Fs
+		self.inputMtz2 	  = inputMtz2 # mtz containing later dataset Fs
+		self.inputMtz3 	  = inputMtz3 # mtz containing phases
+		self.labels 	  = [Mtz1LabelName,Mtz2LabelName,Mtz3LabelName]
+		self.renameLabels = [Mtz1LabelRename,Mtz2LabelRename,Mtz3LabelRename]
+		self.outputMtz	  = outputMtz
+		self.outputDir	  = outputDir
+		self.runLog 	  = runLog
+
 		self.runLog.writeToLog('Running CAD job')
-
-		if FOMWeight == 'False':
-			self.FOMtagIn = ''
-			self.FOMtagOut = ''
-		elif FOMWeight == 'recalculate':
-			self.FOMtagIn = 'E3 = FOM{} \n'.format(self.labels[0])
-			self.FOMtagOut = 'E3 = FOM_{} \n'.format(self.renameLabels[0])
+		
+		self.FOMtag = {'in':'','out':'','type':''}
+		if FOMWeight != 'False':
+			self.FOMtag['out'] = '- \nE3 = FOM_{}'.format(self.renameLabels[0])
+			self.FOMtag['type'] = '- \nE3 = W'
+		if FOMWeight == 'recalculate':
+			self.FOMtag['in'] = '- \nE3 = FOM{}'.format(self.labels[0])
 		elif 'preset' in FOMWeight:
 			lbl = FOMWeight.split(',')[-1]
-			self.FOMtagIn = 'E3 = FOM{} \n'.format(lbl)
-			self.FOMtagOut = 'E3 = FOM_{} \n'.format(self.renameLabels[0])
+			self.FOMtag['in'] = '- \nE3 = FOM{}'.format(lbl)
 
 	def run(self):
 		inputFiles = [self.inputMtz1,self.inputMtz2,self.inputMtz3]
@@ -56,16 +69,16 @@ class CADjob():
 								'monitor BRIEF\n'+\
 								'labin file 1 - \n'+\
 								'E1 = F{} - \n'.format(self.labels[0])+\
-								'E2 = SIGF{} - \n'.format(self.labels[0])+\
-								'{}'.format(self.FOMtagIn)+\
+								'E2 = SIGF{} '.format(self.labels[0])+\
+								'{} \n'.format(self.FOMtag['in'])+\
 								'labout file 1 - \n'+\
 								'E1 = FP_{} - \n'.format(self.renameLabels[0])+\
-								'E2 = SIGFP_{} - \n'.format(self.renameLabels[0])+\
-								'{}'.format(self.FOMtagOut)+\
+								'E2 = SIGFP_{} '.format(self.renameLabels[0])+\
+								'{} \n'.format(self.FOMtag['out'])+\
 								'ctypin file 1 - \n'+\
 								'E1 = F - \n'+\
-								'E2 = Q - \n'+\
-								'E3 = W \n'+\
+								'E2 = Q '+\
+								'{} \n'.format(self.FOMtag['type'])+\
 								'labin file 2 - \n'+\
 								'E1 = F{} - \n'.format(self.labels[1])+\
 								'E2 = SIGF{} \n'.format(self.labels[1])+\
@@ -76,16 +89,25 @@ class CADjob():
 								'E1 = F - \n'+\
 								'E2 = Q \n'+\
 								'labin file 3 - \n'+\
-								'E1 = PHI{} \n'.format(self.labels[2])+\
+								'E1 = PHI{} -\n'.format(self.labels[2])+\
+								'E2 = F{} \n'.format(self.labels[2])+\
 								'labout file 3 - \n'+\
-								'E1 = PHIC_{} \n'.format(self.renameLabels[2])+\
+								'E1 = PHIC_{} - \n'.format(self.renameLabels[2])+\
+								'E2 = FC_{} \n'.format(self.renameLabels[2])+\
 								'ctypin file 3 - \n'+\
-								'E1 = P \n'
+								'E1 = P -\n'+\
+								'E2 = F \n'
 
 		self.outputLogfile = 'CADlogfile.txt'
 
 		# run CAD job
-		job = ccp4Job('CAD',self.commandInput1,self.commandInput2,self.outputDir,self.outputLogfile,self.outputMtz)
+		job = ccp4Job(jobName       = 'CAD',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.outputMtz)
+
 		self.jobSuccess = job.checkJobSuccess()
 
 	def provideFeedback(self,includeDir=False):
