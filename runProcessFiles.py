@@ -3,8 +3,14 @@ sys.path.insert(0,'./lib')
 from processFiles import processFiles
 
 class process():
-	# process pdb & mtz files to generate suitable density map files for subsequent analysis
-	def __init__(self,inputFile='fullInput.txt',run=True,proceedToETRACK=False):
+	# process pdb & mtz files to generate suitable density 
+	# map files for subsequent analysis
+
+	def __init__(self,
+				 inputFile       = 'fullInput.txt',
+				 run             = True,
+				 proceedToETRACK = False):
+
 		self.inputFile = inputFile
 		self.titleCaption('ETRACK file preparation')
 		self.proceedToETRACK = proceedToETRACK
@@ -43,16 +49,18 @@ class process():
 				print line.strip()
 		fileIn.close()
 
-	def writeTemplateInputFile(self):
+	def writeTemplateInputFile(self,numHigherDoseDatasets = 1):
 		# write a template input file to current directory to be completed
 		f = open(self.inputFile,'w')
+		highDoseStrs = [','.join(['???']*numHigherDoseDatasets)]*4
 		string   = 	'dir ???\n'+\
-					'INITIALDATASET\nname1 ???\nmtz1 ???\nmtzlabels1 ???\npdb1 ???\nRfreeFlag1 ???\n'+\
-					'LATERDATASET\nname2 ???\nmtz2 ???\nmtzlabels2 ???\npdb2 ???\n'+\
-					'PHASEDATASET\nname3 ???\nmtz3 ???\nmtzlabels3 ???\n'+\
-					'MAPINFO\nsfall_VDWR 1\ndensMapType DIFF\nFFTmapWeight True'
+					'\nINITIALDATASET\nname1 ???\nmtz1 ???\nmtzlabels1 ???\npdb1 ???\nRfreeFlag1 ???\n'+\
+					'\nLATERDATASET\nname2 {}\nmtz2 {}\nmtzlabels2 {}\npdb2 {}\n'.format(*highDoseStrs)+\
+					'\nPHASEDATASET\nname3 ???\nmtz3 ???\nmtzlabels3 ???\n'+\
+					'\nMAPINFO\nsfall_VDWR 1\ndensMapType DIFF\nFFTmapWeight False\ndeleteIntermediateFiles TRUE'
 		f.write(string)
 		f.close()
+		print 'Template input file "{}" written'.format(self.inputFile)
 
 	def writePDBredoInputFile(self,pdb1,pdb2,inputFileDir,outputDir):
 		# write an input file that is suitable for a pdb_redo-downloaded damage series
@@ -88,6 +96,11 @@ class process():
 		infoString 	= """
 *** Information on how to successfully write an input file for job ***
 
+* Note:
+* If multiple higher-dose datasets are to be processed successively in a single batch,
+* then please input a comma-separated list for each argument within the LATERDATASET
+* section below:
+
 FILELOCATION
 	dir 		: full path to output working directory
 
@@ -99,7 +112,7 @@ INITIALDATASET
 	RfreeFlag1 	: the Rfree flag label within the low dose mtz file (e.g. "FreeR_flag")
 
 LATERDATASET
-	name2 		: assign a name to your high dose damage set (e.g. pdb code)
+	name2 		: assign a name to your high dose damage set (e.g. a pdb code "1qid")
 	mtz2 		: full path to the high dose mtz file
 	mtzlabels2 	: F & SIGF column labels (look in high dose mtz file), if "FP_X" then type "P_X"
 	pdb2 		: full path to the high dose pdb file
@@ -110,7 +123,7 @@ PHASEDATASET
 	mtzlabels3 	: PHI phase column labels (look in low dose mtz file), if "PHIC_X" then type "C_X"
 
 MAPINFO
-	For difference map analysis, do not change this parameters
+	For difference map analysis, do not change these parameters
 	"""
 		if printStr is True:
 			print infoString
