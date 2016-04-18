@@ -4,26 +4,31 @@ A collection of scripts to calculate per-atom density change metrics within a sp
 Suitable for any MX experiment in which datasets are collected on the **same crystal** over **multiple doses**.
 **NOTE: These scripts are currently under development and updated regularly..**
 
+## A brief background
 
-## Brief background
+During MX data collection, when a protein or nucleic acid crystal is exposed to increasing doses of radiation, localised radiation-induced chemical changes can occur within the crystalline macromolecules, even at doses of the order of several MGy (at 100 K). These *specific damage* manifestations can ultimately leading to false biological interpretations within structures during subsequent model building if not accounted for. 
 
-During MX data collection, when a protein or nucleic acid crystal is exposed to increasing doses of radiation, localised radiation-induced chemical changes can occur within the crystalline macromolecules, even with doses as low as a few MGy. These *specific damage* manifestations can ultimately leading to false biological interpretations within structures during subsequent model building if not accounted for. 
+Localised chemical changes within a macromolecule can be detected by observing shifts in the electron density attributed to particular atoms within the crystal with increasing dose. For instance, radiation-induced decarboxylation of glutamate and aspartate residues has been reported, for a wide range of crystalline model protein systems, as the deterioration in density local to the carboxylate group at different dose states within F<sub>obs</sub>(d<sub>n</sub>)-F<sub>obs</sub>(d<sub>1</sub>) Fourier difference maps between different accumulated dose states d<sub>1</sub> and d<sub>n</sub> within a single crystal.
 
-Localised chemical changes within a macromolecule correlate with shifts in the electron density attributed to particular atoms within the crystal with increasing dose. In fact, radiation-induced decarboxylation of glutamate and aspartate residues can be detected by considering the deterioration in density local to the carboxylate group at different dose states, as is frequently performed using F(dn)-F(d1) Fourier difference maps between different accumulated dose states d1 and dn within a single crystal.
+Specific radiation damage has been well characterised previously using Fourier difference maps and detecting *difference map peaks* (i.e. localised regions of significant electron density *loss* or *gain* with increasing dose). However, such time-intensive visual inspection is limited by the inherent subjective bias of the investigator; a problem that is compounded by the fact that with increasing dose Fourier difference maps become increasingly noisy, due to the overall degradation of the diffraction data quality (global radiation damage) and unmodelled chemistry within crystal bulk solvent regions. To mitigate such bias and permit systematic categorisation of radiation-induced structure changes over a series of increasing doses for individual refined atoms within a structure, the set of scripts **ETRACK** has been written to provide a pipeline to calculate per-atom metrics to quantify the damage susceptibility of each refined atom within a macromolecular structure.
 
-To quantitatively investigate dose-dependent density changes for any individual atoms within a structure, these **ETRACK** scripts can be utilised. This pipeline calculates metrics to quantify the damage susceptibility of each refined atom within a structure, including max density loss *Dloss*.
+## The purpose
 
-## Usage
+Whereas previous studies have characterised specific radiation damage in terms of Fourier difference map peak heights (in either units of *sigma-levels* or *electrons per cubic Angstrom*) and their proximity to atoms within a structure, *ETRACK* approaches the problem the other way around. The behaviour of the Fourier difference map in the localised region around each atom is determined, and the maximum density loss value *D<sub>loss</sub>* within this region computed per atom. For atoms in close proximity to negative Fourier difference map peaks, this is equivalent to determining the high of the Fourier difference map peak (in electrons per cubic Angstrom) and assigning this value to that atom, however this procedure now assigns a *D<sub>loss</sub>* density change value to *every* atom within the structure, regardless of the proximity of Fourier difference map peaks.
+
+## Requirements
 
 The scripts require the following to run:
 
 - A series of input *.pdb* and *.mtz* files corresponding to a damage series collected from an individual crystal
-- Python 2.7 (main testing performed on 2.7.10)
-- The CCP4 suite downloaded (version non-specific, but tested on 6.4.0 and 6.5)
-- The *seaborn* python plotting library
-- A list of calculated doses for the series is ideal but not essential
+- *Python 2.7* (main testing performed on 2.7.10)
+- The *CCP4 suite* downloaded (version non-specific, but tested on 6.4.0, 6.5, and some minor testing on version 7.0)
+- The *seaborn* python plotting library is essential (use `pip install seaborn` to gain access to this plotting library)
+- A list of calculated doses for the series is ideal for radiation damage analysis (but not essential). Visit www.raddo.se for full details on how to download the current version of *RADDOSE-3D*.
 
-To show how the scripts can be run, use the *getPDBseries.py* script to retrieve a pdb series from pdb_redo. Here the first 3 entries within the *Weik M, et al. (2000) PNAS 97(2):623–8* have been selected as a test damage series. In python:
+## Usage
+
+To demonstrate how the scripts can be run, the script *getPDBseries.py* can be used to retrieve a pdb series from *pdb_redo*. Here the first 3 entries within the *Weik M, et al. (2000) PNAS 97(2):623–8* have been selected as a test damage series to demonstrate the functionality of the ETRACK scripts.  In python:
 
 ```python
 import os
@@ -31,32 +36,40 @@ os.system('mkdir testOutput') # make a directory for this test run
 from getPDBSeries import getSeries
 
 for i in ['1qid','1qie','1qif']:
-	p = getSeries(i,'initial','./testOutput/')
-```
-The *initial* parameter indicates that files have been downloaded from pdb_redo **before** re-refinement.
-
-For each dataset within this selected damage series, the *.pdb* and *.mtz* files are used to generated compatible SFALL-output atom-tagged *.map* files and a Fourier difference map Fn-F1 *.map* calculated between the initial dataset (*1qid* here) and higher-dose dataset (*1qie* or *1qif* here). The *runProcessFiles.py script performs this task, but it requires an input file. Luckily for this test damage series, the input file can be written for each dataset:
-
-```python
-from runProcessFiles import process
-p = process()
-p.writeTestInputFile(1) # generate the 1st set of maps: a 1qid - 1qid difference map
-p.writeTestInputFile(2) # generate the 2nd set of maps: a 1qie - 1qid difference map
-p.writeTestInputFile(3) # generate the first set of maps: a 1qif - 1qid difference map
+	p = getSeries(PDBcode=i, outputDir='./testOutput/')
 ```
 
-For the general case this input file must be written manually, specifying correct mtz column label information as required. However there are two functions `p.writeTemplateInputFile()` and `p.writePDBredoInputFile('1qid','1qie','./testOutput',./testOutput/ETRACK)` that can speed up this process.
+Now that the *.pdb* and *.mtz* files have been retrieved for each dataset within this selected damage series, the ETRACK scripts can be run to calculate per-atom damage metrics. The basic structure of the pipeline is as follows:
 
-After writing an input file, the script assigns this input file name as the *current* input file. After `p.writeTestInputFile(3)` is run above, the current input file is then *testInput3.txt*. The contents of this input file can be printed using `p.printInputFile()`. The process the 3 test input files here in the correct order, use:
+For each high dose dataset (*1qie* or *1qif*, n=2,3 respectively here):
 
-```python
-p.setInputFile('testInput1.txt') 
-p.run()
-p.setInputFile('testInput2.txt')
-p.run()
-p.setInputFile('testInput3.txt')
-p.run()
-```
+- A single *.mtz* file is written combining F<sub>obs</sub> columns from the initial low dose dataset (*1qid*, n=1 here) with the F<sub>obs</sub> columns of the high dose dataset using *CAD*
+- The later dataset F<sub>obs</sub> column is scaled to the initial dataset F<sub>obs</sub> column values using *SCALEIT*
+- A F<sub>obs</sub>(d<sub>n</sub>)-F<sub>obs</sub>(d<sub>1</sub>) Fourier difference map *.map* file is computed over the unit cell for each higher dose dataset (n=2,3 here) using *FFT*
+- Any hydrogens and alternative conformations are stripped, and anisotropic B-factors are removed from the input *.pdb* file using *PDBCUR* and then an *atom-tagged* .map file is generated over the crystal unit cell in *SFALL* using the exact same grid sampling dimensions as the *FFT*-output Fourier difference map above, using this stripped *.pdb* file. In this map, each voxel is assigned the atom number of the refined atom within the structure that contributes the most electron density to that specific region in space. Note that not all voxels are assigned to atom numbers (with some voxels instead assigned to bulk solvent)
+- Both the atom-tagged map and the Fourier difference map are cropped to the crystal asymmetric unit using *MAPMASK*. The resulting atom-tagged map and Fourier difference map are now of compatible grid sampling dimensions.
+- Using these two map types, each refined atom within a structure can now be assigned a set of *difference density* values X(atom) directly from the Fourier difference map.
+- To describe the electron density behaviour of each refined atom with increasing dose, the most negative *difference density* value within the set X(atom) is assigned as D<sub>loss</sub>(dose). Since Fourier difference maps have been used, negative difference density values correspond to localised regions of electron density loss with increasing dose.
+
+The simplest way to run the ETRACK pipeline is run it directly from the command line. 
+
+```python ETRACK-PROCESS.py -i exampleInputFile.txt -p -c```
+
+An input file *inputFile.txt* is required to specify input *.pdb* coordinate files and *.mtz* merged structure factor files per dataset. For this example damage series, the necessary input file has been provided. The input file contains the information to generate Fourier differences for each high dose dataset (pdb: 1qie, 1qif) successively. See the input file for details.
+
+Several command line flags are required to run the program. `-p` indicates that the *processing* step is to be performed, in order to generate compatible Fourier difference maps and atom-tagged maps at each dose level. `-c` indicates that the *calculation* step is to be performed, in order to then calculate the per-atom *D<sub>loss</sub>* metric.
+
+For the general case this input file must be written manually, specifying correct mtz column label information as required. To aid this, the command:
+
+```python ETRACK-PROCESS.py -j```
+
+can be run to output to the command line some useful information on how to successfully write the input file. Additionally the command:
+
+```python ETRACK-PROCESS.py -t n```
+
+where `n` is an integer parameter to specified (corresponding to the number of higher dose datasets), will generate a template input file *templateInputFile.txt* for the user to complete.
+
+## Interpreting the output files
 
 Within the directory `./testOutput/ETRACK/` the results of this run should be detailed. For each of the 3 runs, an atom-tagged map file e.g. `1qie_atoms.map` and corresponding Fourier difference map file `1qie_density.map` have been generated. A compressed directory `1qie-1qidinit_additionalFiles.tar` contains CCP4 log files and intermediate run files, and additionally 2 run logs `1qie-1qidinit_runLog_1.txt` and `1qie-1qidinit_runLog_2.txt` are generated to indicate the success or failure of the run.
 
