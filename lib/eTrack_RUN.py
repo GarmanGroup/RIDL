@@ -11,29 +11,44 @@ import numpy as np
 class eTrack(object):
 	# A class for retrieving the eTrack input text file information and running 
 	# the eTrack pipeline functions separately or together in full pipeline
-	def __init__(self, inDir = "",outDir = "",pdbNames = [], pklFiles = [], initialPDB = "",
-				 seriesName = "untitled-series", pklSeries = "",doses=[],plot = False):
 
-		self.inDir 			= inDir 		# the input file directory
-		self.outDir  		= outDir 		# the output file directory
-		self.pdbNames 		= pdbNames 		# the list of pdb codes for series
-		self.pklFiles 		= pklFiles 		# list of pkl files from map_processing
-		self.initialPDB 	= initialPDB 	# the first dataset pdb code
-		self.seriesName 	= seriesName 	# the general series name 
-		self.pklSeries		= pklSeries 	# the combined series pkl file from post_processing
-		self.doses 			= doses 		# list of increasing doses
-		self.plot           = plot 			# (boolian) decide to plot per-residue summary plots per dataset
+	def __init__(self,
+				 inDir      = './',
+				 outDir     = './',
+				 pdbNames   = [],
+				 pklFiles   = [],
+				 initialPDB = "",
+				 seriesName = "untitled-series",
+				 pklSeries  = "",
+				 doses      = [],
+				 plot       = False):
 
-	def runPipeline(self,map_process=True,post_process=True,retrieve_PDBmulti=True,inputFileName=''):
+		self.inDir 		= inDir 		# the input file directory
+		self.outDir  	= outDir 		# the output file directory
+		self.pdbNames 	= pdbNames 		# the list of pdb codes for series
+		self.pklFiles 	= pklFiles 		# list of pkl files from map_processing
+		self.initialPDB = initialPDB 	# the first dataset pdb code
+		self.seriesName = seriesName 	# the general series name 
+		self.pklSeries	= pklSeries 	# the combined series pkl file from post_processing
+		self.doses 		= doses 		# list of increasing doses
+		self.plot       = plot 			# (bool) decide to plot per-residue summary plots per dataset
+
+	def runPipeline(self,
+					map_process   = True,
+					post_process  = True,
+					retrieve      = True,
+					inputFileName = ''):
+
 		# the following function reads in the above functions one by one in a scripted 
 		# pipeline. Takes inputs to specify which parts of above pipeline are to be
 		# included. For each function input specify True if this part is to be performed
 		# and False otherwise.
+
 		self.titleCaption(title='ETRACK pipeline')
 		self.inputFileName = inputFileName
 
 		# check whether valid inputs to function
-		valid = self.checkValidInputs(map_process,post_process,retrieve_PDBmulti)
+		valid = self.checkValidInputs(map_process,post_process,retrieve)
 		if valid is False: 
 			return
 
@@ -56,26 +71,30 @@ class eTrack(object):
 
 		if post_process is True:
 			self.post_processing()
+
 			# save PDBmulti as pkl file
 			pklSeries = saveGenericObject(self.combinedAtoms,self.seriesName)
 			os.system('mv {} {}{}'.format(pklSeries,self.outputDir,pklSeries))
 			self.pklSeries = pklSeries
+
 			# provide summary txt file on Dloss metric metric per-dataset
 			self.summaryFile(normType='Standard') 
-			self.summaryFile(normType='Calpha normalised') 
+
+			if self.CalphaPresent is True:
+				self.summaryFile(normType='Calpha normalised') 
 			self.writeDamSitesToFile()
 		else: 
 			print 'Post processing job not chosen...'
 
-		if retrieve_PDBmulti is True:
+		if retrieve is True:
 			self.PDBmulti_retrieve()
 		else:
 			print 'PDBmulti retrieval from pkl file not chosen...'
 		self.fillerLine(blank=True)
 
-	def checkValidInputs(self,map_process,post_process,retrieve_PDBmulti):
+	def checkValidInputs(self,map_process,post_process,retrieve):
 		# check the runPipeline inputs to make sure that they are valid
-		for var in [map_process,post_process,retrieve_PDBmulti]:
+		for var in [map_process,post_process,retrieve]:
 			if var not in (True,False):
 				print 'Only Boolian parameters expected here'
 				return False
@@ -87,16 +106,16 @@ class eTrack(object):
 			return False
 		return True
 
-	def readInputFile(self):
-		# read input file e_Track_input.txt to specify location of input files 
-		# and where to write output files
+	def readInputFile(self,printText=True):
+		# read input file e_Track_input.txt to specify location 
+		# of input files and where to write output files
 
-		props = {'inDir':'inDir',
-				 'outDir':'outDir',
+		props = {'inDir'         :'inDir',
+				 'outDir'        :'outDir',
 				 'damageset_name':'seriesName',
-				 'initialPDB':'initialPDB',
-				 'PKLMULTIFILE':'pklSeries',
-				 'laterDatasets':'laterDatasets'}
+				 'initialPDB'    :'initialPDB',
+				 'PKLMULTIFILE'  :'pklSeries',
+				 'laterDatasets' :'laterDatasets'}
 
 		inputfile = open(self.inputFileName,'r')
 		pklFiles = []
@@ -116,9 +135,9 @@ class eTrack(object):
 				self.plot = True
 		inputfile.close()
 
-		# locate the correct format for the list of datasets within damage series.
-		# currently two formats acceptable: (a) series-name + dataset-id (per dataset),
-		# (b) input list of full dataset names (recommended)
+		# locate the correct format for the list of datasets within damage 
+		# series. Currently two formats acceptable: (a) series-name + dataset-id
+		# (per dataset), (b) input list of full dataset names (recommended).
 		found = True
 		try:
 			datasetNums
@@ -136,14 +155,18 @@ class eTrack(object):
 			self.pdbNames = self.laterDatasets.split(',')
 			return True
 		else:
-			print 'Error! Unable to extract list of dataset names from input file'
+			if printText is True:
+				print 'Error! Unable to extract list of dataset names from input file'
 			return False
 
-	def checkInOutDirExist(self):
+	def checkInOutDirExist(self,printText=True):
 		# check that an input/output directories have been found and make subdirectories if present
 		for dir in ([[self.inDir,'Input'],[self.outDir,'Output']]):
 			if os.path.isdir(dir[0]) == False:
-				print '{} file location: {} does not exist. Please select an appropriate directory'.format(dir[1],dir[0])
+				str = '{} file location: {} does not exist. '.format(dir[1],dir[0])+\
+					  'Please select an appropriate directory'
+				if printText is True:
+					print str
 				return False
 		return True
 
@@ -170,21 +193,31 @@ class eTrack(object):
 		pklFileNames = []
 		for dataset in self.pdbNames:
 			# derive per-atom density metrics from maps
-			mapName1 	= '{}_atoms.map'.format(dataset)
-			mapName2 	= '{}_density.map'.format(dataset)
-			maps2DensMets 	= maps2DensMetrics(filesIn=self.inDir,
-											   filesOut=self.outputDir,
-											   pdbName=dataset,
-											   mapFileName1=mapName1,
-											   mapFileName2=mapName2,
-											   plot=self.plot)
+			mapName1 = '{}_atoms.map'.format(dataset)
+			mapName2 = '{}_density.map'.format(dataset)
+			mapName3 = '{}_FC.map'.format(self.initialPDB.replace('.pdb',''))
+
+			maps2DensMets 	= maps2DensMetrics(filesIn    = self.inDir,
+											   filesOut   = self.outputDir,
+											   pdbName    = dataset,
+											   atomTagMap = mapName1,
+											   densityMap = mapName2,
+											   FCmap 	  = mapName3,
+											   plot       = self.plot)
+
    			maps2DensMets.maps2atmdensity()
 
 			# move pkl file to working output directory
 			pklFileName = maps2DensMets.pklFileName
 
-			os.system('mv {} {}{}{}'.format(pklFileName,self.outputDir,pklFileDir,pklFileName))
-			pklFileNames.append('{}{}{}'.format(self.outputDir,pklFileDir,pklFileName))
+			os.system('mv {} {}{}{}'.format(pklFileName,
+											self.outputDir,
+											pklFileDir,
+											pklFileName))
+
+			pklFileNames.append('{}{}{}'.format(self.outputDir,
+												pklFileDir,
+												pklFileName))
 
 		self.pklFiles = pklFileNames
 
@@ -196,7 +229,7 @@ class eTrack(object):
 
 		# next read in the pdb structure file as list of atom objects
 		print 'Reading in initial pdb file...'
-		initialPDBlist = PDBtoList(pdbFileName=self.inDir+self.initialPDB)
+		initialPDBlist = PDBtoList(pdbFileName = self.inDir+self.initialPDB)
 
 		# retrieve object lists of atoms for each damage set
 		self.fillerLine()
@@ -212,16 +245,24 @@ class eTrack(object):
 		# create a list of atom objects with attributes as lists varying over 
 		# dose range, only including atoms present in ALL damage datasets
 		print 'New list of atoms over full dose range calculated...'
-		combinedAtoms = combinedAtomList(dList,len(dList),self.doses,initialPDBlist,
-										 self.outputDir,True,self.seriesName)
+		combinedAtoms = combinedAtomList(datasetList    = dList,
+										 numLigRegDsets = len(dList),
+										 doseList       = self.doses,
+										 initialPDBList = initialPDBlist,
+										 outputDir      = self.outputDir,
+										 seriesName     = self.seriesName)
+
 		combinedAtoms.getMultiDoseAtomList()
 
-		# calculate 'standardised' and 'average' variant Dloss metrics and Calpha
-		# normalised metrics
-		combinedAtoms.calcStandardisedMetrics('loss')
+		# calculate 'standardised' and 'average' variant Dloss metrics
 		combinedAtoms.calcAdditionalMetrics(newMetric='average')
-		for m in ('loss','mean','gain','Bfactor'):
-			combinedAtoms.calcAdditionalMetrics(metric=m)
+		combinedAtoms.calcStandardisedMetrics()
+
+		# calculate Calpha normalised metrics, if Calpha atoms exist
+		self.CalphaPresent = combinedAtoms.checkCalphaAtomsExist()
+		if self.CalphaPresent is True:
+			for m in ('loss','mean','gain','Bfactor'):
+				combinedAtoms.calcAdditionalMetrics(metric=m)
 
 		# write atom numbers and density metrics to simple text files - one for 
 		# each density metric separately
@@ -229,16 +270,17 @@ class eTrack(object):
 		print 'Writing .csv file for per-atom density metric:'
 		for densMet in combinedAtoms.getDensMetrics():
 			print '\tmetric: {}, normalisation: {}'.format(*densMet)
-			combinedAtoms.writeMetric2File(where=self.outputDir,
-										   metric=densMet[0],
-										   normType=densMet[1])
+			combinedAtoms.writeMetric2File(where    = self.outputDir,
+										   metric   = densMet[0],
+										   normType = densMet[1])
 
 		for groupBy in ('residue','atomtype'):
-			combinedAtoms.writeMetric2File(where=self.outputDir,
-										   groupBy=groupBy)
-			combinedAtoms.writeMetric2File(where=self.outputDir,
-										   groupBy=groupBy,
-										   normType='Calpha normalised')
+			combinedAtoms.writeMetric2File(where   = self.outputDir,
+										   groupBy = groupBy)
+			if self.CalphaPresent is True:
+				combinedAtoms.writeMetric2File(where    = self.outputDir,
+										  	   groupBy  = groupBy,
+										       normType = 'Calpha normalised')
 
 		# make csvFiles dir and move all generated csv files to this
 		os.system('mkdir {}csvFiles/'.format(self.outputDir))
@@ -258,16 +300,21 @@ class eTrack(object):
 		# retrieve the combinedAtoms object from the pkl file
 		self.combinedAtoms = retrieveGenericObject(self.outputDir+self.pklSeries)
 
-	def summaryFile(self,fileType='html',metric='loss',normType='Standard'):
+	def summaryFile(self,
+					fileType = 'html',
+					metric   = 'loss',
+					normType = 'Standard'):
+
 		if fileType == 'html':
-			self.summaryHTML(metric=metric,normType=normType)
+			self.summaryHTML(metric=metric, normType=normType)
 		else:
 			self.summaryTxt(metric=metric,normType=normType)
 
-	def summaryTxt(self,metric='loss',normType='Standard'):
+	def summaryTxt(self, 
+				   metric   = 'loss', 
+				   normType = 'Standard'):
 		# produce a selection of per-dataset summary statistics
 		# by default set metric as 'loss' for Dloss metric
-		# by default 'normType' is 'Standard'
 
 		numDsets = self.getNumDatasets()
 		summaryFile = open('{}summaryFile-D{}-{}.txt'.format(self.outputDir,metric,normType.replace(' ','-')),'w')
@@ -352,7 +399,9 @@ class eTrack(object):
 				for b in ('Box','Bar'):
 					self.combinedAtoms.susceptAtmComparisonBarplot(metric,normType,i,set,b)
 
-	def summaryHTML(self,metric='loss',normType='Standard'):
+	def summaryHTML(self, 
+					metric   = 'loss', 
+					normType = 'Standard'):
 		# produce a selection of per-dataset summary statistics
 
 		numDsets = self.getNumDatasets()
@@ -433,15 +482,27 @@ class eTrack(object):
 			infoString += self.convertPlainTxtTable2html(statsOut[0],width='60%')
 			summaryFile.write(infoString)
 
-			self.makeDistnPlots(densMet=metric,normType=normType,set=1)
-			plotString = '<h3>Distribution of Dloss for known susceptible residue types</h3>\n'+\
-						 '<img src="GLUASPCYSMETTYR_{}D{}-kde-{}.png">'.format(normType.replace(' ',''),metric,i)
-			summaryFile.write(plotString)
+			failedPlots = self.makeDistnPlots(densMet=metric,normType=normType,set=1)
+			if i not in failedPlots['GLUASPCYSMETTYR']:
+				plotString = '<h3>Distribution of Dloss for known susceptible residue types</h3>\n'+\
+							 '<img src="GLUASPCYSMETTYR_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+				summaryFile.write(plotString)
+
+			failedPlots = self.makeDistnPlots(densMet=metric,normType=normType,set=3)
+			if i not in failedPlots['DADCDGDT']:
+				plotString = '<h3>Distribution of Dloss for known susceptible nucleotide types</h3>\n'+\
+							 '<img src="DADCDGDT_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+				summaryFile.write(plotString)
 
 		summaryFile.write('</body>\n</html>')
 		summaryFile.close()
 
-	def convertPlainTxtTable2html(self,plainText,numHeaderLines=1,width='40%',border='1'):
+	def convertPlainTxtTable2html(self,
+								  plainText      = '',
+								  numHeaderLines = 1,
+								  width          = '40%',
+								  border         = '1'):
+
 		htmlTable = '<table border="{}" style="width:{}">\n'.format(border,width)
 		for i, l in enumerate(plainText.split('\n')):
 			if i < numHeaderLines:
@@ -456,27 +517,37 @@ class eTrack(object):
 		numDsets = self.combinedAtoms.atomList[0].getNumDatasets() # get number of datasets in damage series
 		return numDsets
 
-	def writeDamSitesToFile(self,metric='loss',normType='Standard',numDamSites=25):
+	def writeDamSitesToFile(self, 
+							metric      = 'loss', 
+							normType    = 'Standard', 
+							numDamSites = 25):
 		# write top damage sites to .pdb file for each dataset
+
 		self.damSitesPDB = []
 		numDsets = self.combinedAtoms.atomList[0].getNumDatasets() # get number of datasets in damage series
 		for i in range(numDsets): 
 			damPDB = self.combinedAtoms.getTopNAtomsPDBfile(metric,normType,i,numDamSites,self.inDir+self.initialPDB)
 			self.damSitesPDB.append(damPDB)
 
-	def colorByMetric(self,metric='loss',normType='Standard',dataset=0,singleResidue=''):
-		# for the initial pdb file in damage series, convert the Bfactor column 
-		# to values for the specified metric.
-		# If 'singleResidue' is specified (use 3-letter residue code) then the average 
-		# density metric for each atom within this residue is calculated within the structure
-		# and only this is output to resulting PDB file, otherwise use ''
+	def colorByMetric(self, 
+					  metric    = 'loss', 
+					  normType  = 'Standard', 
+					  dataset   = 0, 
+					  singleRes = ''):
+		# for the initial pdb file in damage series, convert the Bfactor 
+		# column to values for the specified metric. If 'singleRes' is 
+		# specified (use 3-letter residue code) then the average density 
+		# metric for each atom within this residue is calculated within 
+		# the structure and only this is output to resulting PDB file, 
+		# otherwise use ''
+
 		if normType == 'Calpha normalised': 
 			self.combinedAtoms.calcAdditionalMetrics(metric=metric,normType=normType)
 
-		pdbIn = open(self.inDir+self.initialPDB,'r')
-		fileOut = self.outputDir+self.initialPDB.strip('.pdb')+'_{}D{}_{}.pdb'.format(normType.replace(" ",""),metric,dataset)
-		if singleResidue != '':
-			fileOut = fileOut.strip('.pdb')+'-{}.pdb'.format(singleResidue)
+		pdbIn = open(self.inDir + self.initialPDB,'r')
+		fileOut = self.outputDir + self.initialPDB.strip('.pdb')+'_{}D{}_{}.pdb'.format(normType.replace(" ",""),metric,dataset)
+		if singleRes != '':
+			fileOut = fileOut.strip('.pdb')+'-{}.pdb'.format(singleRes)
 
 		pdbOut = open(fileOut,'w')
 		pdbOut.write('REMARK\tBfactor column replaced by {} D{} metric values\n'.format(normType,metric))
@@ -487,16 +558,16 @@ class eTrack(object):
 				break
 		pdbIn.close()
 
-		if singleResidue == '':
+		if singleRes == '':
 			for atm in self.combinedAtoms.atomList:
 				dens = atm.densMetric[metric][normType]['values'][dataset]
 				if not np.isnan(dens): # don't include atoms for which not calculated properly
 					l = writePDBline(atm,dens)
 					pdbOut.write(l+'\n')
 		else:
-			atmDic = self.combinedAtoms.getAvMetricPerAtmInRes(singleResidue,metric,normType,dataset)
+			atmDic = self.combinedAtoms.getAvMetricPerAtmInRes(singleRes,metric,normType,dataset)
 			for atm in self.combinedAtoms.atomList:
-				if atm.basetype == singleResidue:
+				if atm.basetype == singleRes:
 					resNum = atm.residuenum # save the residue number now
 					break
 			for atm in self.combinedAtoms.atomList:
@@ -507,10 +578,15 @@ class eTrack(object):
 		pdbOut.write('END')
 		pdbOut.close()
 
-	def visualiseDamSites(self,dataset=0,metric='loss',software='pymol',size=1):
+	def visualiseDamSites(self, 
+						  dataset  = 0, 
+						  metric   = 'loss', 
+						  software = 'pymol', 
+						  size     = 1):
 		# open coot/pymol to view top damage sites
-		# size is the density metric scale factor used when visualising damage sites as spheres 
-		# of vdw = size*{density metric} within pymol
+		# size is the density metric scale factor used when visualising damage 
+		# sites as spheres of vdw = size*{density metric} within pymol
+
 		if software not in ('coot','pymol'):
 			print "Damage sites can be visualised in either 'coot' or 'pymol"
 			print "Please make sure the paths to these programs are correctly set up before proceeding"
@@ -546,28 +622,49 @@ class eTrack(object):
 			pymolScript.close()
 			os.system('pymol {}'.format(scriptName))
 
-	def makeDistnPlots(self,densMet='loss',normType='Standard',plotType='both',set=1):
+	def makeDistnPlots(self,
+					   densMet  = 'loss',
+					   normType = 'Standard',
+					   plotType = 'both',
+					   set      = 1):
 		# retrieve the distribution for damage metric values for all atoms of 
 		# specified residues (see 'resList' below), and then plot a kde plot for each
+
 		if set == 1:
 			resList = [['GLU','ASP','CYS','MET','TYR']]
 		elif set == 2:
-			resList = [['GLU','GLN'],['ASP','ASN'],['ILE','LEU'],['TYR','PHE'],
-				   	   ['TYR','ASP','GLU'],['TYR','PHE','GLY'],
-				   	   ['GLU','GLY'],['ASP','GLY'],['TYR','GLY'],['PHE','GLY'],
-				   	   ['CYS','GLY'],['MET','GLY'],['GLU','ASP','CYS','MET','TYR']]
+			resList = [['GLU','GLN'],
+					   ['ASP','ASN'],
+					   ['ILE','LEU'],
+					   ['TYR','PHE'],
+				   	   ['GLU','GLY'],
+				   	   ['ASP','GLY'],
+				   	   ['TYR','GLY'],
+				   	   ['PHE','GLY'],
+				   	   ['CYS','GLY'],
+				   	   ['MET','GLY'],
+				   	   ['TYR','ASP','GLU'],
+				   	   ['TYR','PHE','GLY'],
+				   	   ['GLU','ASP','CYS','MET','TYR']]
+		elif set == 3:
+			resList = [['DA','DC','DG','DT']]
 		for resGroup in resList:
-			if len(resGroup) > 4:
+			k = ''.join(resGroup)
+			failedPlots = {k:[]}
+			if len(resGroup) > 6:
 				plotType = 'kde'
 			else:
 				plotType = 'both'
 			for i in range(self.getNumDatasets()):
-				data = self.combinedAtoms.graphMetricDistn(metric=densMet,
-														   normType=normType,
-														   valType=i,
-														   plotType=plotType,
-														   resiType=resGroup,
-														   printToScreen=False)	
+				data = self.combinedAtoms.graphMetricDistn(metric        = densMet,
+														   normType      = normType,
+														   valType       = i,
+														   plotType      = plotType,
+														   resiType      = resGroup,
+														   printToScreen = False)	
+				if data == {}:
+					failedPlots[k].append(i)
+		return failedPlots
 
 	def sensAtomPlots(self):
 		# set of plots investigating damage progression for sensitive atoms within structure
