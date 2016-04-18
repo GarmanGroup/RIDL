@@ -15,17 +15,27 @@ from PDBFileManipulation import writePDBline_DamSite
 class combinedAtomList(object):
 	# class for list of atom objects defined by combinedAtom class
 
-	def __init__(self,datasetList,numLigRegDatasets,doseList,initialPDBList,outputDir,partialDatasets,seriesName):
+	def __init__(self,
+				 datasetList       = [],
+				 numLigRegDsets = 1,
+				 doseList          = [],
+				 initialPDBList    = [],
+				 outputDir         = './',
+				 partialDatasets   = True,
+				 seriesName        = 'untitled'):
+
 		self.datasetList 		= datasetList
-		self.numLigRegDatasets 	= numLigRegDatasets 	# number of datasets to perform linear regression over
-		self.doseList 			= doseList 				# list of (DWD)doses for each dataset
-		self.initialPDBList		= initialPDBList 		# list of atom objects for initial (lowest dose) pdb file
-		# if number of datasets to perform lin reg not stated then set to total number of datasets in series
+		self.numLigRegDatasets 	= numLigRegDsets    # number of datasets to perform linear regression over
+		self.doseList 			= doseList 			# list of (DWD)doses for each dataset
+		self.initialPDBList		= initialPDBList 	# list of atom objects for initial (lowest dose) pdb file
 		self.outputDir			= outputDir
+		self.partialDatasets	= partialDatasets   # Bool, whether atoms only in subset of datasets are included
+		self.seriesName			= seriesName
+		
+		# if number of datasets to perform lin reg not stated then set to total number of datasets in series
 		if self.numLigRegDatasets == 0:
 			self.numLigRegDatasets = len(self.datasetList[0].mindensity)
-		self.partialDatasets	= partialDatasets # Boolian, whether atoms only in subset of datasets are included
-		self.seriesName			= seriesName
+
 
 	def getMultiDoseAtomList(self):
 		# this function inputs a list of lists of PDB atom objects (see StructurePDB class)
@@ -222,7 +232,7 @@ class combinedAtomList(object):
 		for atom in self.atomList:
 			atom.calcVectorSubtractedMetric(metric,normType,vector)	
 
-	def calcStandardisedMetrics(self,metric):
+	def calcStandardisedMetrics(self,metric='loss'):
 		# standardise distribution of a given metric to have (mean=0,std=1) for each 
 		# dataset within a damage series
 		data  = [atm.densMetric[metric]['Standard']['values'] for atm in self.atomList]
@@ -550,19 +560,20 @@ class combinedAtomList(object):
 		getStatsPerKey = {}
 		for key in dic.keys():
 			metricList = [atom.densMetric[metric][normType]['values'][dataset] for atom in dic[key]]
-			getStatsPerKey[key] = self.getStatsForList(metricList)
+			getStatsPerKey[key] = self.getStatsForList(metricList=metricList,metric=metric,normType=normType)
 		return getStatsPerKey
 
-	def getStatsForList(self,metricList):
+	def getStatsForList(self,metricList=[],metric='loss',normType='Standard'):
 		# calculate measures of the distribution of values in a list metricList
 		statsDic = {}
 		statsDic['#atoms']	 	= len(metricList)
 		statsDic['mean'] 		= np.mean(metricList)
 		statsDic['std'] 		= np.std(metricList)
-		statsDic['skew'] 		= scipy.stats.skew(metricList, axis=0, bias=True)
+		statsDic['skew'] 		= self.calculateSkew(metricList)
 		statsDic['ratio'] 		= self.calcNetRatio(metricList)
-		statsDic['outliers'] 	= self.calcNumOutliers(metricList)
-		statsDic['returnOrder'] = ['mean','std','#atoms','outliers','skew','ratio']
+		statsDic['outliers'] 	= self.calcNumOutliers(metricList=metricList,metric=metric,normType=normType)
+		statsDic['normality']   = self.testForNormality(metricList)
+		statsDic['returnOrder'] = ['mean','std','#atoms','outliers','skew','normality']
 		return statsDic
 
 	def reportStats(self,stats,name,sortby,n,normType,format='txt'):
@@ -620,16 +631,44 @@ class combinedAtomList(object):
 		netRatio = float(netBelow)/netAbove
 		return netRatio
 
-	def calcNumOutliers(self,metricList):
-		# by assuming a symmetric distn around the mode, flag specific atoms that fall outside
-		# this range
+	def calcNumOutliers(self,metricList=[],metric='loss',normType='Standard'):
+		# by assuming a symmetric distn around the mode, flag specific atoms that 
+		# fall outside this range
 		distMode = self.calcDiscreteDistMode(metricList)
-		distMax  = np.max(metricList)
-		sudoMin  = distMode-(distMax - distMode)
-		count 	 = 0
-		for val in metricList:
-			if val < sudoMin: count+=1
+		if normType == 'Standard':
+			distMax  = np.max(metricList)
+			sudoMin  = distMode - np.linalg.norm(distMax-distMode)
+			count 	 = 0
+			for val in metricList:
+				if val < sudoMin: count+=1
+		elif normType == 'Calpha normalised':
+			distMin  = np.min(metricList)
+			sudoMax  = distMode + np.linalg.norm(distMin-distMode)
+			count 	 = 0
+			for val in metricList:
+				if val > sudoMax: count+=1
 		return count
+
+	def calculateSkew(self,metricList):
+		# calculate skewness for a distribution of metric values for an input list of atoms
+		skew = scipy.stats.skew(metricList, axis=0, bias=True)
+		return skew
+
+	def testForNormality(self,metricList,suppressText=True):
+		# test whether the metric values for a list of atoms differs from a normal distribution
+		if len(metricList) < 8:
+			if suppressText is False:
+				print 'Skew-test not valid when less than 8 values provided - skipping'
+			return 'n/a'
+		elif len(metricList) < 20:
+			if suppressText is False:
+				print 'kurtosis-test not valid when less than 20 values provided - skipping'
+			return 'n/a'
+		try:
+			(k2,pvalue) = scipy.stats.mstats.normaltest(metricList, axis=0)
+		except np.ma.core.MaskError:
+			return 'n/a'
+		return pvalue
 
 	def groupByAtmType(self,dataset):
 		# group atoms in a dictionary by atom type
@@ -665,6 +704,43 @@ class combinedAtomList(object):
 				chainDict[atom.chaintype].append(atom)
 		return chainDict
 
+	def checkCalphaAtomsExist(self,printText=True):
+		# check that Calpha backbone protein atoms actually exist within structure
+		aminoAcids = ['ALA','ARG','ASN','ASP','CYS',
+					  'GLN','GLU','GLY','HIS','ILE',
+					  'LEU','LYS','MET','PHE','PRO',
+					  'SER','THR','TRP','TYR','VAL']
+		count = 0
+		for res in aminoAcids:
+			atom = self.getAtom(restype=res,atomtype='CA',printOutput=False)
+			if atom is False:
+				count += 1
+		if count == len(aminoAcids):
+			if printText is True:
+				print 'Warning: no Calpha backbone atoms found in structure!'
+				return False
+		else:
+			return True
+
+	def detectSuspiciousAtoms(self,dataset=0,metric='loss',normType='Standard',threshold=5,suppressText=True):
+		# detect any atoms within a speicific type (e.g. LYS-NZ) that do not behaviour like
+		# rest of that type
+		atmDic = self.groupByAtmType(dataset)
+		for k in atmDic.keys():
+			vals = [atm.densMetric[metric][normType]['values'][dataset] for atm in atmDic[k]]
+			meanVal = np.mean(vals)
+			stdVal = np.std(vals)
+			for atm in atmDic[k]:
+				val = atm.densMetric[metric][normType]['values'][dataset]
+				if np.linalg.norm(val-meanVal) > stdVal*threshold:
+					print atm.getAtomID()
+					if suppressText is True:
+						continue
+					if val < meanVal:
+						print 'Unusually low compared to mean value ({} < {})'.format(round(val,3),round(meanVal,3))
+					else:
+						print 'Unusually high compared to mean value ({} > {})'.format(round(val,3),round(meanVal,3))
+
 	def getNumDatasets(self):
 		return self.atomList[0].getNumDatasets()
 
@@ -687,6 +763,10 @@ class combinedAtomList(object):
 			if count > 0:
 				if printToScreen is True:
 					print 'Warning: not all selected residue types found!'
+			if count == len(resiType):
+				if printToScreen is True:
+					print 'Warning: no residues found for current plot'
+				return {}
 
 		if plotType not in ('hist','kde','both'): 
 			return 'Unknown plotting type selected.. cannot plot..'
@@ -696,7 +776,6 @@ class combinedAtomList(object):
 		if self.checkMetricPresent(self.atomList[0],metric,normType) is False: 
 			return # check metric valid
 
-		# sns.set_palette("deep", desat=.6)
 		sns.set_style("whitegrid")
 		sns.set_context(rc={"figure.figsize": (10, 6)})
 		fig = plt.figure()

@@ -7,15 +7,19 @@ import mmap
 import numpy as np
 from logFile import logFile
 
-def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices,log):
-    # read .map file of either density or atom-tagged type
+# reads .map file of either density or atom-tagged type
+def readMap(dirIn    = './',
+            dirOut   = './',
+            mapName  = 'untitled.map',
+            mapType  = 'atom_map',
+            atomInds = [],
+            log      = ''):
 
     # define 'rho' electron map object
     rho = MapInfo()
 
     # open electron density .map file here (bmf for binary map file)
-    # bmf = open(where+mapfilename,'rb')
-    mapName = dirIn+mapfilename
+    mapName = dirIn + mapName
     with open( mapName ) as f:
         bmf = mmap.mmap( f.fileno(), 0, prot = mmap.PROT_READ, flags = mmap.MAP_PRIVATE )
     
@@ -53,7 +57,7 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices,log):
     # file (corresponding to the position of the 3D electron density 
     # array). Note factor of 4 is included since 4-byte floats used for 
     # electron density array values.
-    filesize = os.path.getsize(dirIn+mapfilename)
+    filesize = os.path.getsize(mapName)
     densitystart = filesize - 4*(reduce(lambda x, y: x*y, rho.nxyz.values()))
     
     # next seek start of electron density data
@@ -83,9 +87,9 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices,log):
         density = []
         appenddens = density.append
         
-        if maptype in ('atom_map'):
-            atom_indices = []
-            appendindex = atom_indices.append
+        if mapType in ('atom_map'):
+            atomInds = []
+            appendindex = atomInds.append
             counter = -1
             while True:
                 data = bmf.read(struct_len)
@@ -101,19 +105,19 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices,log):
 
         # efficient way to read through density map file using indices of atoms
         # from atom map file above
-        elif maptype in ('density_map'):
-            for i in range(0,len(atom_indices)):
+        elif mapType in ('density_map'):
+            for i in range(0,len(atomInds)):
                 if i != 0:
-                    bmf.read(struct_len*(atom_indices[i]-atom_indices[i-1] - 1))
+                    bmf.read(struct_len*(atomInds[i]-atomInds[i-1] - 1))
                 else:
-                    bmf.read(struct_len*(atom_indices[0]))
+                    bmf.read(struct_len*(atomInds[0]))
                     
                 data = bmf.read(struct_len)
                 s = unpack(struct_fmt,data)[0]
                 appenddens(s)
 
-            # check that resulting list of same length as atom_indices
-            if len(density) != len(atom_indices):
+            # check that resulting list of same length as atomInds
+            if len(density) != len(atomInds):
                 print 'Error in processing of density map using atom-tagged map'
                 sys.exit()           
         else:
@@ -130,7 +134,7 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices,log):
     # For density map, cannot currently perform a check, since there is no 
     # guarantee that the max and min voxel values may be non atom voxels and
     # thus removed
-    if maptype in ('atom_map'):      
+    if mapType in ('atom_map'):      
         if max(density) == rho.density['max']:
             print 'calculated max voxel value match value stated in file header'
         else:
@@ -138,9 +142,9 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices,log):
             sys.exit()
     
     # if each voxel value is an atom number, then want to convert to integer
-    if maptype in ('atom_map'):
+    if mapType in ('atom_map'):
         density_final = [int(dens)/100 for dens in density]
-    elif maptype in ('density_map'):
+    elif mapType in ('density_map'):
         density_final = density
     else:
         print 'Unknown map type --> terminating script'
@@ -148,8 +152,8 @@ def readMap(dirIn,dirOut,pdbname,mapfilename,maptype,atom_indices,log):
 
     rho.vxls_val = density_final
 
-    if maptype in ('atom_map'):
-        return rho,atom_indices
+    if mapType in ('atom_map'):
+        return rho,atomInds
     else:
         return rho
 
