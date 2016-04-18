@@ -2,13 +2,19 @@ import os
 
 class ccp4Job():
 
-	def __init__(self,jobName,commandInput1,commandInput2,outputDir,outputLogfile,outputFile):
+	def __init__(self,
+				 jobName       = 'untitled',
+				 commandInput1 = '',
+				 commandInput2 = '',
+				 outputDir     = './',
+				 outputLog     = '',
+				 outputFile    = ''):
 
 		self.jobName 		= jobName
 		self.commandInput1 	= commandInput1
 		self.commandInput2 	= commandInput2
 		self.outputDir 		= outputDir
-		self.outputLogfile 	= outputLogfile
+		self.outputLogfile 	= outputLog
 		self.outputFile 	= outputFile # used to check success of job
 
 		# automatically run ccp4 program
@@ -24,17 +30,21 @@ class ccp4Job():
 
 		# run ccp4 program job
 		os.system('{} < {}inputfile.txt > {}'.format(self.commandInput1,
-												   self.jobName,
-												   self.outputLogfile))
+												     self.jobName,
+												     self.outputLogfile))
 
 		# move ccp4 job input and log files to working sub directory
-		os.system('mv {}inputfile.txt {}{}inputfile.txt'.format(self.jobName,self.outputDir,self.jobName))
-		os.system('mv {} {}{}'.format(self.outputLogfile,self.outputDir,self.outputLogfile))
+		os.system('mv {}inputfile.txt {}{}inputfile.txt'.format(self.jobName,
+			    												self.outputDir,
+			    												self.jobName))
+		os.system('mv {} {}{}'.format(self.outputLogfile,
+									  self.outputDir,
+									  self.outputLogfile))
 
 	def checkJobSuccess(self):
 		# job success checked, based on whether output files exist
+		ErrorString = '{} did not proceed to completion'.format(self.jobName)
 		if os.path.isfile(self.outputFile) is False:
-			ErrorString = '{} did not proceed to completion'.format(self.jobName)
 			print ErrorString
 			return False
 		else:
@@ -44,7 +54,8 @@ def checkInputsExist(inputFiles,runLog):
 	# check if input files exist for a ccp4 job
 	for fileName in inputFiles:
 		if os.path.isfile(fileName) is False:
-			runLog.writeToLog('Failed to find required input file "{}"'.format(fileName))
+			str = 'Failed to find required input file "{}"'.format(fileName)
+			runLog.writeToLog(str)
 			return False
 	else:
 		runLog.writeToLog('Input files:')

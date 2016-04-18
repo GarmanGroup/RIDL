@@ -4,13 +4,17 @@ import sys
 class residuetype:
     # for a specific residue (eg. 'MET') this class defines objects
     # for the function below
-    def __init__(
-        self,name="",atm_names=[],atms_bytype=[],frequency=0):
+
+    def __init__(self,
+                 name        = "",
+                 atm_names   = [],
+                 atms_bytype = [],
+                 frequency   = 0):
             
-        self.name = name
-        self.atm_names = atm_names
+        self.name        = name
+        self.atm_names   = atm_names
         self.atms_bytype = atms_bytype
-        self.frequency = frequency
+        self.frequency   = frequency
 
 
 def res2atomsbytype(PDBarray,res_type):
@@ -52,7 +56,11 @@ def res2atomsbytype(PDBarray,res_type):
     
     return y    
     
-def densper_resatom_NOresidueclass(where='',PDBarray=[],plot=False,densMet='mean',pdbName=''):
+def densper_resatom_NOresidueclass(where    = '',
+                                   PDBarray = [],
+                                   plot     = False,
+                                   densMet  = 'mean',
+                                   pdbName  = ''):
     # this function plots violin plots of atom density for each residue 
     # type, and also outputs a list of residue objects (see residuetype
     # class)
@@ -124,16 +132,19 @@ def densper_resatom_NOresidueclass(where='',PDBarray=[],plot=False,densMet='mean
     return residueArray
     
     
-def densper_res(where='',residueArray=[],minResNum=0,sideormain=['sidechain','mainchain'],densmet='min',pdbName=''):  
+def densper_res(where      = '',
+                resArray   = [],
+                minResNum  = 0,
+                sideormain = ['sidechain','mainchain'],
+                densmet    = 'min',
+                pdbName    = ''):  
     # plots a boxplot for each residue detailing the electron density 
-    # distn. 
-    # 'minResNum' is the threshold for the min number of residues of a 
-    # given type that need to be present in structure to be included in 
-    # the end plot
-    # 'sideormain' specifies whether 'sidechain' only, 'mainchain' only, 
-    # or ['sidechain','mainchain'] are selected
-    # 'densmet' specifies the density metric to be used ('mean','median',
-    # 'max','min')
+    # distn.'minResNum' is the threshold for the min number of residues
+    # of a given type that need to be present in structure to be included in 
+    # the end plot. 'sideormain' specifies whether 'sidechain' only, 
+    # 'mainchain' only, or ['sidechain','mainchain'] are selected 'densmet'
+    # specifies the density metric to be used ('mean','median','max','min')
+
     residue_label = []
 
     # The next section of code plots a boxplot for each residue/base 
