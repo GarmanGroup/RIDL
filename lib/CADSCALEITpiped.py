@@ -9,7 +9,11 @@ class pipeline():
 	# class to run CAD job to combine F and SIGF columns from
 	# two merged mtz files, then to scale the 2nd datasets F 
 	# structure factors against the 1st datasets
-	def __init__(self,outputDir='',inputFile='',jobName='untitled-job'):
+	
+	def __init__(self,
+				 outputDir = '',
+				 inputFile = '',
+				 jobName   = 'untitled-job'):
 
 		# specify where output files should be written
 		self.outputDir 			= outputDir
@@ -17,8 +21,8 @@ class pipeline():
 		self.findFilesInDir() 	
 		self.txtInputFile 		= inputFile
 		self.jobName 			= jobName
-		self.runLog 			= logFile(fileName='{}{}_runLog1.log'.format(self.outputDir,jobName),
-										  fileDir=self.outputDir)
+		self.runLog 			= logFile(fileName = '{}{}_runLog1.log'.format(self.outputDir,jobName),
+										  fileDir  = self.outputDir)
 
 		# specify output files for parts of pipeline
 		self.CADoutputMtz 		= '{}{}_CADcombined.mtz'.format(self.outputDir,self.jobName)
@@ -51,9 +55,15 @@ class pipeline():
 				mtzLbls_in  = self.Mtz1LabelName
 				mtzLbls_out = self.Mtz1LabelName
 
-			sigmaa = SIGMAAjob(self.SIGMAAinputMtz,mtzLbls_in,mtzLbls_out,self.RfreeFlag1,
-							   self.inputPDBfile,self.outputDir,self.runLog)	
+			sigmaa = SIGMAAjob(inputMtz 	   = self.SIGMAAinputMtz,
+							   MtzLabelNameIn  = mtzLbls_in,
+							   MtzLabelNameOut = mtzLbls_out,
+							   RfreeFlag       = self.RfreeFlag1,
+							   inputPDB        = self.inputPDBfile,
+							   outputDir       = self.outputDir,
+							   runLog          = self.runLog)	
 			success = sigmaa.run()
+
 			if success is False: 
 				return 2
 
@@ -67,19 +77,33 @@ class pipeline():
 			self.CADinputMtz1 = self.SIGMAAinputMtz
 
 		# run CAD job 
-		cad = CADjob(self.CADinputMtz1,self.CADinputMtz2,self.CADinputMtz3,
-					 self.Mtz1LabelName,self.Mtz2LabelName,self.Mtz3LabelName,
-					 self.Mtz1LabelRename,self.Mtz2LabelRename,self.Mtz3LabelRename,
-					 self.CADoutputMtz,self.outputDir,self.runLog,self.FFTmapWeight)
+		cad = CADjob(inputMtz1       = self.CADinputMtz1,
+			         inputMtz2       = self.CADinputMtz2,
+			         inputMtz3       = self.CADinputMtz3,
+					 Mtz1LabelName   = self.Mtz1LabelName,
+					 Mtz2LabelName   = self.Mtz2LabelName,
+					 Mtz3LabelName   = self.Mtz3LabelName,
+					 Mtz1LabelRename = self.Mtz1LabelRename,
+					 Mtz2LabelRename = self.Mtz2LabelRename,
+					 Mtz3LabelRename = self.Mtz3LabelRename,
+					 outputMtz       = self.CADoutputMtz,
+					 outputDir       = self.outputDir,
+					 runLog          = self.runLog,
+					 FOMWeight       = self.FFTmapWeight)
 		success = cad.run()
+
 		if success is False:
 			return 3
 
  		# run SCALEIT job 
-		scaleit = SCALEITjob(self.SCALEITinputMtz,self.SCALEIToutputMtz,
-							 self.Mtz1LabelRename,self.Mtz2LabelRename,
-							 self.outputDir,self.runLog)
+		scaleit = SCALEITjob(inputMtz  = self.SCALEITinputMtz,
+							 outputMtz = self.SCALEIToutputMtz,
+							 Mtz1Label = self.Mtz1LabelRename,
+							 Mtz2Label = self.Mtz2LabelRename,
+							 outputDir = self.outputDir,
+							 runLog    = self.runLog)
 		success = scaleit.run()
+
 		if success is False:
 			return 4
 
@@ -111,10 +135,19 @@ class pipeline():
 		inputFile.close()
 
 		# check that all required properties have been found
-		requiredProps = ['mtzIn1','Mtz1LabelName','RfreeFlag1','Mtz1LabelRename',
-						 'mtzIn2','Mtz2LabelName','Mtz2LabelRename',
-						 'mtzIn3','Mtz3LabelName','Mtz3LabelRename',
-						 'inputPDBfile','densMapType','deleteMtzs']
+		requiredProps = ['mtzIn1',
+						 'Mtz1LabelName',
+						 'RfreeFlag1',
+						 'Mtz1LabelRename',
+						 'mtzIn2',
+						 'Mtz2LabelName',
+						 'Mtz2LabelRename',
+						 'mtzIn3',
+						 'Mtz3LabelName',
+						 'Mtz3LabelRename',
+						 'inputPDBfile',
+						 'densMapType',
+						 'deleteMtzs']
 
 		for prop in requiredProps:
 			try:
