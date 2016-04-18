@@ -1,64 +1,92 @@
 # -*- coding: utf-8 -*-
-from deleteListIndices import multi_delete 
-from map2VoxelClassList import readMap
-import sys   
-from PDBFileManipulation import PDBtoList
-from densityAnalysisPlots import edens_scatter
 from residueFormatter import densper_resatom_NOresidueclass,densper_res
-import numpy as np
-from itertools import izip as zip, count
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm
-import math
-from progbar import progress
-import time
+from densityAnalysisPlots import edens_scatter
+from deleteListIndices import multi_delete 
 from savevariables import save_objectlist
+from itertools import izip as zip, count
+from PDBFileManipulation import PDBtoList
+from map2VoxelClassList import readMap
+from progbar import progress
 from logFile import logFile
+import numpy as np
+import sys  
+import time
+import math
 
 class voxel_density():
     # A class for .map file voxel
-    def __init__(self,density=0,atmnum=0):
+
+    def __init__(self,
+                 density = 0,
+                 atmnum  = 0):
+
         self.density = density
-        self.atmnum = atmnum
+        self.atmnum  = atmnum
 
 class vxls_of_atm():
     # A class for collecting voxels per atom
-    def __init__(self,vxls=[],atmnum = 0):
-        self.vxls = vxls
+
+    def __init__(self,
+                 vxls   = [],
+                 atmnum = 0):
+
+        self.vxls   = vxls
         self.atmnum = atmnum
 
 class maps2DensMetrics():
-    def __init__(self,filesIn='',filesOut='',pdbName='',mapFileName1='',
-                 mapType1='atom_map',mapFileName2='',mapType2='density_map',plot=False):
-        self.filesIn = filesIn
+    # assign values within a density map (mapFileName2) to specific atoms, using
+    # the an atom-tagged map (mapFileName1) to determine which regions of space
+    # are to be assigned to each atom
+
+    def __init__(self,
+                 filesIn    = '',
+                 filesOut   = '',
+                 pdbName    = '',
+                 atomTagMap = '',
+                 densityMap = '',
+                 FCmap      = '',
+                 plot       = False):
+
+        self.filesIn  = filesIn
         self.filesOut = filesOut # output directory
-        self.pdbName = pdbName
-        self.map1 = {'filename':mapFileName1,'type':mapType1}
-        self.map2 = {'filename':mapFileName2,'type':mapType2}
-        self.plot = plot
+        self.pdbName  = pdbName
+        self.map1     = atomTagMap # atom-tagged map
+        self.map2     = densityMap # density map (typically Fo-Fo)
+        self.map3     = FCmap # FC map
+        self.plot     = plot
 
     def maps2atmdensity(self):
         self.printTitle()
+
         # write a log file for this eTrack run
-        self.log = logFile(fileName='{}{}_log-mapProcessing.txt'.format(self.filesIn,self.pdbName),
-                           fileDir=self.filesIn,
-                           printToScreen=True)
+        logName = '{}{}_log-mapProcessing.txt'.format(self.filesIn,self.pdbName)
+        self.log = logFile(fileName      = logName,
+                           fileDir       = self.filesIn,
+                           printToScreen = True)
+
         self.lgwrite(ln='eTrack run - map processing\n')
 
-        self.lgwrite(ln='input directory: {}'.format(self.filesIn),strip=False)        
-        self.lgwrite(ln=
-            'output directory: {}\n'.format(self.filesOut),strip=False)        
+        self.lgwrite(ln='input directory: {}'.format(self.filesIn), strip = False)        
+        self.lgwrite(ln='output directory: {}\n'.format(self.filesOut), strip = False)        
 
         self.readPDBfile()
         self.readAtomMap()
         self.readDensityMap()
         self.reportDensMapInfo()
         self.checkMapCompatibility()
+
+        self.readFCMap()
+
+
         self.createVoxelList()
         self.plotDensHistPlots()
         self.calculateDensMetrics()
+
         if self.plot == True:
             self.plotDensScatterPlots()
             self.plotPerResidueBoxPlots()
+
         self.pickleAtomList()
 
     def readPDBfile(self):
@@ -69,14 +97,12 @@ class maps2DensMetrics():
         self.lgwrite(ln='Reading in pdb file...')
         self.lgwrite(ln='pdb name: {}{}.pdb'.format(self.filesIn,self.pdbName))
 
-        # next read in the pdb structure file:
-        # run function to fill PDBarray list with atom objects from structure
+        # read in the pdb file to fill list of atom objects
         self.PDBarray = PDBtoList('{}{}.pdb'.format(self.filesIn,self.pdbName))
         self.success()
         self.stopTimer()
 
-        # want to make sure array of structure atoms ordered by atom number
-        # before reading through them
+        # make sure array of atoms ordered by atom number
         self.PDBarray.sort(key=lambda x: x.atomnum)
            
         # need to get VDW radius for each atom:
@@ -88,14 +114,13 @@ class maps2DensMetrics():
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Reading in atom-tagged map file...')
-        self.lgwrite(ln='Atom map name: {}{}'.format(self.filesIn,self.map1['filename']))
-        self.atmmap,self.atom_indices = readMap(self.filesIn,
-                                                self.filesOut,
-                                                self.pdbName,
-                                                self.map1['filename'],
-                                                self.map1['type'],
-                                                [],
-                                                self.log)  
+        self.lgwrite(ln='Atom map name: {}{}'.format(self.filesIn,self.map1))
+
+        self.atmmap,self.atomIndices = readMap(dirIn   = self.filesIn,
+                                               dirOut  = self.filesOut,
+                                               mapName = self.map1,
+                                               mapType = 'atom_map',
+                                               log     = self.log)  
         self.success()
         self.stopTimer()
 
@@ -111,20 +136,36 @@ class maps2DensMetrics():
         Atms_notpres = set(range(1,num_atoms+1)) - set(uniq_atms)
         self.lgwrite(ln='Number of atoms not assigned to voxels: {}'.format(len(Atms_notpres)))
 
-        
     def readDensityMap(self):
         # read in the density map
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Reading in Density map file...')
-        self.lgwrite(ln='Density map name: {}{}'.format(self.filesIn, self.map2['filename']))
+        self.lgwrite(ln='Density map name: {}{}'.format(self.filesIn, self.map2))
         
-        self.densmap = readMap(self.filesIn,
-                               self.filesOut,self.pdbName,
-                               self.map2['filename'],
-                               self.map2['type'],
-                               self.atom_indices,
-                               self.log)  
+        self.densmap = readMap(dirIn    = self.filesIn,
+                               dirOut   = self.filesOut,
+                               mapName  = self.map2,
+                               mapType  = 'density_map',
+                               atomInds = self.atomIndices,
+                               log      = self.log)  
+        self.success()
+        self.stopTimer()
+
+    def readFCMap(self):
+        # read in the FC density map
+        self.startTimer()
+        self.fillerLine()
+        self.lgwrite(ln='Reading in FC density map file...')
+        self.lgwrite(ln='Density map name: {}{}'.format(self.filesIn, self.map2))
+
+        self.FCmap = readMap(dirIn    = self.filesIn,
+                             dirOut   = self.filesOut,
+                             mapName  = self.map3,
+                             mapType  = 'density_map',
+                             atomInds = self.atomIndices,
+                             log      = self.log)  
+
         self.success()
         self.stopTimer()
 
@@ -224,16 +265,16 @@ class maps2DensMetrics():
         for atom in self.PDBarray:
             atomVxls = self.vxlsPerAtom[atom.atomnum]
             if len(atomVxls) != 0:
-                atom.meandensity    = np.mean(atomVxls)
-                atom.mediandensity  = np.median(atomVxls)
-                atom.mindensity     = min(atomVxls)
-                atom.maxdensity     = max(atomVxls)
-                atom.stddensity     = np.std(atomVxls)
-                atom.min90tile      = np.percentile(atomVxls,10)
-                atom.max90tile      = np.percentile(atomVxls,90)
-                atom.min95tile      = np.percentile(atomVxls,5)
-                atom.max95tile      = np.percentile(atomVxls,95)
-                atom.numvoxels      = len(atomVxls)
+                atom.meandensity   = np.mean(atomVxls)
+                atom.mediandensity = np.median(atomVxls)
+                atom.mindensity    = min(atomVxls)
+                atom.maxdensity    = max(atomVxls)
+                atom.stddensity    = np.std(atomVxls)
+                atom.min90tile     = np.percentile(atomVxls,10)
+                atom.max90tile     = np.percentile(atomVxls,90)
+                atom.min95tile     = np.percentile(atomVxls,5)
+                atom.max95tile     = np.percentile(atomVxls,95)
+                atom.numvoxels     = len(atomVxls)
         self.success()
         self.stopTimer()
 
@@ -250,12 +291,18 @@ class maps2DensMetrics():
         self.fillerLine(style='line')
         # print 'Plotting scatter plots for electron density statistics...'
         self.lgwrite(ln='Plotting scatter plots for electron density statistics...')
-        plotVars = (['mean','max'],['mean','median'],
-                    ['mean','min'],['min','max'],
-                    ['mean','std'],['std','rsd'],
-                    ['min','min90tile'],['max','max90tile'],
-                    ['min90tile','min95tile'],['max90tile','max95tile'],
-                    ['std','range'],['mean','range'])
+        plotVars = (['mean','max'],
+                    ['mean','median'],
+                    ['mean','min'],
+                    ['min','max'],
+                    ['mean','std'],
+                    ['std','rsd'],
+                    ['min','min90tile'],
+                    ['max','max90tile'],
+                    ['min90tile','min95tile'],[
+                    'max90tile','max95tile'],
+                    ['std','range'],
+                    ['mean','range'])
         for pVars in plotVars:
             edens_scatter(self.filesOut,pVars,self.PDBarray,self.pdbName)
 
@@ -264,17 +311,17 @@ class maps2DensMetrics():
         # to each residue, and also a combined boxplot across all residues in structures.
         self.fillerLine(style='line')
         for densMet in ('mean','min','max'):
-            residueArray = densper_resatom_NOresidueclass(where=self.filesOut,
-                                                          PDBarray=self.PDBarray,
-                                                          plot=True,
-                                                          densMet=densMet,
-                                                          pdbName=self.pdbName)
-        densper_res(where=self.filesOut,
-                    residueArray=residueArray,
-                    pdbName=self.pdbName)
+            resArray = densper_resatom_NOresidueclass(where    = self.filesOut,
+                                                      PDBarray = self.PDBarray,
+                                                      plot     = True,
+                                                      densMet  = densMet,
+                                                      pdbName  = self.pdbName)
+        densper_res(where    = self.filesOut,
+                    resArray = resArray,
+                    pdbName  = self.pdbName)
 
         # remove residueArray now to save memory 
-        residueArray = []
+        resArray = []
         self.stopTimer()
 
     def pickleAtomList(self):
@@ -308,7 +355,7 @@ class maps2DensMetrics():
 
     def lgwrite(self,ln='',strip=True):
         # write line to log file
-        self.log.writeToLog(str=ln,strip=strip)
+        self.log.writeToLog(str=ln, strip=strip)
 
 
 
