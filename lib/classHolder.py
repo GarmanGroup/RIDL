@@ -77,6 +77,12 @@ class StructurePDB(object):
             b = str(self.atomID).lower()
             if a == b:
                 # convert VDV radius for element into Angstroms as required:
+                val = line.split()[5]
+                try: 
+                    float(val)
+                except ValueError:
+                    vdw = 'N/A'
+                    break
                 vdw = float(line.split()[5])*(0.01)
                 break
             else:
