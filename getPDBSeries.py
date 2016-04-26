@@ -2,15 +2,21 @@ import os.path
 
 class getSeries():
 	# retrieve pdb codes from pdb or pdb_redo
-	def __init__(self,PDBcode='',pdb_redo='initial',outputDir=''):
-		# PDBcode is 4 letter pdb code
-		# pdb_redo takes 'false', 'initial' (= from pdb_redo without refinement),
+	
+	def __init__(self,
+				 PDBcode   = '',
+				 pdb_redo  = 'initial',
+				 outputDir = ''):
+
+		# PDBcode is 4 letter pdb code. pdb_redo takes 'false',
+		# 'initial' (= from pdb_redo without refinement),
 		# or 'final' (= from pdb_redo with refinement)
-		self.datasetName 	= str(PDBcode).lower()
-		self.outputDir 		= outputDir+self.datasetName
-		self.pdbFile 		= self.datasetName+'.pdb'
-		self.mmcifFile 		= self.datasetName+'-sf.cif'
-		self.mtzFile 		= self.datasetName+'.mtz'
+
+		self.datasetName = str(PDBcode).lower()
+		self.outputDir 	 = outputDir+self.datasetName
+		self.pdbFile 	 = self.datasetName+'.pdb'
+		self.mmcifFile 	 = self.datasetName+'-sf.cif'
+		self.mtzFile 	 = self.datasetName+'.mtz'
 
 		# make directory for this dataset
 		if not os.path.exists(self.outputDir):
