@@ -58,7 +58,7 @@ def res2atomsbytype(PDBarray,res_type):
     
 def densper_resatom_NOresidueclass(where    = '',
                                    PDBarray = [],
-                                   plot     = False,
+                                   plot     = True,
                                    densMet  = 'mean',
                                    pdbName  = ''):
     # this function plots violin plots of atom density for each residue 

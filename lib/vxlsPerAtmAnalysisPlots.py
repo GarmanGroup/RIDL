@@ -5,10 +5,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
-def plotVxlsPerAtm(pdbName='untitled',where='',vxlsPerAtom={},plotType='histogram'):
+def plotVxlsPerAtm(pdbName     = 'untitled',
+                   where       = '',
+                   vxlsPerAtom = {},
+                   plotType    = 'histogram',
+                   saveFig     = True,
+                   printText   = True):
+
     # histogram/kde plot of number of voxels per atom
-    # plotType is 'histogram' or 'kde'
-    print 'Plotting {} plot of number of voxels per atom...'.format(plotType)
+    # plotType in ('histogram','kde','both')
+
+    if printText is True:
+        print 'Plotting {} plot of number of voxels per atom...'.format(plotType)
+        
     sns.set_palette("deep", desat=.6)
     sns.set_context(rc={"figure.figsize": (10, 6)})
     fig = plt.figure()
@@ -17,13 +26,22 @@ def plotVxlsPerAtm(pdbName='untitled',where='',vxlsPerAtom={},plotType='histogra
 
     if plotType == 'histogram':
         plt.hist(datax, 300, histtype="stepfilled", alpha=.7)
+        yTitle = 'Frequency'
+
     elif plotType == 'kde':
-        sns.kdeplot(np.array(datax), shade=True);
+        sns.kdeplot(np.array(datax), shade=True)
+        yTitle = 'Normed-Frequency'
+
+    elif plotType == 'both':
+        sns.distplot(np.array(datax))
+        yTitle = 'Normed-Frequency'
+
     else:
         print 'Unknown plotting type selected.. cannot plot..'
         return
     plt.xlabel('Voxels per atom')
-    plt.ylabel('Frequency')
+    plt.ylabel(yTitle)
     plt.title('{} plot of voxels per atom'.format(plotType))
-    fig.savefig('{}plots/{}vxlsperatm_{}.png'.format(where,pdbName,plotType))
+    if saveFig is True:
+        fig.savefig('{}plots/{}vxlsperatm_{}.png'.format(where,pdbName,plotType))
     

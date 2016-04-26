@@ -18,7 +18,7 @@ class run():
 	def runETRACK(self,
 				  mapProcess  = True,
 				  postProcess = True,
-				  retrieve    = True):
+				  retrieve    = False):
 		# run the ETRACK processing for the currently defined input file
 
 		print 'Running main ETRACK script...'

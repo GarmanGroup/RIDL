@@ -6,17 +6,35 @@ import string
 class combinedAtom(StructurePDB):
 	# A subclass extension for a collection of multiple different dose pdb file structures as 
 	# defined by the StructurePDB class. This class adds additonal attributes and methods
-	def __init__(self,atomnum = 0,residuenum = 0,atomtype = "",basetype = "",chaintype = "",
-				 X_coord = 0,Y_coord = 0,Z_coord = 0,atomID = "",
-				 numsurroundatoms = 0,numsurroundprotons = 0,densMetric = {},partialInfo=False):
 
-		super(combinedAtom, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,X_coord,
-										   Y_coord,Z_coord,atomID,numsurroundatoms,numsurroundprotons)
+	def __init__(self,
+				 atomnum            = 0,
+				 residuenum         = 0,
+				 atomtype           = "",
+				 basetype           = "",
+				 chaintype          = "",
+				 X_coord            = 0,
+				 Y_coord            = 0,
+				 Z_coord            = 0,
+				 atomID             = "",
+				 numsurroundatoms   = 0,
+				 numsurroundprotons = 0,
+				 densMetric         = {},
+				 partialInfo        =False):
+
+		super(combinedAtom, self).__init__(atomnum,residuenum,
+										   atomtype,basetype,
+										   chaintype,X_coord,
+										   Y_coord,Z_coord,
+										   atomID,
+										   numsurroundatoms,
+										   numsurroundprotons)
 
 		self.densMetric = {} # dictionary of density metrics to be filled
 
 	def getPresentDatasets(self):
-		# for atoms only present within subset of datasets, get the datasets for which present
+		# for atoms only present within subset of datasets, 
+		# get the datasets for which present
 		presentList = []
 		i = -1
 		for val in self.densMetric['loss']['Standard']['values']:
@@ -26,9 +44,10 @@ class combinedAtom(StructurePDB):
 		return presentList
 
 	def getDensMetricInfo(self,metric,normType,values):
-		# these attributes are dictionaries and will contain values for multiple
-		# variations of the density change metrics
-		# 'normType' is 'standard' or 'Calpha weighted'
+		# these attributes are dictionaries and will contain 
+		# values for multiple variations of the density 
+		# change metrics 'normType' is 'standard' or 
+		# 'Calpha weighted'
 		try:
 			self.densMetric[metric]
 		except KeyError: 
@@ -43,10 +62,11 @@ class combinedAtom(StructurePDB):
 		self.densMetric[densMetric][type]['average'] = np.nanmean(densVals)
 		
 	def calcLinReg(self,numLinRegDatasets,type,densMetric):
-		# Calculates linear regression for the density metric 'densMetric' and
-		# determines the linear slope of density change
-		# 'numLinRegDatasets' in the number of difference map datasets across which 
-		# linear regression will be preformed. 'type' specifies whether 'Standard'
+		# Calculates linear regression for the density metric 
+		# 'densMetric' and determines the linear slope of density 
+		# change 'numLinRegDatasets' in the number of difference 
+		# map datasets across which linear regression will be 
+		# preformed. 'type' specifies whether 'Standard'
 		# or 'Calpha normalised' metric values should be used
 		x = np.array(range(2,numLinRegDatasets+1))
 
@@ -78,7 +98,7 @@ class combinedAtom(StructurePDB):
 
 		weight = CalphaWeights.weight[metric]
 		metricVals = self.densMetric[metric]['Standard']['values']
-		self.getDensMetricInfo(metric,'Calpha normalised',list(np.divide(metricVals-weight,weight)))
+		self.getDensMetricInfo(metric,'Calpha normalised',list(np.sign(-weight)*np.divide(metricVals-weight,weight)))
 
 	def calcFirstDatasetSubtractedMetric(self,normType,metric):
 		# for a specified metric calculate a new metric: metric(dn)-metric(d1) where dn is dataset n

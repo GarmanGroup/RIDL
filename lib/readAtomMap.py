@@ -9,6 +9,8 @@ from PDBFileManipulation import PDBtoList
 from map2VoxelClassList import readMap
 from progbar import progress
 from logFile import logFile
+import seaborn as sns               # 
+import matplotlib.pyplot as plt     #
 import numpy as np
 import sys  
 import time
@@ -78,14 +80,12 @@ class maps2DensMetrics():
 
         self.readFCMap()
 
-
         self.createVoxelList()
         self.plotDensHistPlots()
         self.calculateDensMetrics()
 
-        if self.plot == True:
-            self.plotDensScatterPlots()
-            self.plotPerResidueBoxPlots()
+        self.plotDensScatterPlots(plot = self.plot)
+        self.plotPerResidueBoxPlots(plot = self.plot)
 
         self.pickleAtomList()
 
@@ -178,15 +178,15 @@ class maps2DensMetrics():
         solvNumVxls      = totalNumVxls - structureNumVxls
         solvMean         = (totalNumVxls*totalMean - structureNumVxls*structureMean)/solvNumVxls
 
-        self.lgwrite(ln='For voxels assigned to structure:')
-        self.lgwrite(ln='\tmean structure density : {}'.format(round(structureMean,4)))
-        self.lgwrite(ln='\tmax structure density : {}'.format(round(max(self.densmap.vxls_val)),4))
-        self.lgwrite(ln='\tmin structure density : {}'.format(round(min(self.densmap.vxls_val)),4))
-        self.lgwrite(ln='\tstd structure density : {}'.format(round(np.std(self.densmap.vxls_val)),4))
-        self.lgwrite(ln='\t# voxels included : {}'.format(structureNumVxls))
-        self.lgwrite(ln='\nFor voxels assigned to solvent:')
-        self.lgwrite(ln='\tmean solvent-region density : {}'.format(round(solvMean),4))
-        self.lgwrite(ln='\t# voxels included : {}'.format(solvNumVxls))
+        self.lgwrite(ln = 'For voxels assigned to structure:')
+        self.lgwrite(ln = '\tmean structure density : {}'.format(round(structureMean,4)))
+        self.lgwrite(ln = '\tmax structure density : {}'.format(round(max(self.densmap.vxls_val),4)))
+        self.lgwrite(ln = '\tmin structure density : {}'.format(round(min(self.densmap.vxls_val),4)))
+        self.lgwrite(ln = '\tstd structure density : {}'.format(round(np.std(self.densmap.vxls_val),4)))
+        self.lgwrite(ln = '\t# voxels included : {}'.format(structureNumVxls))
+        self.lgwrite(ln = '\nFor voxels assigned to solvent:')
+        self.lgwrite(ln = '\tmean solvent-region density : {}'.format(round(solvMean),4))
+        self.lgwrite(ln = '\t# voxels included : {}'.format(solvNumVxls))
 
     def checkMapCompatibility(self):
         # check that atom-tagged and density map can be combined successfully
@@ -206,7 +206,7 @@ class maps2DensMetrics():
             sys.exit()
 
         elif self.atmmap.celldims != self.densmap.celldims:
-            self.lgwrite(ln='Not exact same map grid dimensions..')
+            self.lgwrite(ln = 'Not exact same map grid dimensions..')
 
             # now check if grid dims same to a specific dp and consider continuing
             stop = True
@@ -216,54 +216,80 @@ class maps2DensMetrics():
                     if np.round(self.atmmap.celldims[key],i) == np.round(self.densmap.celldims[key],i):
                         count += 1
                 if count == 6:
-                    self.lgwrite(ln='Map grid dimensions same to {}dp --> continuing with processing anyway'.format(i))
+                    str = 'Map grid dimensions same to {}dp'.format(i)+\
+                          '--> continuing with processing anyway'
+                    self.lgwrite(ln = str)
                     stop = False
                     break
             if stop == True:
-                self.lgwrite(ln='Map grid dimensions still not same to 0dp --> terminating script')
+                str = 'Map grid dimensions still not same to 0dp'+\
+                      ' --> terminating script'
+                self.lgwrite(ln = str)
                 sys.exit()
 
         else:
             self.success()
-            self.lgwrite(ln='The atom and density map are of compatible format!')
+            self.lgwrite(ln = 'The atom and density map are of compatible format!')
         self.stopTimer()
 
         self.fillerLine()
-        self.lgwrite(ln='Total number of voxels assigned to atoms: {}'.format(len(self.atmmap.vxls_val)))
+        str = 'Total number of voxels assigned to atoms: {}'.format(len(self.atmmap.vxls_val))
+        self.lgwrite(ln = str)
 
-    def createVoxelList(self):
+    def createVoxelList(self,useFCmap=True):
         # create dictionary of voxels with atom numbers as keys 
+
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Combining voxel density and atom values...')
         vxl_list = {atm:[] for atm in self.atmmap.vxls_val}
+
         for atm,dens in zip(self.atmmap.vxls_val,self.densmap.vxls_val):
             vxl_list[atm].append(dens)
         self.vxlsPerAtom = vxl_list
 
+        if useFCmap is True:
+            vxl_list2 = {atm:[] for atm in self.atmmap.vxls_val}
+            for atm,dens in zip(self.atmmap.vxls_val,self.FCmap.vxls_val):
+                vxl_list2[atm].append(dens)
+            self.FCperAtom = vxl_list2
+
         # delete atmmap and densmap now to save memory
-        self.densmap,self.atmmap =[],[]
+        self.densmap,self.atmmap,self.FCmap =[],[],[]
         self.stopTimer()
  
     def plotDensHistPlots(self):
         # histogram & kde plots of number of voxels per atom
+
         self.startTimer()
         self.lgwrite(ln='Plotting histogram plots of voxels per atom...')
         self.lgwrite(ln='Plots written to "{}plots"'.format(self.filesOut))
-        for p in ('histogram','kde'):
-            plotVxlsPerAtm(pdbName=self.pdbName,
-                           where=self.filesOut,
-                           vxlsPerAtom=self.vxlsPerAtom,
-                           plotType=p)
+        plotVxlsPerAtm(pdbName     = self.pdbName,
+                       where       = self.filesOut,
+                       vxlsPerAtom = self.vxlsPerAtom,
+                       plotType    = 'both')
         self.stopTimer()
 
-    def calculateDensMetrics(self):
+    def calculateDensMetrics(self, FCweighted=True, plotDistn=True):
         # determine density summary metrics per atom
+
         self.fillerLine()
         self.startTimer()
         self.lgwrite(ln='Calculating electron density statistics per atom...')
+
         for atom in self.PDBarray:
             atomVxls = self.vxlsPerAtom[atom.atomnum]
+
+            if FCweighted is True:
+                # calculate reliability measures based on electron 
+                # density probability at position of min density 
+                atomFCvals = self.FCperAtom[atom.atomnum]
+                atomFCvalsMaxNormalised = np.array(atomFCvals)/max(atomFCvals)
+
+                minIndex     = np.array(atomVxls).argmin()
+                reliability  = atomFCvalsMaxNormalised[minIndex]
+                FCatMin      = atomFCvals[minIndex]
+
             if len(atomVxls) != 0:
                 atom.meandensity   = np.mean(atomVxls)
                 atom.mediandensity = np.median(atomVxls)
@@ -275,6 +301,16 @@ class maps2DensMetrics():
                 atom.min95tile     = np.percentile(atomVxls,5)
                 atom.max95tile     = np.percentile(atomVxls,95)
                 atom.numvoxels     = len(atomVxls)
+
+                if FCweighted is True:
+                    atom.reliability  = reliability
+                    if plotDistn is True:
+                        self.plotFCdistnPlot(atomOfInterest    = atom,
+                                             atomFCvals        = atomFCvals,
+                                             atomFCvalsMaxNorm = atomFCvalsMaxNormalised,
+                                             FCatMin           = FCatMin,
+                                             reliability       = reliability)
+
         self.success()
         self.stopTimer()
 
@@ -285,60 +321,115 @@ class maps2DensMetrics():
         for atom in self.PDBarray:
             atom.getAdditionalMetrics()
 
-    def plotDensScatterPlots(self):
+    def plotFCdistnPlot(self,
+                        plot              = True,
+                        atomOfInterest    = '',
+                        atomsToPlot       = ['GLU-CD','CYS-SG'],
+                        atomFCvals        = [],
+                        atomFCvalsMaxNorm = [],
+                        FCatMin           = [],
+                        reliability       = [],
+                        plotType          = '.png'):
+
+        for tag in atomsToPlot:
+            if tag in atomOfInterest.getAtomID():
+                sns.set_style("dark")
+                sns.set_context(rc={"figure.figsize": (10, 6)})
+                fig = plt.figure()
+                ax = plt.subplot(111)
+                sns.distplot(np.array(atomFCvals),label='Fcalc')
+                sns.distplot(np.array(atomFCvalsMaxNorm),label='Fcalc/max(Fcalc)')
+                ylims = ax.get_ylim()
+
+                plt.plot((FCatMin,FCatMin),
+                         (ylims[0],ylims[1]),
+                         label='Fcalc, at position of min diff density')
+                plt.plot((reliability,reliability),
+                         (ylims[0],ylims[1]),
+                         label='Fcalc/max(Fcalc), at position of min diff density')
+                leg = plt.legend(frameon=1)
+                frame = leg.get_frame()
+                frame.set_color('white')
+                plt.xlabel('Per-voxel density map values',fontsize=18)
+                plt.ylabel('Normed-frequency',fontsize=18)
+                plt.title('Distribution of Fcalc density values: {}'.format(atomOfInterest.getAtomID()))
+                fig.savefig('testDistnPlot-{}{}'.format(atomOfInterest.getAtomID(),plotType))
+
+
+    def plotDensScatterPlots(self,
+                             plot      = False,
+                             printText = False):
         # plot scatter plots for density metrics 
+
+        if plot is False:
+            return
+
         self.startTimer()
         self.fillerLine(style='line')
-        # print 'Plotting scatter plots for electron density statistics...'
-        self.lgwrite(ln='Plotting scatter plots for electron density statistics...')
-        plotVars = (['mean','max'],
-                    ['mean','median'],
-                    ['mean','min'],
-                    ['min','max'],
-                    ['mean','std'],
-                    ['std','rsd'],
-                    ['min','min90tile'],
-                    ['max','max90tile'],
-                    ['min90tile','min95tile'],[
-                    'max90tile','max95tile'],
-                    ['std','range'],
-                    ['mean','range'])
-        for pVars in plotVars:
-            edens_scatter(self.filesOut,pVars,self.PDBarray,self.pdbName)
+        str = 'Plotting scatter plots for electron density statistics...'
+        self.lgwrite(ln=str,forcePrint=printText)
 
-    def plotPerResidueBoxPlots(self):
-        # perform residue analysis for datatset, outputting boxplots for each atom specific
-        # to each residue, and also a combined boxplot across all residues in structures.
-        self.fillerLine(style='line')
+        plotVars = (['meandensity','maxdensity'],
+                    ['meandensity','mediandensity'],
+                    ['meandensity','mindensity'],
+                    ['mindensity','maxdensity'],
+                    ['meandensity','stddensity'],
+                    ['mindensity','min90tile'],
+                    ['maxdensity','max90tile'],
+                    ['min90tile','min95tile'],
+                    ['max90tile','max95tile'])
+
+        for pVars in plotVars:
+            logStr = edens_scatter(outputDir = self.filesOut,
+                                   metrics   = pVars,
+                                   PDBarray  = self.PDBarray,
+                                   pdbName   = self.pdbName)
+            self.lgwrite(ln=logStr)
+
+    def plotPerResidueBoxPlots(self,
+                               plot      = False,
+                               lineStyle = 'line'):
+
+        # perform residue analysis for datatset, outputting boxplots
+        # for each atom specific to each residue, and also a combined 
+        # boxplot across all residues in structures.
+
+        if plot is False:
+            return
+
+        self.fillerLine(style=lineStyle)
         for densMet in ('mean','min','max'):
             resArray = densper_resatom_NOresidueclass(where    = self.filesOut,
                                                       PDBarray = self.PDBarray,
-                                                      plot     = True,
                                                       densMet  = densMet,
                                                       pdbName  = self.pdbName)
         densper_res(where    = self.filesOut,
                     resArray = resArray,
                     pdbName  = self.pdbName)
 
-        # remove residueArray now to save memory 
         resArray = []
         self.stopTimer()
 
     def pickleAtomList(self):
+
         self.pklFileName = save_objectlist(self.PDBarray,self.pdbName)
 
     def startTimer(self):
+
         self.timeStart = time.time()
 
     def stopTimer(self):
+
         elapsedTime = time.time() - self.timeStart
         self.lgwrite(ln='section time: {}s\n'.format(round(elapsedTime,3)))
         sys.stdout.flush()
 
     def success(self):
+
         self.lgwrite(ln='---> success')
 
     def fillerLine(self,style='stars'):
+
         if style == 'stars':
             print '\n***'
         elif style == 'line':
@@ -346,16 +437,23 @@ class maps2DensMetrics():
         elif style == 'blank':
             print '\n'
 
-    def printTitle(self,title='eTrack run'):
+    def printTitle(self,title = 'eTrack run'):
+
         print '\n'+'='*50
         print '-'*50
         print '|||'+' '*15+title+' '*15+'|||'
         print '-'*50
         print '='*50+'\n'
 
-    def lgwrite(self,ln='',strip=True):
+    def lgwrite(self,
+                ln         = '',
+                strip      = True,
+                forcePrint = False):
         # write line to log file
-        self.log.writeToLog(str=ln, strip=strip)
+
+        self.log.writeToLog(str        = ln, 
+                            strip      = strip,
+                            forcePrint = forcePrint)
 
 
 

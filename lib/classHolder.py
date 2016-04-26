@@ -1,30 +1,44 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 26 01:48:33 2014
-@author: charlie
-"""
 import math
 import sys
 import numpy as np
 
 class residue:
     # A class for residue information
-    def __init__(self,name = "",freq = 0,res_list = [],quantity = 0,av_mean_density = [],
-                 atom_stand_dev = []):
+
+    def __init__(self,
+                 name            = "",
+                 freq            = 0,
+                 res_list        = [],
+                 quantity        = 0,
+                 av_mean_density = [],
+                 atom_stand_dev  = []):
             
-        self.name               = name
-        self.freq               = freq
-        self.res_list           = res_list
-        self.quantity           = quantity
-        self.av_mean_density    = av_mean_density
-        self.atom_stand_dev     = atom_stand_dev
+        self.name            = name
+        self.freq            = freq
+        self.res_list        = res_list
+        self.quantity        = quantity
+        self.av_mean_density = av_mean_density
+        self.atom_stand_dev  = atom_stand_dev
 
 
 class StructurePDB(object):
     # A class for coordinate PDB file atom
-    def __init__(self,atomnum = 0,residuenum = 0,atomtype = "",basetype = "",chaintype = "",
-                 X_coord = 0,Y_coord = 0,Z_coord = 0,atomID = "",numsurroundatoms = 0,
-                 numsurroundprotons = 0,vdw_rad = 0,atomOrHetatm = "" ):
+
+    def __init__(self,
+                 atomnum            = 0,
+                 residuenum         = 0,
+                 atomtype           = "",
+                 basetype           = "",
+                 chaintype          = 'A',
+                 X_coord            = 0,
+                 Y_coord            = 0,
+                 Z_coord            = 0,
+                 atomID             = "",
+                 numsurroundatoms   = 0,
+                 numsurroundprotons = 0,
+                 vdw_rad            = 0,
+                 atomOrHetatm       = "" ):
             
         self.atomnum            = atomnum
         self.residuenum         = residuenum
@@ -40,22 +54,30 @@ class StructurePDB(object):
         self.vdw_rad            = vdw_rad
         self.atomOrHetatm       = atomOrHetatm
 
-    # To determine whether the current atom is a constituent of protein or nucleic acid    
+        self.nucAcidTypes     = ['DA','DC','DG','DT',
+                                 'A','C','G','U']
+        self.mainchainProtein = ['N','CA','C','O']
+        self.mainchainNucAcid = ["P","OP1","O5'","C5'",
+                                 "C4'","C3'","O3'","C2'",
+                                 "C1'","O4'","OP2"]
+
+    # To determine whether the current atom is a constituent
+    #  of protein or nucleic acid    
     def protein_or_nucleicacid(self):
-        if self.basetype in ('DA','DC','DG','DT','A','C','G','U'):
+        if self.basetype in self.nucAcidTypes:
             component_type = 'nucleic acid'
         else:
             component_type = 'protein'  
         return component_type
         
     def side_or_main(self):
-        if self.basetype in ('DA','DC','DG','DT','A','C','G','U'):
-            if self.atomtype not in ("P","OP1","O5'","C5'","C4'","C3'","O3'","C2'","C1'","O4'","OP2"):
+        if self.basetype in self.nucAcidTypes:
+            if self.atomtype not in self.mainchainNucAcid:
                 sideormain = 'sidechain'
             else:
                 sideormain = 'mainchain'
         else:
-            if self.atomtype not in ('N','CA','C','O'):
+            if self.atomtype not in self.mainchainProtein:
                 sideormain = 'sidechain'
             else:
                 sideormain = 'mainchain'
@@ -96,23 +118,80 @@ class StructurePDB(object):
         self.vdw_rad = vdw
 
     def getAtomID(self):
-        # get a unique identifier for atom within structure, not dependent on atom number
-        # which may differ between different datasets of same structure
+        # get a unique identifier for atom within structure, not 
+        # dependent on atom number which may differ between different 
+        # datasets of same structure
+
         ID = '{}-{}-{}-{}'.format(self.chaintype,self.residuenum,self.basetype,self.atomtype)
         return ID
 
+    def getProtonNumber(self,printText=True):
+        # hard coded proton numbers for specific atom types (not all, may need to add to this)
+
+        protonDic = {'H':1,
+                     'C':6,
+                     'N':7,
+                     'O':8,
+                     'NA':11,
+                     'MG':12,
+                     'P':15,
+                     'S':16,
+                     'CL':17,
+                     'K':19,
+                     'CA':20,
+                     'MN':25,
+                     'FE':26,
+                     'NI':28,
+                     'ZN':30}
+        try:
+            protonNum = protonDic[self.atomID]
+        except KeyError:
+            if printText is True:
+                str = 'Unable to find proton number for atom {}, '.format(self.atomID)+\
+                      'must hard code in classHolder.py to continue'
+                print str
+            return
+        return protonNum
   
 class singlePDB(StructurePDB):
     # StructurePDB subclass for a single pdb file structure
-    def __init__(self,atomnum = 0,residuenum = 0,atomtype = "",basetype = "",chaintype = "",
-                 X_coord = 0,Y_coord = 0,Z_coord = 0,Bfactor = 0,Occupancy = 0,meandensity = 0,
-                 maxdensity = 0,mindensity = 0,mediandensity = 0,atomID = "",
-                 numsurroundatoms = 0,numsurroundprotons = 0,vdw_rad = 0,atomOrHetatm = "",bdam = 0,
-                 bdamchange = 0,Bfactorchange = 0,numvoxels = 0,stddensity = 0,min90tile = 0,
-                 max90tile = 0,min95tile = 0,max95tile = 0):
+
+    def __init__(self,
+                 atomnum            = 0,
+                 residuenum         = 0,
+                 atomtype           = "",
+                 basetype           = "",
+                 chaintype          = "",
+                 X_coord            = 0,
+                 Y_coord            = 0,
+                 Z_coord            = 0,
+                 Bfactor            = 0,
+                 Occupancy          = 0,
+                 meandensity        = 0,
+                 maxdensity         = 0,
+                 mindensity         = 0,
+                 mediandensity      = 0,
+                 atomID             = "",
+                 numsurroundatoms   = 0,
+                 numsurroundprotons = 0,
+                 vdw_rad            = 0,
+                 atomOrHetatm       = "",
+                 bdam               = 0,
+                 bdamchange         = 0,
+                 Bfactorchange      = 0,
+                 numvoxels          = 0,
+                 stddensity         = 0,
+                 min90tile          = 0,
+                 max90tile          = 0,
+                 min95tile          = 0,
+                 max95tile          = 0):
                     
-        super(singlePDB, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,X_coord,Y_coord,
-                                        Z_coord,atomID,numsurroundatoms,numsurroundprotons,vdw_rad,atomOrHetatm)
+        super(singlePDB, self).__init__(atomnum, residuenum, atomtype,
+                                        basetype, chaintype, X_coord,
+                                        Y_coord, Z_coord, atomID,
+                                        numsurroundatoms,
+                                        numsurroundprotons,
+                                        vdw_rad, atomOrHetatm)
             
         self.Bfactor        = Bfactor 
         self.Occupancy      = Occupancy
@@ -141,16 +220,45 @@ class singlePDB(StructurePDB):
 # A subclass for a collection of multiple different dose pdb file structures
 class multiPDB(StructurePDB):
     
-    def __init__(self,atomnum = 0,residuenum = 0,atomtype = "",basetype = "",chaintype = "",
-                 X_coord = 0,Y_coord = 0,Z_coord = 0,Bfactor = [],Occupancy = [],meandensity = [],
-                 maxdensity = [],mindensity = [],mediandensity = [],atomID = "",
-                 numsurroundatoms = 0,numsurroundprotons = 0,bdam = [],bdamchange = [],Bfactorchange = [],
-                 meandensity_norm = [],maxdensity_norm = [],mindensity_norm = [],
-                 mediandensity_norm = [],numvoxels = [],stddensity = [],min90tile = [],max90tile = [],
-                 min95tile = [],max95tile = [],rsddensity = [],rangedensity = []):
+    def __init__(self,
+                 atomnum            = 0,
+                 residuenum         = 0,
+                 atomtype           = "",
+                 basetype           = "",
+                 chaintype          = "",
+                 X_coord            = 0,
+                 Y_coord            = 0,
+                 Z_coord            = 0,
+                 Bfactor            = [],
+                 Occupancy          = [],
+                 meandensity        = [],
+                 maxdensity         = [],
+                 mindensity         = [],
+                 mediandensity      = [],
+                 atomID             = "",
+                 numsurroundatoms   = 0,
+                 numsurroundprotons = 0,
+                 bdam               = [],
+                 bdamchange         = [],
+                 Bfactorchange      = [],
+                 meandensity_norm   = [],
+                 maxdensity_norm    = [],
+                 mindensity_norm    = [],
+                 mediandensity_norm = [],
+                 numvoxels          = [],
+                 stddensity         = [],
+                 min90tile          = [],
+                 max90tile          = [],
+                 min95tile          = [],
+                 max95tile          = [],
+                 rsddensity         = [],
+                 rangedensity       = []):
             
-        super(multiPDB, self).__init__(atomnum,residuenum,atomtype,basetype,chaintype,X_coord,
-                                       Y_coord,Z_coord,atomID,numsurroundatoms,numsurroundprotons)   
+        super(multiPDB, self).__init__(atomnum, residuenum, atomtype,
+                                       basetype, chaintype, X_coord,
+                                       Y_coord, Z_coord, atomID,
+                                       numsurroundatoms,
+                                       numsurroundprotons)   
             
         self.Bfactor            = Bfactor 
         self.Occupancy          = Occupancy
@@ -177,20 +285,54 @@ class multiPDB(StructurePDB):
 
 class MapInfo:
     # A class for .map file header info
-    def __init__(self, nx = 0, ny = 0, nz = 0, mapType = 0, start1 = 0, start2 = 0, start3 = 0,
-                 gridsamp1 = 0, gridsamp2 = 0, gridsamp3 = 0, celldim_a = 0, celldim_b = 0,
-                 celldim_c = 0, celldim_alpha = 0, celldim_beta = 0, celldim_gamma = 0,
-                 fast_axis = 0, med_axis = 0, slow_axis = 0, mindensity = 0, maxdensity = 0,
-                 meandensity = 0,vxls_val = []):
+    
+    def __init__(self, 
+                 nx            = 0, 
+                 ny            = 0, 
+                 nz            = 0, 
+                 mapType       = 0, 
+                 start1        = 0, 
+                 start2        = 0, 
+                 start3        = 0,
+                 gridsamp1     = 0, 
+                 gridsamp2     = 0, 
+                 gridsamp3     = 0, 
+                 celldim_a     = 0, 
+                 celldim_b     = 0,
+                 celldim_c     = 0, 
+                 celldim_alpha = 0, 
+                 celldim_beta  = 0, 
+                 celldim_gamma = 0,
+                 fast_axis     = 0, 
+                 med_axis      = 0, 
+                 slow_axis     = 0, 
+                 mindensity    = 0, 
+                 maxdensity    = 0,
+                 meandensity   = 0,
+                 vxls_val      = []):
             
-        self.nxyz       = {'nx':nx,'ny':ny,'nz':nz}
         self.type       = mapType
-        self.start      = {'1':start1,'2':start2,'3':start3}
-        self.gridsamp   = {'1':gridsamp1,'2':gridsamp2,'3':gridsamp3}
-        self.celldims   = {'a':celldim_a,'b':celldim_b,'c':celldim_c,
-                          'alpha':celldim_alpha,'beta':celldim_beta,'gamma':celldim_gamma}
-        self.axis       = {'fast':fast_axis,'med':med_axis,'slow':slow_axis}
-        self.density    = {'min':mindensity,'max':maxdensity,'mean':meandensity}
+        self.nxyz       = {'nx' : nx,
+                           'ny' : ny,
+                           'nz' : nz}
+        self.start      = {'1' : start1,
+                           '2' : start2,
+                           '3' : start3}
+        self.gridsamp   = {'1' : gridsamp1,
+                           '2' : gridsamp2,
+                           '3' : gridsamp3}
+        self.celldims   = {'a' : celldim_a,
+                           'b' : celldim_b,
+                           'c' : celldim_c,
+                          'alpha' : celldim_alpha,
+                          'beta'  : celldim_beta,
+                          'gamma' : celldim_gamma}
+        self.axis       = {'fast' : fast_axis,
+                           'med'  : med_axis,
+                           'slow' : slow_axis}
+        self.density    = {'min'  : mindensity,
+                           'max'  : maxdensity,
+                           'mean' : meandensity}
         self.vxls_val   = vxls_val
 
     def getnxyzString(self):

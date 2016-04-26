@@ -48,8 +48,11 @@ def retrieve_objectlist(fileName):
     
     return PDBretrieved
 
-def saveGenericObject(obj,fileName):
-    # save a generic object to file name 'fileName'_data.pkl
+def saveGenericObject(obj      = [],
+                      fileName = 'untitled'):
+
+    # save a generic object to file 'fileName'_data.pkl
+
     filename = str(fileName)+'_data.pkl'
     with open(filename, 'wb') as output:
         pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
@@ -59,7 +62,7 @@ def checkFileFormat(fileName):
     if fileName.split('_')[-1] != 'data.pkl':
         sys.exit('.pkl file of wrong format to retrieve. File {} supplied'.format(fileName))
 
-def retrieveGenericObject(fileName):
+def retrieveGenericObject(fileName='untitled.pkl'):
     # retrieve a generic object from file name '{fileName}_data.pkl'
     checkFileFormat(fileName)
     with open(str(fileName), 'rb') as input:

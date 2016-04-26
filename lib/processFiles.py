@@ -7,10 +7,36 @@ class processFiles():
 
 	def __init__(self,
 				 inputFile       = '',
-				 proceedToETRACK = False):
+				 proceedToETRACK = False,
+				 skipToETRACK	 = False,
+				 eTrackInputName = 'e_Track_inputfile.txt'):
 
 		self.inputFile 		 = inputFile
 		self.proceedToETRACK = proceedToETRACK
+		self.eTrackInputName = eTrackInputName
+
+		if skipToETRACK is True:
+			self.skipToETRACK(inputName=eTrackInputName)
+
+	def skipToETRACK(self,inputName='input.txt'):
+		# do not generate maps for job, but proceed directly to metric 
+		# calculations, if correct input file exists in working directory
+			success = self.readMainInputFile()
+			if success == False:
+				return
+			self.checkOutputDirExists()
+			self.findFilesInDir()
+			if self.eTrackInputName not in self.filesInDir:
+				print 'Unable to find input file '+\
+					   '"{}" in "{}"'.format(self.eTrackInputName,self.dir)
+				print 'Ensure "python ETRACK -i <input.txt> '+\
+					  '-p" has been run prior to -c'
+				return 
+
+			self.writeETRACKInputFile(run          = True,
+							 		  cleanUp      = True,
+							 		  imports      = True,
+							 		  skipToETRACK = True)
 
 	def runProcessing(self):
 
@@ -105,7 +131,9 @@ class processFiles():
 						 'densMapType',
 						 'dir',
 						 'FFTmapWeight',
-						 'deleteIntermediateFiles']
+						 'deleteIntermediateFiles',
+						 'dose1',
+						 'dose2']
 
 		for prop in requiredProps:
 			try:
@@ -132,7 +160,8 @@ class processFiles():
 
 		if self.multiDatasets is False:
 			if self.name1 == self.name2:
-				print '"name1" and "name2" inputs must be different - CAD will fail otherwise'
+				print '"name1" and "name2" inputs must be different '+\
+					  '- CAD will fail otherwise'
 				return False
 		else:
 			error = False
@@ -185,6 +214,50 @@ class processFiles():
 				print str
 				return False
 
+		doseStr = 'Doses can be calculated using RADDOSE-3D (visit '+\
+				  'www.raddo.se for more details). If no doses have '+\
+				  'been calculated but you still wish to run this program, '+\
+				  'please set dose inputs to NOTCALCULATED within input file'
+
+
+		if self.dose1 != 'NOTCALCULATED':
+			try:
+				float(self.dose1)
+			except ValueError:
+				print '"dose1" input must be a positive float.'
+				print doseStr
+				return False
+			if float(self.dose1) < 0:
+				print '"dose1" input must be a positive float.'
+				print doseStr
+				return False
+
+		if self.dose2 != 'NOTCALCULATED':
+			if self.multiDatasets is False:
+				try:
+					float(self.dose2)
+				except ValueError:
+					print '"dose2" input must be a positive float.'
+					print doseStr
+					return False
+				if float(self.dose2) < 0:
+					print '"dose2" input must be a positive float.'
+					print doseStr
+					return False
+
+			else:
+				for dose in self.dose2.split(','):
+					try:
+						float(dose)
+					except ValueError:
+						print 'All doses in "dose2" input must be positive floats.'
+						print doseStr
+						return False
+					if float(dose) < 0:
+						print 'All doses in "dose2" input must be positive floats.'
+						print doseStr
+						return False
+
 		print 'All input file parameters appear to be of suitable format'
 		return True
 
@@ -196,10 +269,15 @@ class processFiles():
 			return False
 
 	def checkForMultipleDatasets(self):
-		# multiple processing jobs can be run sequentially if input file contains comma
-		# separated lists for particular files. Determine whether this is the
-		# case and check that correctly formatted.
+		# multiple processing jobs can be run sequentially if input 
+		# file contains comma separated lists for particular files. 
+		# Determine whether this is the case and check that correctly 
+		# formatted.
+
 		props = ['name2','mtz2','mtzlabels2','pdb2']
+		if self.dose2 != 'NOTCALCULATED':
+			props.append('dose2')
+
 		lengths = []
 		for p in props:
 			val = getattr(self,p)
@@ -235,7 +313,8 @@ class processFiles():
 	def checkOutputDirExists(self):
 		# check whether output directory exists and make if not
 		if self.dir.endswith('/') is False:
-			print 'Working directory specified in input file must end in "/" - appending'
+			print 'Working directory specified in input '+\
+				  'file must end in "/" - appending'
 			self.dir += '/'
 
 		if not os.path.exists(self.dir):
@@ -246,6 +325,7 @@ class processFiles():
 	def getCurrentInputParams(self, jobNumber = 0):
 		# select correct input parameters if multiple jobs within main input file.
 		# used when writing separate input files for each part of pipeline.
+
 		props1 = ['name2','mtz2','mtzlabels2','pdb2']
 		props2 = ['name1','mtz1','mtzlabels1','pdb1','RfreeFlag1']
 
@@ -264,8 +344,8 @@ class processFiles():
 		self.createDatasetName()
 
 	def createDatasetName(self):
-		# create dataset name here, used to distinguish input file naming scheme 
-		# (if name2 not the same as pdb2 then this is required)
+		# create dataset name here, used to distinguish input file naming 
+		# scheme (if name2 not the same as pdb2 then this is required)
 		self.dsetName = str((self.pdb2_current).split('/')[-1]).strip('.pdb')
 
 	def writePipeline1Inputs(self):
@@ -362,7 +442,8 @@ class processFiles():
 
 		print '\nCleaning up working directory'
 
-		# distinguish between FFT and END map output formats depending on program used (FFT/END shellscript)
+		# distinguish between FFT and END map output formats depending 
+		# on program used (FFT/END shellscript)
 		if self.densMapType == 'END':
 			densMapProg = 'END_switchedAxes'
 		else:
@@ -459,10 +540,12 @@ class processFiles():
 											  pdb.split('/')[-1]))
 
 	def writeETRACKInputFile(self,
-							 write    = True,
-							 run      = True,
-							 cleanUp  = True,
-							 imports  = True):
+							 write        = True,
+							 run          = True,
+							 cleanUp      = False,
+							 imports      = True,
+							 skipToETRACK = False):
+
 		# writes an input file for the run of ETRACK after this processing 
 		# pipeline has completed. Allows the user to immediately run the 
 		# rest of the program, IF the user did specify all required datasets 
@@ -471,24 +554,35 @@ class processFiles():
 		# file will need to be manually created to run the rest of the 
 		# program with ALL datasets within the damage series included.
 
-		if write is False:
-			return
-
 		if imports is True:
 			from runETRACK import run as runETRACK
 
-		r = runETRACK(runAll = False)
-		seriesName = self.dir.split('/')[-2]
-		doses = ','.join(map(str,range(len(self.name2.split(','))))) # TODO: implement proper doses here
+		if skipToETRACK is False:
+			if write is False:
+				return
 
-		r.writeInputFile(inDir         = self.dir,
-						 outDir        = self.dir,
-						 damSetName    = seriesName,
-						 laterDatasets = self.name2,
-						 initialPDB    = self.pdb1.split('/')[-1],
-						 doses         = doses)
+			r = runETRACK(runAll = False)
+			seriesName = self.dir.split('/')[-2]
 
-		os.system('mv {} {}/{}'.format(r.inputFileName,self.dir,r.inputFileName))
+			if self.multiDatasets is True and self.repeatedFile1InputsUsed is False:
+				print 'Must have single INITIALDATASET inputs in input '+\
+					  'file to run ETRACK immediately here'
+				return
+
+			else:
+				if self.dose2 == 'NOTCALCULATED':
+					doses = ','.join(map(str,range(len(self.name2.split(',')))))
+				else:
+					doses = self.dose2
+
+			r.writeInputFile(inDir         = self.dir,
+							 outDir        = self.dir,
+							 damSetName    = seriesName,
+							 laterDatasets = self.name2,
+							 initialPDB    = self.pdb1.split('/')[-1],
+							 doses         = doses)
+
+			os.system('mv {} {}/{}'.format(r.inputFileName,self.dir,r.inputFileName))
 
 		if run is True:
 			r = runETRACK(inputFileLoc = self.dir)

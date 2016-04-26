@@ -20,7 +20,7 @@ class logFile():
 		log.write('All files come from the following directory unless otherwise given:\n"{}"\n'.format(self.fileDir))
 		log.close()
 
-	def writeToLog(self,str='',strip=True):
+	def writeToLog(self,str='',strip=True,forcePrint=False):
 		# write string to current log file
 
 		# strip away the common directory name 
@@ -33,7 +33,7 @@ class logFile():
 		with open(self.logFile, "a") as logfile:
 			logfile.write('{}\t{}\n'.format(self.getTime(),logstring))
 
-			if self.printToScreen is True:
+			if self.printToScreen is True or forcePrint is True:
 				if logstring.startswith('Running'):
 					print '\n'+logstring
 				else:

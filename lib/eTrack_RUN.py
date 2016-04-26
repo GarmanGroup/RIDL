@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-
-from readAtomMap import maps2DensMetrics
 from savevariables import retrieve_objectlist,save_objectlist,saveGenericObject,retrieveGenericObject
 from PDBFileManipulation import PDBtoList,writePDBline
 from combinedAtomList import combinedAtomList
-import os
+from readAtomMap import maps2DensMetrics
 from time import gmtime, strftime
 import numpy as np
+import os
 
 class eTrack(object):
 	# A class for retrieving the eTrack input text file information and running 
@@ -73,7 +72,9 @@ class eTrack(object):
 			self.post_processing()
 
 			# save PDBmulti as pkl file
-			pklSeries = saveGenericObject(self.combinedAtoms,self.seriesName)
+			pklSeries = saveGenericObject(obj      = self.combinedAtoms,
+										  fileName = self.seriesName)
+
 			os.system('mv {} {}{}'.format(pklSeries,self.outputDir,pklSeries))
 			self.pklSeries = pklSeries
 
@@ -110,12 +111,12 @@ class eTrack(object):
 		# read input file e_Track_input.txt to specify location 
 		# of input files and where to write output files
 
-		props = {'inDir'         :'inDir',
-				 'outDir'        :'outDir',
-				 'damageset_name':'seriesName',
-				 'initialPDB'    :'initialPDB',
-				 'PKLMULTIFILE'  :'pklSeries',
-				 'laterDatasets' :'laterDatasets'}
+		props = {'inDir'          : 'inDir',
+				 'outDir'         : 'outDir',
+				 'damageset_name' : 'seriesName',
+				 'initialPDB'     : 'initialPDB',
+				 'PKLMULTIFILE'   : 'pklSeries',
+				 'laterDatasets'  : 'laterDatasets'}
 
 		inputfile = open(self.inputFileName,'r')
 		pklFiles = []
@@ -295,10 +296,10 @@ class eTrack(object):
 		self.fillerLine(blank=True)
 		self.titleCaption(title='Atom List Retrieval')
 		print 'Input pkl file for data retrieval chosen from input file:'
-		print '\t{}'.format(self.outputDir+self.pklSeries)
+		print '\t{}'.format(self.pklSeries)
 
 		# retrieve the combinedAtoms object from the pkl file
-		self.combinedAtoms = retrieveGenericObject(self.outputDir+self.pklSeries)
+		self.combinedAtoms = retrieveGenericObject(fileName = self.outputDir+self.pklSeries)
 
 	def summaryFile(self,
 					fileType = 'html',
@@ -306,9 +307,11 @@ class eTrack(object):
 					normType = 'Standard'):
 
 		if fileType == 'html':
-			self.summaryHTML(metric=metric, normType=normType)
+			self.summaryHTML(metric   = metric,
+							 normType = normType)
 		else:
-			self.summaryTxt(metric=metric,normType=normType)
+			self.summaryTxt(metric   = metric,
+				            normType = normType)
 
 	def summaryTxt(self, 
 				   metric   = 'loss', 
@@ -351,12 +354,18 @@ class eTrack(object):
 
 			summaryFile.write('# atoms with {} Dloss metric above N std dev of structure-wide mean:\n'.format(normType))
 			summaryFile.write('N\t\t#atoms\n')
-			n = self.combinedAtoms.numAtmsWithMetricAboveLevel(i,metric,normType,0.5,False)
+			n = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = i,
+															   metric    = metric,
+															   normType  = normType,
+															   threshold = 0.5)
 			summaryFile.write('{}\t\t{}\n'.format(0.5,n))
 			t = 0
 			while n != 0:
 				t += 1
-				n = self.combinedAtoms.numAtmsWithMetricAboveLevel(i,metric,normType,t,False)
+				n = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = i,
+															   	   metric    = metric,
+															       normType  = normType,
+															   	   threshold = t)
 				summaryFile.write('{}\t\t{}\n'.format(t,n))
 
 			summaryFile.write('\n-----------------------\n')
@@ -374,8 +383,12 @@ class eTrack(object):
 			summaryFile.write('\n-----------------------\n')
 			summaryFile.write('Per-atom Statistics:\n')
 			summaryFile.write('Top D{} hits grouped by residue type:\n'.format(metric))
-			n = self.combinedAtoms.getNumAtoms()*0.1 # take top 10% of atoms here
-			statsOut = self.combinedAtoms.breakdownTopNatomsBy(metric,normType,i,n,['basetype','atomtype'])
+			n = self.combinedAtoms.getNumAtoms()*0.05 # take top 5% of atoms here
+			statsOut = self.combinedAtoms.breakdownTopNatomsBy(metric   = metric,
+															   normType = normType,
+															   dataset  = i,
+															   n        = n)
+
 			summaryFile.write(statsOut[0]+statsOut[1]+'\n')
 
 			summaryFile.write('\n-----------------------\n')
@@ -428,25 +441,38 @@ class eTrack(object):
 					 '<li>ratio: net ratio of distn values either side of metric distn mode</li>\n</ul>'
 		summaryFile.write(bodyString)
 
-		av,std = self.combinedAtoms.getAverageMetricVals(metric,normType) # get structure-wide metric average & std dev
+		# get structure-wide metric average & std dev
+		av,std = self.combinedAtoms.getAverageMetricVals(densMet  = metric,
+														 normType = normType)
 		for i in range(numDsets):
 			bodyString = '<h3>Dataset info</h3>\n'+\
 						 'Number in series: {}<br>\n'.format(i+1)+\
 						 'Dose (MGy): {}<br>\n'.format(self.doses[i])+\
 						 '<h3>Structure-wide D{} summary</h3>\n'.format(metric)+\
 						 'Average D{}: {}<br>\n'.format(metric,round(av[i],3))+\
-						 'Std dev in D{}: {}<br>\n'.format(metric,round(std[i],3))+\
-						 '# atoms with {} Dloss metric above N std dev of structure-wide mean:<br><br>\n'.format(normType)
+						 'Std dev in D{}: {}<br>\n'.format(metric,round(std[i],3))
+
+			if normType == 'Calpha normalised':
+				CAweights = self.combinedAtoms.retrieveCalphaWeight(metric=metric)
+				bodyString += 'Calpha weight for current dataset: {}<br>\n'.format(round(CAweights.weight[metric][i],3))
+
+			bodyString += '# atoms with {} Dloss metric above N std dev of structure-wide mean:<br><br>\n'.format(normType)
 			summaryFile.write(bodyString)
 
-			n = self.combinedAtoms.numAtmsWithMetricAboveLevel(i,metric,normType,0.5,False)
+			n = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = i,
+															   metric    = metric,
+															   normType  = normType,
+															   threshold = 0.5)
 			tableString = '<table border="1" style="width:10%">\n'+\
 						  '<tr><th>N</th><th>#atoms</th></tr>\n'+\
 						  '<tr><td>{}</td><td>{}</td></tr>\n'.format(0.5,n)
 			t = 0
 			while n != 0:
 				t += 1
-				n = self.combinedAtoms.numAtmsWithMetricAboveLevel(i,metric,normType,t,False)
+				n = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = i,
+															       metric    = metric,
+															       normType  = normType,
+															       threshold = t)
 				tableString += '<tr><td>{}</td><td>{}</td></tr>\n'.format(t,n)
 			tableString += '</table>\n'
 			summaryFile.write(tableString)
@@ -457,45 +483,96 @@ class eTrack(object):
 			infoString += self.convertPlainTxtTable2html(statsOut)
 			summaryFile.write(infoString)
 
-			statsOut = self.combinedAtoms.getPerAtmtypeStats(metric,normType,i,'mean',25)
+			statsOut = self.combinedAtoms.getPerAtmtypeStats(metric   = metric,
+															 normType = normType,
+															 dataset  = i)
 			infoString = '<h3>Per-atom-type Statistics</h3>\n'+\
 						 'D{} metric ranked by mean value:<br><br>\n'.format(metric)
 			infoString += self.convertPlainTxtTable2html(statsOut[0],width='60%')
 			summaryFile.write(infoString)
 
-			n = self.combinedAtoms.getNumAtoms()*0.1 # take top 10% of atoms here
-			statsOut = self.combinedAtoms.breakdownTopNatomsBy(metric,normType,i,n,['basetype','atomtype'])
+			n = self.combinedAtoms.getNumAtoms()*0.05 # take top 5% of atoms here
+			statsOut = self.combinedAtoms.breakdownTopNatomsBy(metric   = metric,
+															   normType = normType,
+															   dataset  = i,
+															   n        = n)
+
 			infoString = '<h3>Per-atom Statistics</h3>\n'+\
 						 '{}<br><br>\n'.format(statsOut[0])
 			infoString += self.convertPlainTxtTable2html(statsOut[1])
 			summaryFile.write(infoString)
 
-			statsOut = self.combinedAtoms.getPerResidueStats(metric,normType,i,'mean',25)
+			statsOut = self.combinedAtoms.getPerResidueStats(metric   = metric,
+															 normType = normType,
+															 dataset  = i)
 			infoString = '<h3>Per-residue Statistics</h3>\n'+\
 						 'D{} metric ranked by mean value:<br><br>\n'.format(metric)
 			infoString += self.convertPlainTxtTable2html(statsOut[0],width='60%')
 			summaryFile.write(infoString)
 
-			statsOut = self.combinedAtoms.getPerChainStats(metric,normType,i,'mean','all')
+			statsOut = self.combinedAtoms.getPerChainStats(metric   = metric,
+														   normType = normType,
+														   dataset  = i,
+														   n        = 'all')
 			infoString = '<h3>Per-chain Statistics</h3>\n'+\
 						 'D{} metric ranked by mean value:<br><br>\n'.format(metric)
 			infoString += self.convertPlainTxtTable2html(statsOut[0],width='60%')
 			summaryFile.write(infoString)
 
-			failedPlots = self.makeDistnPlots(densMet=metric,normType=normType,set=1)
+			failedPlots = self.makeDistnPlots(densMet  = metric,
+										      normType = normType,
+										      plotSet  = 1)
 			if i not in failedPlots['GLUASPCYSMETTYR']:
 				plotString = '<h3>Distribution of Dloss for known susceptible residue types</h3>\n'+\
 							 '<img src="GLUASPCYSMETTYR_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
 				summaryFile.write(plotString)
 
-			failedPlots = self.makeDistnPlots(densMet=metric,normType=normType,set=3)
+			failedPlots = self.makeDistnPlots(densMet  = metric,
+											  normType = normType,
+											  plotSet  = 3)
 			if i not in failedPlots['DADCDGDT']:
 				plotString = '<h3>Distribution of Dloss for known susceptible nucleotide types</h3>\n'+\
 							 '<img src="DADCDGDT_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
 				summaryFile.write(plotString)
 
+			infoString = '<h3>Suspicious Atoms</h3>\n'
+			for t in [6,5,4,3,2]:
+				suspAtoms = self.combinedAtoms.detectSuspiciousAtoms(dataset   = i,
+							  										 metric    = metric,
+							  										 normType  = normType,
+							  										 threshold = t)
+
+				infoString+= '{} atoms found with unusually high/low D{} '.format(len(suspAtoms),metric)+\
+							 'values compared to average of that atom type '+\
+							 '(over {} standard deviations from average)'.format(t)
+
+				if len(suspAtoms) > 0:
+					infoString += ':<br>'
+					for s in suspAtoms:
+						infoString += '{}<br>'.format(s)
+				else:
+					infoString += '<br>'
+			summaryFile.write(infoString)
+
 		summaryFile.write('</body>\n</html>')
 		summaryFile.close()
+
+		self.combinedAtoms.graphMetric(atomType  = '',
+									   restype  = 'GLU',
+									   errorBars = 'NONE',
+									   saveFig   = True)
+
+		self.combinedAtoms.graphMetric(atomType  = '',
+									   restype  = 'GLU',
+									   errorBars = 'ATOMTYPE',
+									   saveFig   = True)
+
+		self.combinedAtoms.graphMetric(atomType  = 'SG',
+									   restype  = 'CYS',
+									   errorBars = 'NONE',
+									   saveFig   = True)
+
+
 
 	def convertPlainTxtTable2html(self,
 								  plainText      = '',
@@ -514,7 +591,8 @@ class eTrack(object):
 		return htmlTable
 
 	def getNumDatasets(self):
-		numDsets = self.combinedAtoms.atomList[0].getNumDatasets() # get number of datasets in damage series
+		# get number of datasets in damage series
+		numDsets = self.combinedAtoms.atomList[0].getNumDatasets()
 		return numDsets
 
 	def writeDamSitesToFile(self, 
@@ -524,9 +602,13 @@ class eTrack(object):
 		# write top damage sites to .pdb file for each dataset
 
 		self.damSitesPDB = []
-		numDsets = self.combinedAtoms.atomList[0].getNumDatasets() # get number of datasets in damage series
-		for i in range(numDsets): 
-			damPDB = self.combinedAtoms.getTopNAtomsPDBfile(metric,normType,i,numDamSites,self.inDir+self.initialPDB)
+		for i in range(self.getNumDatasets()): 
+			damPDB = self.combinedAtoms.getTopNAtomsPDBfile(metric   = metric,
+															normType = normType,
+															dataset  = i,
+															n        = numDamSites,
+															pdbFile  = self.inDir+self.initialPDB)
+
 			self.damSitesPDB.append(damPDB)
 
 	def colorByMetric(self, 
@@ -583,8 +665,8 @@ class eTrack(object):
 						  metric   = 'loss', 
 						  software = 'pymol', 
 						  size     = 1):
-		# open coot/pymol to view top damage sites
-		# size is the density metric scale factor used when visualising damage 
+		# open coot/pymol to view top damage sites. size is the 
+		# density metric scale factor used when visualising damage 
 		# sites as spheres of vdw = size*{density metric} within pymol
 
 		if software not in ('coot','pymol'):
@@ -602,6 +684,7 @@ class eTrack(object):
 			structureTag = self.initialPDB.strip('.pdb')
 			scriptName = self.outputDir+'runPymolScript.pml'
 			pymolScript = open(scriptName,'w')
+
 			pymolStr = 'load {}\n'.format(self.inDir+self.initialPDB)+\
 					   'load {}\n'.format(self.damSitesPDB[dataset])+\
 					   'hide lines\nshow cartoon\n'+\
@@ -618,6 +701,7 @@ class eTrack(object):
 					   'set stick_transparency, 0.6\n'+\
 					   'color red, {}\n'.format(damSitesTag)+\
 					   'color white, {}\n'.format(structureTag)
+
 			pymolScript.write(pymolStr)
 			pymolScript.close()
 			os.system('pymol {}'.format(scriptName))
@@ -626,13 +710,14 @@ class eTrack(object):
 					   densMet  = 'loss',
 					   normType = 'Standard',
 					   plotType = 'both',
-					   set      = 1):
-		# retrieve the distribution for damage metric values for all atoms of 
-		# specified residues (see 'resList' below), and then plot a kde plot for each
+					   plotSet  = 1):
+		# retrieve the distribution for damage metric values for all 
+		# atoms of specified residues (see 'resList' below), and then 
+		# plot a kde plot for each
 
-		if set == 1:
+		if plotSet == 1:
 			resList = [['GLU','ASP','CYS','MET','TYR']]
-		elif set == 2:
+		elif plotSet == 2:
 			resList = [['GLU','GLN'],
 					   ['ASP','ASN'],
 					   ['ILE','LEU'],
@@ -646,7 +731,7 @@ class eTrack(object):
 				   	   ['TYR','ASP','GLU'],
 				   	   ['TYR','PHE','GLY'],
 				   	   ['GLU','ASP','CYS','MET','TYR']]
-		elif set == 3:
+		elif plotSet == 3:
 			resList = [['DA','DC','DG','DT']]
 		for resGroup in resList:
 			k = ''.join(resGroup)
@@ -656,48 +741,98 @@ class eTrack(object):
 			else:
 				plotType = 'both'
 			for i in range(self.getNumDatasets()):
-				data = self.combinedAtoms.graphMetricDistn(metric        = densMet,
-														   normType      = normType,
-														   valType       = i,
-														   plotType      = plotType,
-														   resiType      = resGroup,
-														   printToScreen = False)	
+				data = self.combinedAtoms.graphMetricDistn(metric    = densMet,
+														   normType  = normType,
+														   valType   = i,
+														   plotType  = plotType,
+														   resiType  = resGroup,
+														   printText = False)	
 				if data == {}:
 					failedPlots[k].append(i)
 		return failedPlots
 
-	def sensAtomPlots(self):
-		# set of plots investigating damage progression for sensitive atoms within structure
+	def sensAtomPlots(self,metric='loss',normType='Standard'):
+		# set of plots investigating damage progression 
+		# for sensitive atoms within structure.
 
-		# determine ratios of atoms within susceptible residue types and write output txt file and plot
+		pairs = {'susceptRes': [['GLU','CD','CG'],
+							    ['GLU','CD','OE1'],
+							    ['ASP','CG','CB'],
+							    ['ASP','CG','OD1'],
+							    ['TYR','OH','CZ'],
+							    ['TYR','CZ','CE2'],
+							    ['MET','SD','CG'],
+							    ['MET','SD','CE'],
+							    ['CYS','SG','CB'],
+							    ['CYS','CA','CB']],
+				'PHEvTYR'    : [['TYR','CZ','OH'],
+					            ['TYR','CZ','CE2'],
+					            ['TYR','CZ','CE1'],
+							    ['TYR','CZ','CG'],
+							    ['PHE','CZ','CE2'],
+							    ['PHE','CZ','CE1'],
+							    ['PHE','CZ','CG']],
+				'TYR'        : [['TYR','CB','CG'],
+					            ['TYR','CB','CD1'],
+							    ['TYR','CB','CD2'],
+							    ['TYR','CB','CE1'],
+							    ['TYR','CB','CE2'],
+							    ['TYR','CB','CZ'],
+							    ['TYR','CB','OH']],
+				'PHE'        : [['PHE','CB','CG'],
+							    ['PHE','CB','CD1'],
+							    ['PHE','CB','CD2'],
+							    ['PHE','CB','CE1'],
+							    ['PHE','CB','CE2'],
+							    ['PHE','CB','CZ']]}
+
+		# determine ratios of atoms within susceptible residue 
+		# types and write output txt file and plot
 		for met in ('distance','ratio'):
-			pairs = [['GLU','CD','CG'],['GLU','CD','OE1'],['ASP','CG','CB'],['ASP','CG','OD1'],
-					 ['TYR','OH','CZ'],['TYR','CZ','CE2'],['MET','SD','CG'],['MET','SD','CE'],
-					 ['CYS','SG','CB'],['CYS','CA','CB']]
-			self.combinedAtoms.findMetricRatioKeyResidues('loss','Standard',met,True,pairs,'susceptRes')
 
-			pairs = [['TYR','CZ','OH'],['TYR','CZ','CE2'],['TYR','CZ','CE1'],['TYR','CZ','CG'],
-					 ['PHE','CZ','CE2'],['PHE','CZ','CE1'],['PHE','CZ','CG']]
-			self.combinedAtoms.findMetricRatioKeyResidues('loss','Standard',met,True,pairs,'PHEvTYR')
+			for key in pairs.keys():
+				self.combinedAtoms.findMetricRatioKeyResidues(metric   = 'loss',
+															  normType = 'Standard',
+															  rType    = met,
+															  pairs    = pairs[key],
+															  title    = key)
+		atomtypes = [[['GLU','CD'],
+					  	['ASP','CG'],
+					  		['TYR','OH'],
+					  			['CYS','SG'],
+					  				['MET','SD']],
+					 [['GLU','CD'],
+					  	['ASP','CG'],
+					  		['TYR','OH'],
+					  			['CYS','SG'],
+					  				['MET','SD'],
+					 					['PHE','CZ'],
+					  						['TYR','CZ']],
+					 [['GLU','CG'],
+					  	['ASP','CB'],
+					  		['TYR','OH'],
+					  			['CYS','CB'],
+					  				['MET','CG'],
+					  					['MET','CE'],
+					  						['PHE','CZ'],
+					  							['TYR','CZ']],
+					 [['TYR','OH'],
+					  	['PHE','CZ'],
+					  		['TYR','CZ'],
+					  			['PHE','CE1'],
+					  				['TYR','CE1'],
+					  					['PHE','CE2'],
+					  						['TYR','CE2']]]
 
-			pairs = [['TYR','CB','CG'],['TYR','CB','CD1'],['TYR','CB','CD2'],['TYR','CB','CE1'],
-					 ['TYR','CB','CE2'],['TYR','CB','CZ'],['TYR','CB','OH']]
-			self.combinedAtoms.findMetricRatioKeyResidues('loss','Standard',met,True,pairs,'TYR')
+		for aTypes in atomtypes:
+			self.combinedAtoms.plotSusceptibleAtoms(densMet = metric,
+													sus = aTypes,
+													normType  = normType)
 
-			pairs = [['PHE','CB','CG'],['PHE','CB','CD1'],['PHE','CB','CD2'],['PHE','CB','CE1'],
-					 ['PHE','CB','CE2'],['PHE','CB','CZ']]
-			self.combinedAtoms.findMetricRatioKeyResidues('loss','Standard',met,True,pairs,'PHE')
-
-		self.combinedAtoms.calcAdditionalMetrics(newMetric='net') # calculate Dnet metric
-		atomtypes = [] 
-		atomtypes.append([['GLU','CD'],['ASP','CG'],['TYR','OH'],['CYS','SG'],['MET','SD']])
-		atomtypes.append([['GLU','CD'],['ASP','CG'],['TYR','OH'],['CYS','SG'],['MET','SD'],['PHE','CZ'],['TYR','CZ']])
-		atomtypes.append([['GLU','CG'],['ASP','CB'],['TYR','OH'],['CYS','CB'],['MET','CG'],['MET','CE'],['PHE','CZ'],['TYR','CZ']])
-		atomtypes.append([['TYR','OH'],['PHE','CZ'],['TYR','CZ'],['PHE','CE1'],['TYR','CE1'],['PHE','CE2'],['TYR','CE2']])
-		for metric in ('loss','mean','gain','net'):
-			for aTypes in atomtypes:
-				self.combinedAtoms.plotSusceptibleAtoms(densMet=metric,susAtms=aTypes)
-				self.combinedAtoms.plotSusceptibleAtoms(densMet=metric,errorbars=False,susAtms=aTypes)
+			self.combinedAtoms.plotSusceptibleAtoms(densMet   = metric,
+													normType  = normType,
+													errorbars = False,
+													susAtms   = aTypes)
 
 	def getSpaceGroup(self):
 		pdbFile = self.inDir+self.initialPDB

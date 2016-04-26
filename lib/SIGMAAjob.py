@@ -10,7 +10,8 @@ class SIGMAAjob():
 				 RfreeFlag		 = '',
 				 inputPDB		 = '',
 				 outputDir       = './',
-				 runLog          = ''):
+				 runLog          = '',
+				 noScale         = True):
 
 		self.inputMtz 	 = inputMtz # mtz containing initial dataset Fs
 		self.LabelName 	 = MtzLabelNameIn
@@ -21,6 +22,7 @@ class SIGMAAjob():
 		self.inputPDB	 = inputPDB
 		self.outputDir	 = outputDir
 		self.runLog 	 = runLog
+		self.noScale     = noScale
 		
 		self.runLog.writeToLog('Running SIGMAA job')
 
@@ -59,9 +61,12 @@ class SIGMAAjob():
 							  'MODE SFCALC -\n'+\
     						  'XYZIN -\n'+\
     						  'HKLIN\n'+\
-							  'symmetry {}\n'.format(self.spaceGroup)+\
-							  'NOSCALE\n'+\
-							  'end'
+							  'symmetry {}\n'.format(self.spaceGroup)
+
+		if self.noScale is True:
+			self.commandInput2 += 'NOSCALE\nend'
+		else:
+			self.commandInput2 += 'end'
 					
 		self.outputLogfile = 'SIGMAAlogfile1.txt'
 

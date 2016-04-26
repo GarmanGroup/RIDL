@@ -4,7 +4,18 @@ from scipy.optimize import curve_fit
 import seaborn as sns
 
 class halfDoseApprox():
-	def __init__(self,atom,atoms,plot,doses,globalScaling,doseFraction,densityMetric,normType,plotDir,shiftedHalfDose,zeroOffset):
+	def __init__(self,
+				 atom            = [],
+				 atoms           = [],
+				 plot            = True,
+				 doses           = [],
+				 globalScaling   = False,
+				 doseFraction    = 0.5,
+				 densityMetric   = 'loss',
+				 normType        = 'Standard',
+				 plotDir         = './',
+				 shiftedHalfDose = True,
+				 zeroOffset      = False):
 		
 		self.atom 				= atom # the current atom object 
 		self.atoms 				= atoms # the full list of atom objects
@@ -102,12 +113,12 @@ class halfDoseApprox():
 
 	def saveAtomHalfDose(self):
 		# for current atom object save the half dose statistics as attributes
-		self.atom.densMetric[self.densMet][self.normType]['Half-dose'] = {'Half-dose':self.halfDose,
-																	   	  'Residuals':self.fitResiduals,
-																	      'Certainty':self.certaintyValue,
-																	      'Initial density':self.fitParams[0],
-																	      'End density':self.fitParams[2],
-																	      'init decay rate':self.initDecayRate}
+		self.atom.densMetric[self.densMet][self.normType]['Half-dose'] = {'Half-dose'       : self.halfDose,
+																	   	  'Residuals'       : self.fitResiduals,
+																	      'Certainty'       : self.certaintyValue,
+																	      'Initial density' : self.fitParams[0],
+																	      'End density'     : self.fitParams[2],
+																	      'init decay rate' : self.initDecayRate}
 
 	def plotDecayPlot(self,xData,yData):
 		sns.set(context='talk',style='dark')

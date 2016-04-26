@@ -9,11 +9,13 @@ class process():
 	def __init__(self,
 				 inputFile       = 'fullInput.txt',
 				 run             = True,
-				 proceedToETRACK = False):
+				 proceedToETRACK = False,
+				 skipToETRACK    = False):
 
 		self.inputFile = inputFile
 		self.titleCaption('ETRACK file preparation')
 		self.proceedToETRACK = proceedToETRACK
+		self.skipToETRACK    = skipToETRACK
 
 		if run is True:
 			self.run()
@@ -36,8 +38,9 @@ class process():
 		success = self.checkInputFileExists()
 		if success is False: 
 			return success
-		pro = processFiles(inputFile=self.inputFile,
-						   proceedToETRACK=self.proceedToETRACK)
+		pro = processFiles(inputFile       = self.inputFile,
+						   proceedToETRACK = self.proceedToETRACK,
+						   skipToETRACK    = self.skipToETRACK)
 		success = pro.runProcessing()
 		return success
 
@@ -167,3 +170,4 @@ MAPINFO
 
 	def titleCaption(self,title):
 		print '\n\n||========================== {} ==========================||'.format(title)
+

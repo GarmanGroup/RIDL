@@ -1,84 +1,69 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Dec 15 15:44:34 2014
-
-@author: lina2532
-"""
-from matplotlib import pyplot as plt    
+from matplotlib import pyplot as plt
+from scipy import stats  
 import sys
-from scipy import stats
-    
-###############################################################################
-# following scatterplot generating code is updated version (2Jan2015) of plotting 
-# function above - using the PDBarray list of atom objects
-def edens_scatter(where,var,PDBarray,pdbname):
-    # var of form ['mean','median'] to choose two metrics of electron density per 
-    # atom to plot against each other in a scatter plot
 
-    # append to log file for this eTrack run
-    logfile = open(where+pdbname+'_log.txt','a')
+def edens_scatter(outputDir = './',
+                  metrics   = ['meandensity','mindensity'],
+                  PDBarray  = [],
+                  pdbName   = 'untitled',
+                  fileType  = '.png',
+                  printText = False,
+                  savefig   = True,
+                  titleFont = 20,
+                  axesFont  = 18,
+                  edgeColor = '#FFFFFF',
+                  spotColor = '#a93b1c'):
+
+    # plot scatter plot of two selected metrics. 'metrics' of 
+    # form ['meandensity','mediandensity'] to choose two metrics 
+    # of electron density per atom to plot against each other 
+    # in a scatter plot.
     
-    valsperparam = []
-    for param in var:   
-        if param in ('mean','Mean'):
-            valperatom = [atom.meandensity for atom in PDBarray]
-        elif param in ('median','Median'):
-            valperatom = [atom.mediandensity for atom in PDBarray]
-        elif param in ('min','Min'):
-            valperatom = [atom.mindensity for atom in PDBarray]
-        elif param in ('max','Max'):
-            valperatom = [atom.maxdensity for atom in PDBarray]
-        elif param in ('std','Std'):
-            valperatom = [atom.stddensity for atom in PDBarray]
-        elif param in ('min90tile'):
-            valperatom = [atom.min90tile for atom in PDBarray]
-        elif param in ('max90tile'):
-            valperatom = [atom.max90tile for atom in PDBarray]
-        elif param in ('min95tile'):
-            valperatom = [atom.min95tile for atom in PDBarray]
-        elif param in ('max95tile'):
-            valperatom = [atom.max95tile for atom in PDBarray]
-        elif param in ('mode','Mode'):
-            valperatom = [atom.modedensity for atom in PDBarray]
-        elif param in ('rsd','Rsd'):
-            valperatom = [atom.rsddensity for atom in PDBarray]
-        elif param in ('dipstat','Dipstat'):
-            valperatom = [atom.dipstat for atom in PDBarray]
-        elif param in ('range','Range'):
-            valperatom = [atom.rangedensity for atom in PDBarray]
-        else:
-            print 'Unrecognised variable name, stopping program!'
-            sys.exit()
-        valsperparam.append(valperatom)
+    valsPerParam = []
+    for metric in metrics:   
+        valPerAtom = [getattr(atom,metric) for atom in PDBarray]
+        valsPerParam.append(valPerAtom)
         
-    #check two generated lists of same length:
-    if len(valsperparam[0]) != len(valsperparam[1]):
+    # check two generated lists of same length:
+    if len(valsPerParam[0]) != len(valsPerParam[1]):
         print 'Error: lists not same length for scatter plot'
         sys.exit()   
             
     scatter1 = plt.figure()
-    plt.scatter(valsperparam[0],valsperparam[1])
+    plt.scatter(x          = valsPerParam[0],
+                y          = valsPerParam[1],
+                color      = spotColor,
+                edgecolors = edgeColor,
+                marker     = 'o',
+                s          = 100)
 
     # calculate linear regression and R-squared value
-    slope, intercept, r_value, p_value, std_err = stats.linregress(valsperparam[0],valsperparam[1])
-    print '------------------------------------------------------'
-    print 'Plotting scatter plot:'
-    print str(var[0]) + ' density vs ' + str(var[1]) + ' density'
-    print "r-squared: ", r_value**2
-    print "p-value: ", p_value
-    logfile.write('------------------------------------------------------\n')
-    logfile.write('Scatter plot: '+str(var[0]) + ' density vs ' + str(var[1]) + ' density\n')
-    logfile.write('r-squared: '+ str(r_value**2)+'\n')
-    logfile.write('p-value: '+ str(p_value)+'\n')
-    logfile.close()
+    slope, intercept, r_value, p_value, std_err = stats.linregress(*valsPerParam)
 
-    scatter1.suptitle( str(var[0]) + ' vs ' + str(var[1]) + ' electron density', fontsize=20)      
-    plt.xlabel(str(var[0]) + ' density',fontsize=18)   
-    plt.ylabel(str(var[1]) + ' density',fontsize=16)
+    infoStr = '------------------------------------------------------\n'+\
+              'Scatter plot: {} density vs {} density\n'.format(*metrics)+\
+              'r-squared: {}\n'.format(r_value**2)+\
+              'p-value: {}\n'.format(p_value)
 
-    figname = where+'plots/'+pdbname+'_'+str(var[0])+'_vs_'+str(var[1])+'.png'
-    scatter1.savefig(figname)
-###############################################################################
+    if printText is True:
+        print infoStr
+
+    scatter1.suptitle('{} vs {} density'.format(*metrics), fontsize = titleFont)      
+    plt.xlabel('{} density'.format(metrics[0]),fontsize = axesFont)   
+    plt.ylabel('{} density'.format(metrics[1]),fontsize = axesFont)
+
+    figName = '{}plots/{}_{}_vs_{}{}'.format(outputDir,
+                                             pdbName,
+                                             metrics[0],
+                                             metrics[1],
+                                             fileType)
+    if savefig is True:
+        scatter1.savefig(figName)
+
+    return infoStr
+
+
+
 
 
 ###############################################################################
