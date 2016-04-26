@@ -492,8 +492,8 @@ class processFiles():
 			if file not in self.filesInDir:
 				fileName = '{}{}'.format(self.dir,file)
 				if fileName not in keyFiles:
-					os.system('mv {} {}{}'.format(fileName,subdir,file))
-
+					# os.system('mv {} {}{}'.format(fileName,subdir,file))
+					shutil.move(fileName,'{}{}'.format(subdir,file))
 		for file in os.listdir(subdir):
 			remove = False
 			if removeMtzs is True and file.endswith('.mtz'):
@@ -510,7 +510,8 @@ class processFiles():
 
 		# rename final map & pdb files
 		for i in range(len(outputFiles)): 
-			os.system('mv {} {}'.format(outputFiles[i],renameFiles[i]))
+			# os.system('mv {} {}'.format(outputFiles[i],renameFiles[i]))
+			shutil.move(outputFiles[i],renameFiles[i])
 
 		# move initial dataset pdb files to working directory
 		self.moveInitialPDBfile()
@@ -529,15 +530,17 @@ class processFiles():
 
 		if self.multiDatasets == False or self.repeatedFile1InputsUsed == True:
 
-			os.system('cp {} {}{}'.format(self.pdb1,
-										  self.dir,
-										  self.pdb1.split('/')[-1]))
+			# os.system('cp {} {}{}'.format(self.pdb1,
+			# 							  self.dir,
+			# 							  self.pdb1.split('/')[-1]))
+			shutil.copy2(self.pdb1,'{}{}'.format(self.dir,self.pdb1.split('/')[-1]))
 		else:
 			for pdb in self.pdb1.split(','):
 
-				os.system('cp {} {}{}'.format(pdb,
-											  self.dir,
-											  pdb.split('/')[-1]))
+				# os.system('cp {} {}{}'.format(pdb,
+				# 							  self.dir,
+				# 							  pdb.split('/')[-1]))
+				shutil.copy2(pdb,'{}{}'.format(self.dir,pdb.split('/')[-1]))
 
 	def writeETRACKInputFile(self,
 							 write        = True,
@@ -582,7 +585,8 @@ class processFiles():
 							 initialPDB    = self.pdb1.split('/')[-1],
 							 doses         = doses)
 
-			os.system('mv {} {}/{}'.format(r.inputFileName,self.dir,r.inputFileName))
+			# os.system('mv {} {}/{}'.format(r.inputFileName,self.dir,r.inputFileName))
+			shutil.move(r.inputFileName,'{}/{}'.format(self.dir,r.inputFileName))
 
 		if run is True:
 			r = runETRACK(inputFileLoc = self.dir)
@@ -593,8 +597,10 @@ class processFiles():
 			for f in os.listdir(self.dir):
 				for fType in ['.pdb','.zip','.log','.map']:
 					if f.endswith(fType):
-						os.system('mv {}{} {}{}'.format(self.dir,f,newDir,f))
-			os.system('mv {} {}ETRACK_output/'.format(newDir,self.dir))
+						# os.system('mv {}{} {}{}'.format(self.dir,f,newDir,f))
+						shutil.move('{}{}'.format(self.dir,f),'{}{}'.format(newDir,f))
+			# os.system('mv {} {}ETRACK_output/'.format(newDir,self.dir))
+			shutil.move(newDir,'{}ETRACK_output/'.format(self.dir))
 
 
 

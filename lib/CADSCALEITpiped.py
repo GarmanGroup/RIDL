@@ -4,6 +4,7 @@ from CADjob import CADjob
 from SCALEITjob import SCALEITjob
 from logFile import logFile
 from SIGMAAjob import SIGMAAjob
+import shutil
 
 class pipeline():
 	# class to run CAD job to combine F and SIGF columns from
@@ -161,14 +162,18 @@ class pipeline():
 		# move input mtz files to working directory and rename as suitable
 		if self.densMapType == '2FOFC':
 			self.SIGMAAinputMtz  = '{}{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
-			os.system('cp {} {}'.format(self.mtzIn2,self.SIGMAAinputMtz))
+			# os.system('cp {} {}'.format(self.mtzIn2,self.SIGMAAinputMtz))
+			shutil.copy2(self.mtzIn2,self.SIGMAAinputMtz)
 		else:
 			self.SIGMAAinputMtz  = '{}{}.mtz'.format(self.outputDir,self.Mtz1LabelRename.strip())
 			self.CADinputMtz2 	 = '{}{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
 			self.CADinputMtz3    = '{}{}.mtz'.format(self.outputDir,self.Mtz3LabelRename.strip())
-			os.system('cp {} {}'.format(self.mtzIn1,self.SIGMAAinputMtz))
-			os.system('cp {} {}'.format(self.mtzIn2,self.CADinputMtz2))
-			os.system('cp {} {}'.format(self.mtzIn3,self.CADinputMtz3))
+			# os.system('cp {} {}'.format(self.mtzIn1,self.SIGMAAinputMtz))
+			# os.system('cp {} {}'.format(self.mtzIn2,self.CADinputMtz2))
+			# os.system('cp {} {}'.format(self.mtzIn3,self.CADinputMtz3))
+			shutil.copy2(self.mtzIn1,self.SIGMAAinputMtz)
+			shutil.copy2(self.mtzIn2,self.CADinputMtz2)
+			shutil.copy2(self.mtzIn3,self.CADinputMtz3)
 
 	def deleteNonFinalMtzs(self):
 		return

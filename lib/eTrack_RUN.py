@@ -5,6 +5,7 @@ from combinedAtomList import combinedAtomList
 from readAtomMap import maps2DensMetrics
 from time import gmtime, strftime
 import numpy as np
+import shutil
 import os
 
 class eTrack(object):
@@ -75,7 +76,8 @@ class eTrack(object):
 			pklSeries = saveGenericObject(obj      = self.combinedAtoms,
 										  fileName = self.seriesName)
 
-			os.system('mv {} {}{}'.format(pklSeries,self.outputDir,pklSeries))
+			# os.system('mv {} {}{}'.format(pklSeries,self.outputDir,pklSeries))
+			shutil.move(pklSeries,'{}{}'.format(self.outputDir,pklSeries))
 			self.pklSeries = pklSeries
 
 			# provide summary txt file on Dloss metric metric per-dataset
@@ -211,10 +213,13 @@ class eTrack(object):
 			# move pkl file to working output directory
 			pklFileName = maps2DensMets.pklFileName
 
-			os.system('mv {} {}{}{}'.format(pklFileName,
-											self.outputDir,
-											pklFileDir,
-											pklFileName))
+			# os.system('mv {} {}{}{}'.format(pklFileName,
+			# 								self.outputDir,
+			# 								pklFileDir,
+			# 								pklFileName))
+			shutil.move(pklFileName,'{}{}{}'.format(self.outputDir,
+													pklFileDir,
+													pklFileName))
 
 			pklFileNames.append('{}{}{}'.format(self.outputDir,
 												pklFileDir,
@@ -287,8 +292,8 @@ class eTrack(object):
 		os.system('mkdir {}csvFiles/'.format(self.outputDir))
 		for file in os.listdir(self.outputDir):
 			if file.endswith(".csv"):
-				os.system('mv {}{} {}csvFiles/{}'.format(self.outputDir,file,self.outputDir,file))
-
+				# os.system('mv {}{} {}csvFiles/{}'.format(self.outputDir,file,self.outputDir,file))
+				shutil.move('{}{}'.format(self.outputDir,file),'{}csvFiles/{}'.format(self.outputDir,file))
 		self.combinedAtoms = combinedAtoms
 		#self.sensAtomPlots()
 
