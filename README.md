@@ -53,7 +53,7 @@ For each high dose dataset (*1qie* or *1qif*, n=2,3 respectively here):
 
 The simplest way to run the ETRACK pipeline is run it directly from the command line. 
 
-```python ETRACK-PROCESS.py -i exampleInputFile.txt -p -c```
+```python ETRACK.py -i exampleInputFile.txt -p -c```
 
 An input file *inputFile.txt* is required to specify input *.pdb* coordinate files and *.mtz* merged structure factor files per dataset. For this example damage series, the necessary input file has been provided. The input file contains the information to generate Fourier differences for each high dose dataset (pdb: 1qie, 1qif) successively. See the input file for details.
 
@@ -61,11 +61,11 @@ Several command line flags are required to run the program. `-p` indicates that 
 
 For the general case this input file must be written manually, specifying correct mtz column label information as required. To aid this, the command:
 
-```python ETRACK-PROCESS.py -j```
+```python ETRACK.py -j```
 
 can be run to output to the command line some useful information on how to successfully write the input file. Additionally the command:
 
-```python ETRACK-PROCESS.py -t n```
+```python ETRACK.py -t n```
 
 where `n` is an integer parameter to specified (corresponding to the number of higher dose datasets), will generate a template input file *templateInputFile.txt* for the user to complete.
 
