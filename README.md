@@ -4,6 +4,11 @@ A collection of scripts to calculate per-atom density change metrics within a sp
 Suitable for any MX experiment in which datasets are collected on the **same crystal** over **multiple doses**.
 **NOTE: These scripts are currently under development and updated regularly..**
 
+## In short: how to run
+
+- Write an input file for the job (input.txt).
+- Run on command line ```python ETRACK.py -i exampleInputFile.txt -pc```
+
 ## A brief background
 
 During MX data collection, when a protein or nucleic acid crystal is exposed to increasing doses of radiation, localised radiation-induced chemical changes can occur within the crystalline macromolecules, even at doses of the order of several MGy (at 100 K). These *specific damage* manifestations can ultimately leading to false biological interpretations within structures during subsequent model building if not accounted for. 
@@ -28,6 +33,8 @@ The scripts require the following to run:
 
 ## Usage
 
+### An example from PDB_redo
+
 To demonstrate how the scripts can be run, the script *getPDBseries.py* can be used to retrieve a pdb series from *pdb_redo*. Here the first 3 entries within the *Weik M, et al. (2000) PNAS 97(2):623–8* have been selected as a test damage series to demonstrate the functionality of the ETRACK scripts.  In python:
 
 ```python
@@ -50,6 +57,8 @@ For each high dose dataset (*1qie* or *1qif*, n=2,3 respectively here):
 - Both the atom-tagged map and the Fourier difference map are cropped to the crystal asymmetric unit using *MAPMASK*. The resulting atom-tagged map and Fourier difference map are now of compatible grid sampling dimensions.
 - Using these two map types, each refined atom within a structure can now be assigned a set of *difference density* values X(atom) directly from the Fourier difference map.
 - To describe the electron density behaviour of each refined atom with increasing dose, the most negative *difference density* value within the set X(atom) is assigned as D<sub>loss</sub>(dose). Since Fourier difference maps have been used, negative difference density values correspond to localised regions of electron density loss with increasing dose.
+
+##### Running ETRACK from command line
 
 The simplest way to run the ETRACK pipeline is run it directly from the command line. 
 
