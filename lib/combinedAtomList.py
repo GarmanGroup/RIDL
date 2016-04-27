@@ -419,7 +419,8 @@ class combinedAtomList(object):
 								   rType     = 'ratio',
 								   errorBars = True,
 								   pairs     = [],
-								   title     = ''):
+								   title     = '',
+								   fileType  = '.png'):
 		# run the above findMetricRatio method for known susceptible 
 		# residues and write to file. 'rType' takes values ('ratio','distance')
 		# 'pairs' is list of residues and atoms of form 
@@ -466,7 +467,7 @@ class combinedAtomList(object):
 		ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),fontsize=18)
 		fig.suptitle('{} D{} {}'.format(normType,metric,rType),fontsize=24)
-		fig.savefig('{}{}-D{}-{}-{}_{}.png'.format(self.outputDir,normType,metric,rType,title))
+		fig.savefig('{}{}-D{}-{}-{}_{}{}'.format(self.outputDir,normType,metric,rType,title,fileType))
 
 	def calcMetricDiffFromStructureMean(self,
 										metric   = 'loss',
@@ -514,7 +515,8 @@ class combinedAtomList(object):
 											   normType = 'Standard',
 											   rType    = 'ratio',
 											   pairs    = [['GLU','CD','CG'],['GLU','CD','OE1']],
-											   title    = ''):
+											   title    = '',
+											   fileType = '.png'):
 		# run the above findMetricRatio method for known susceptible 
 		# residues and write to file. 'rType' takes values ('ratio',
 		# 'distance'). 'pairs' is list of residues and atoms of form 
@@ -567,7 +569,7 @@ class combinedAtomList(object):
 		figtitle = '{} D{} {}'.format(normType,metric,rType)
 		fig.suptitle(figtitle,fontsize=24)
 		saveTitle = figtitle.replace(' ','_')
-		fname = lambda x: saveTitle.strip('.png')+'_{}.png'.format(x)
+		fname = lambda x: saveTitle.strip(fileType)+'_{}{}'.format(x,fileType)
 		i = 0
 		while os.path.isfile(fname(i)): i += 1 
 		fig.savefig(fname(i))
@@ -658,7 +660,7 @@ class combinedAtomList(object):
 			for met in ('mean','gain','Bfactor'):
 				data += str(round(atom.densMetric[met][normType]['values'][dataset],2))+'\t\t'
 			atomInfoList.append(data)
-		stringOut = 'Atom-ID\t\t\tDloss\t\Proximity\t\tDmean\t\tDgain\t\tBfactor\n'
+		stringOut = 'Atom-ID\t\t\tDloss\t\tProximity\t\tDmean\t\tDgain\t\tBfactor\n'
 		stringOut += '\n'.join(atomInfoList)	
 		return stringOut
 
@@ -1024,8 +1026,11 @@ class combinedAtomList(object):
 						 plotType  = 'both',
 						 resiType  = 'all',
 						 save      = True,
-						 fileType  = 'png',
-						 printText = True):
+						 fileType  = '.png',
+						 outputDir = './',
+						 printText = True,
+						 axesFont  = 18,
+						 titleFont = 20):
 		# histogram/kde plot of density metric per atom.
 		# plotType is 'histogram' or 'kde'.
 		# resiType is 'all' or list of residue types.
@@ -1088,7 +1093,7 @@ class combinedAtomList(object):
 					lbl = 'average'
 				else:
 					datax = [atm.densMetric[metric][normType]['values'][valType] for atm in self.atomList]
-					lbl = 'Dataset '+valType
+					lbl = 'Dataset '+str(valType)
 				self.plotHist(plotType=plotType,datax=datax,lbl=lbl,color='r')
 				plotData[resiType] = datax
 			else:
@@ -1104,14 +1109,14 @@ class combinedAtomList(object):
 					plotData[res] = datax	
 
 		plt.legend()
-		plt.xlabel('{} D{} per atom'.format(normType,metric),fontsize=18)
-		plt.ylabel('Frequency',fontsize=18)
-		plt.title('{} D{} per atom, residues: {}'.format(normType,metric,resiType))
+		plt.xlabel('{} D{} per atom'.format(normType,metric),fontsize=axesFont)
+		plt.ylabel('Normed-frequency',fontsize=axesFont)
+		plt.title('{} D{} per atom, residues: {}'.format(normType,metric,resiType),fontsize=titleFont)
 
 		if not save: 
 			plt.show()
 		else:
-			saveName = '{}{}_{}D{}-{}.{}'.format(self.outputDir,''.join(resiType),
+			saveName = '{}{}_{}D{}-{}.{}'.format(outputDir,''.join(resiType),
 												 normType.replace(" ",""),metric,
 												 plotType,fileType)
 			if valType != 'all':
@@ -1143,10 +1148,12 @@ class combinedAtomList(object):
 					resiNum   = '',
 					errorBars = 'NONE',
 					saveFig   = False,
+					outputDir = './',
 					fileType  = '.png',
 					axesFont  = 18,
 					titleFont = 24,
 					palette   = 'hls'):
+	
 		# produce a graph of selected metric against dataset number 
 		# for a specified atom. 'errorBars' takes values in ('NONE',
 		# 'RESNUM','ATOMTYPE')
@@ -1235,7 +1242,7 @@ class combinedAtomList(object):
 			name = '{}D{}-{}-{}-{}'.format(*args)
 			if errorBars != 'NONE':
 				name += 'witherrorbars'
-			f.savefig('{}{}{}'.format(self.outputDir,name,fileType))
+			f.savefig('{}{}{}'.format(outputDir,name,fileType))
 
 	def plotSusceptibleAtoms(self,
 							 densMet   = 'loss',
@@ -1289,21 +1296,27 @@ class combinedAtomList(object):
 			plt.show()
 		else:
 			i = 0
-			fname = lambda x: '{}{}_D{}_susceptResis_{}.{}'.format(self.outputDir,normType,densMet,x,fileType)
+			fname = lambda x: '{}{}_D{}_susceptResis_{}.{}'.format(self.outputDir,
+																   normType,
+																   densMet,
+																   x,
+																   fileType)
 			while os.path.isfile(fname(i)):
 				i += 1 
 			f.savefig(fname(i))
 
 	def checkMetricPresent(self,
-						   atom     = self.atomList[0],
-						   densMet  = 'loss',
+						   atom     = '',
+						   metric   = 'loss',
 						   normType = 'Standard'):
 		# method to check whether a method is valid 
 		# for selected atom object
+		if atom == '':
+			atom = self.atomList[0]
 		try:
-			atom.densMetric[densMet][normType]['values']
+			atom.densMetric[metric][normType]['values']
 		except NameError:
-			print 'Unexpected density metric name..'
+			print 'Unexpected density metric name.."{} {}"'.format(normType,metric)
 			return False
 		return True
 
@@ -1348,7 +1361,8 @@ class combinedAtomList(object):
 								normType = 'Standard',
 								shift    = True,
 								offset   = True,
-								n        = 1):
+								n        = 1,
+								fileType = '.png'):
 		# call the above calcHalfDose method for instances of of restype and atomtype
 
 		atoms = self.getAtom(restype  = restype,
@@ -1394,7 +1408,8 @@ class combinedAtomList(object):
 							 xLabel    = 'Initial density',
 							 ylabel    = 'Half-dose',
 							 figtitle  = 'D{}: {}-{}'.format(densMet,restype,atomtype),
-							 saveTitle = 'D{}Scatter_{}-{}_thres{}.png'.format(densMet,restype,atomtype,n))
+							 fileType  = fileType,
+							 saveTitle = 'D{}Scatter_{}-{}_thres{}'.format(densMet,restype,atomtype,n))
 
 	def compareAtomHalfDoses(self,
 						     restype   = '',
@@ -1402,7 +1417,8 @@ class combinedAtomList(object):
 						     atomtype2 = '',
 						     densMet   = 'loss',
 						     normType  = 'Standard',
-						     n         = 1):
+						     n         = 1,
+						     fileType  = '.png'):
 		# after above method calcHalfDoseForAtomtype is run for 
 		# two atom types atomtype1 and atomtype2 can compare 
 		# half-doses between two atoms within same side-chain
@@ -1440,7 +1456,8 @@ class combinedAtomList(object):
 							 xLabel    = '{}-{} Half-dose'.format(restype,atomtype1),
 							 ylabel    = '{}-{} Half-dose'.format(restype,atomtype2),
 							 figtitle  = 'D{} half-dose for {} atoms'.format(densMet,restype),
-							 saveTitle = 'D{}_halfDose{}_{}-{}.png'.format(densMet,restype,atomtype1,atomtype2))
+							 fileType  = fileType,
+							 saveTitle = 'D{}_halfDose{}_{}-{}'.format(densMet,restype,atomtype1,atomtype2))
 
 	def HalfDoseDistn(self,
 					  metric   = 'loss',
@@ -1510,6 +1527,7 @@ class combinedAtomList(object):
 								   atomtype2 = '',
 								   densMet   = 'loss',
 								   normType  = 'Standard',
+								   fileType  = '.svg',
 								   dataset   = 0):
 		# for two atom types atomtype1 and atomtype2, compare 
 		# density metric between two atoms within same side-chain
@@ -1547,7 +1565,8 @@ class combinedAtomList(object):
 										xLabel      = '{}-{} D{}'.format(restype,atomtype1,densMet),
 							 			ylabel      = '{}-{} D{}'.format(restype,atomtype2,densMet),
 							 			figtitle    = 'D{} for {} atoms'.format(densMet,restype),
-							 			saveTitle   = 'D{}_{}-{}-{}_scatterplot_{}.svg'.format(densMet,restype,atomtype1,atomtype2,dataset),
+							 			fileType    = fileType,
+							 			saveTitle   = 'D{}_{}-{}-{}_scatterplot_{}'.format(densMet,restype,atomtype1,atomtype2,dataset),
 							 			lineBestFit = True)
 
 		data = {'x':xData,'y':yData}
@@ -1560,7 +1579,8 @@ class combinedAtomList(object):
 					   metric2   = 'loss',
 					   normType1 = 'Standard',
 					   normType2 = 'Standard',
-					   dSet      = 0):
+					   dSet      = 0,
+					   fileType  = '.png'):
 		# for all atoms of type restype and atomtype plot scatter plot 
 		# comparing metric1 and 2 for chosen dataset dSet set restype = '' 
 		# and atomtype = '' to include all atoms
@@ -1577,17 +1597,19 @@ class combinedAtomList(object):
 										yData       = yData,
 										xLabel      = '{} D{}'.format(normType1,metric1),
 										ylabel      = '{} D{}'.format(normType2,metric2),
+										fileType    = fileType,
 										figtitle    = '{} D{} vs {} D{} for res:{} atoms:{}'.format(normType1,metric1,normType2,metric2,restype,atomtype),
-										saveTitle   = '{}D{}-vs-{}D{}-{}-{}-{}.png'.format(normType1,metric1,normType2,metric2,restype,atomtype,dSet),
+										saveTitle   = '{}D{}-vs-{}D{}-{}-{}-{}'.format(normType1,metric1,normType2,metric2,restype,atomtype,dSet),
 										lineBestFit = True)
 
 	def plotScatterPlot(self,
-						xData=[],
-						yData=[],
+						xData        = [],
+						yData        = [],
 						xLabel       = '',
 						ylabel       = '',
 						figtitle     = '',
-						saveTitle    = 'untitled.png',
+						saveTitle    = 'untitled',
+						fileType     = '.png',
 						lineBestFit  = False,
 						yequalsxLine = False,
 						colors       = '#50527A'):
@@ -1620,10 +1642,7 @@ class combinedAtomList(object):
 		plt.ylabel(ylabel, fontsize=24)
 		fig.suptitle(figtitle,fontsize=24)
 		sns.despine()
-		if saveTitle.split('.')[-1] == 'png':
-			fname = lambda x: self.outputDir+saveTitle.strip('.png')+'_{}.png'.format(x)
-		elif saveTitle.split('.')[-1] == 'svg':
-			fname = lambda x: self.outputDir+saveTitle.strip('.svg')+'_{}.svg'.format(x)
+		fname = lambda x: self.outputDir+saveTitle.strip(fileType)+'_{}{}'.format(x,fileType)
 		i = 0
 		while os.path.isfile(fname(i)): i += 1 
 		fig.savefig(fname(i))
@@ -1634,7 +1653,8 @@ class combinedAtomList(object):
 						type2    = '',
 						dataset  = 0,
 						densMet  = 'loss',
-						normType = 'Standard'):
+						normType = 'Standard',
+						fileType = '.png'):
 		# for atom of type1 determine a correlation between the closest 
 		# distance to atom type2 and the damage to atom type1.
 		# type1,type2 of form [['GLU','CD'],['ASP','CG'],..] depending 
@@ -1658,13 +1678,14 @@ class combinedAtomList(object):
 		yLabel = '{} D{}'.format(normType,densMet)
 		xLabel = '{} {} distance'.format(type1,type2)
 		figTitle = '{} D{} against {} distance'.format(type1,densMet,type2)
-		saveTitle = figTitle.strip()+'.png'
+		saveTitle = figTitle.strip()
 
 		self.plotScatterPlot(xData     = minDists,
 							 yData     = densVals,
 							 xLabel    = xLabel,
 							 yLabel    = yLabel,
 							 figtitle  = figTitle,
+							 fileType  = fileType,
 							 saveTitle = saveTitle)
 
 	def getDistanceBetweenAtoms(self,
@@ -1698,7 +1719,8 @@ class combinedAtomList(object):
 								  densMet       = 'loss',
 								  crystConts    = True,
 								  pdbName       = '',
-								  symmetrygroup = ''):
+								  symmetrygroup = '',
+								  fileType      = '.png'):
 		# determine whether there is a correlation between density metric 
 		# and types of surrounding atoms if 'crystConts' is True then crystal
 		# contacts will also be located here
@@ -1801,9 +1823,10 @@ class combinedAtomList(object):
 							 yData    = densValsAContacts,
 							 xLabel   = '{}-{} D{}'.format(restype,atomtype,densMet),
 							 ylabel   = 'Carboxyl-contact D{}'.format(densMet),
-							figtitle  = '{}-{} vs carboxyl-contact D{}'.format(restype,atomtype,densMet),
-							saveTitle = 'D{}Scatter_{}-{}_carboxylContacts.png'.format(densMet,restype,atomtype),
-							colors    = scatterColor)
+							 figtitle  = '{}-{} vs carboxyl-contact D{}'.format(restype,atomtype,densMet),
+							 saveTitle = 'D{}Scatter_{}-{}_carboxylContacts'.format(densMet,restype,atomtype),
+							 fileType  = fileType,
+							 colors    = scatterColor)
 
 		return strA+'\n'+strB,densValsA,densValsAContacts,scatterColor
 
@@ -1812,7 +1835,8 @@ class combinedAtomList(object):
 									normType = 'Standard',
 									dataset  = 0,
 									set      = 1,
-									box      = 'Box'):
+									box      = 'Box',
+									fileType = '.png'):
 		# produce a barplot to compare the damage metric of 
 		# susceptible atom types at a given dataset
 
@@ -1847,12 +1871,13 @@ class combinedAtomList(object):
 		plt.xlabel('Atom type', fontsize=18)
 		plt.ylabel('{} D{}'.format(normType,metric), fontsize=18)
 
-		fig.savefig('{}SusceptAtms{}plot-{}-D{}_{}-set{}.png'.format(self.outputDir,
+		fig.savefig('{}SusceptAtms{}plot-{}-D{}_{}-set{}{}'.format(self.outputDir,
 																	 box,
 																	 normType,
 																	 metric,
 																	 dataset,
-																	 set))
+																	 set,
+																	 fileType))
 
 	def compareSolvAccessWithAndWithoutGluAspGroups(self,
 													pdbName       = '',
@@ -1861,7 +1886,8 @@ class combinedAtomList(object):
 													atomType      = '',
 													specialAtoms  = '',
 													densMet       = 'loss',
-													normType      = 'Standard'):
+													normType      = 'Standard',
+													fileType      = '.png'):
 		# determine the change in solvent accessibility for 'resType'-'atomType' 
 		# atoms before & after Glu/Asp decarboxylation events 'specialAtoms' 
 		# is an optional parameter, which specifies a subset of atoms objects 
@@ -1943,7 +1969,8 @@ class combinedAtomList(object):
 			                 yData     = plotData['y'],
 							 xLabel    = 'Solvent Accessibility',
 							 ylabel    = '{}-{} D{}'.format(resType,atomType,densMet),
-							 saveTitle = 'D{}Scatter_{}-{}_vsSolvAccChange.png'.format(densMet,resType,atomType),
+							 fileType  = fileType,
+							 saveTitle = 'D{}Scatter_{}-{}_vsSolvAccChange'.format(densMet,resType,atomType),
 							 colors    = plotData['colours'])
 
 		return solvAccDic,plotData
@@ -1954,7 +1981,8 @@ class combinedAtomList(object):
 							distance = 4,
 							densMet  = 'loss',
 							normType = 'Standard',
-							weighted = False):
+							weighted = False,
+							fileType = '.png'):
 		# for a given residue, calculate the average density metric 
 		# (for a specified metric) within a given region of space 
 		# around that particular residue. if 'weighted' is True 
@@ -1998,8 +2026,9 @@ class combinedAtomList(object):
 			                 yData     = plotData['y'],
 							 xLabel    = '{}-{} D{}'.format(resType,atomType,densMet),
 							 ylabel    = 'local environment D{}'.format(densMet),
+							 fileType  = fileType,
 							 figtitle  = 'Average D{} within {} Angstrom of {}-{}'.format(densMet,distance,resType,atomType),
-							 saveTitle = 'D{}Scatter_{}-{}_localEnvironmentComparison.png'.format(densMet,resType,atomType))
+							 saveTitle = 'D{}Scatter_{}-{}_localEnvironmentComparison'.format(densMet,resType,atomType))
 
 		return plotData
 
@@ -2085,7 +2114,8 @@ class combinedAtomList(object):
 								resType     = '',
 								atomType    = '',
 								densMet     = 'loss',
-								normType    = 'Standard'):
+								normType    = 'Standard',
+								fileType    = '.png'):
 		# compare calculated density metric values to calculated Bdamage values
 
 		# get required atoms in structure
@@ -2115,7 +2145,8 @@ class combinedAtomList(object):
 						     xLabel    = 'Bdamage',
 							 ylabel    = '{} D{}'.format(normType,densMet),
 							 figtitle  = '{}-{}'.format(resType,atomType),
-							 saveTitle = 'D{}Scatter_{}-{}_BdamageVsDensMetric.png'.format(densMet,resType,atomType))
+							 fileType  = fileType,
+							 saveTitle = 'D{}Scatter_{}-{}_BdamageVsDensMetric'.format(densMet,resType,atomType))
 
 
 

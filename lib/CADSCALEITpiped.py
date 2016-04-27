@@ -14,7 +14,8 @@ class pipeline():
 	def __init__(self,
 				 outputDir = '',
 				 inputFile = '',
-				 jobName   = 'untitled-job'):
+				 jobName   = 'untitled-job',
+				 log       = ''):
 
 		# specify where output files should be written
 		self.outputDir 			= outputDir
@@ -22,8 +23,12 @@ class pipeline():
 		self.findFilesInDir() 	
 		self.txtInputFile 		= inputFile
 		self.jobName 			= jobName
-		self.runLog 			= logFile(fileName = '{}{}_runLog1.log'.format(self.outputDir,jobName),
-										  fileDir  = self.outputDir)
+
+		if log == '':
+			self.runLog = logFile(fileName = '{}{}_runLog1.log'.format(self.outputDir,jobName),
+								  fileDir  = self.outputDir)
+		else:
+			self.runLog = log
 
 		# specify output files for parts of pipeline
 		self.CADoutputMtz 		= '{}{}_CADcombined.mtz'.format(self.outputDir,self.jobName)
@@ -162,15 +167,11 @@ class pipeline():
 		# move input mtz files to working directory and rename as suitable
 		if self.densMapType == '2FOFC':
 			self.SIGMAAinputMtz  = '{}{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
-			# os.system('cp {} {}'.format(self.mtzIn2,self.SIGMAAinputMtz))
 			shutil.copy2(self.mtzIn2,self.SIGMAAinputMtz)
 		else:
 			self.SIGMAAinputMtz  = '{}{}.mtz'.format(self.outputDir,self.Mtz1LabelRename.strip())
 			self.CADinputMtz2 	 = '{}{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
 			self.CADinputMtz3    = '{}{}.mtz'.format(self.outputDir,self.Mtz3LabelRename.strip())
-			# os.system('cp {} {}'.format(self.mtzIn1,self.SIGMAAinputMtz))
-			# os.system('cp {} {}'.format(self.mtzIn2,self.CADinputMtz2))
-			# os.system('cp {} {}'.format(self.mtzIn3,self.CADinputMtz3))
 			shutil.copy2(self.mtzIn1,self.SIGMAAinputMtz)
 			shutil.copy2(self.mtzIn2,self.CADinputMtz2)
 			shutil.copy2(self.mtzIn3,self.CADinputMtz3)

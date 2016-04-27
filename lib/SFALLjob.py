@@ -3,15 +3,24 @@ from mapTools import mapTools
 
 class SFALLjob():
 
-	def __init__(self,inputPDBfile,outputDir,VDWR,symmetrygroup,gridDimensions,mapoutType,runLog):
-		self.inputPDBfile 	= inputPDBfile
-		self.outputMapFile 	= '{}_sfall.map'.format(inputPDBfile.split('_reordered.pdb')[0])
-		self.outputDir 		= outputDir
-		self.symGroup 		= symmetrygroup
-		self.VDWR 			= VDWR
-		self.gridDims 		= gridDimensions
-		self.mapoutType 	= mapoutType # atom-map ATMMOD or solvent-map SOLVMAP
-		self.runLog 		= runLog
+	def __init__(self,
+				 inputPDBfile   = '',
+				 outputDir      = './',
+				 VDWR           = 1,
+				 symmetrygroup  = 'P1',
+				 gridDimensions = [],
+				 mapoutType     = 'ATMMOD',
+				 runLog         = ''):
+
+		self.inputPDBfile  = inputPDBfile
+		self.outputMapFile = '{}_sfall.map'.format(inputPDBfile.split('_reordered.pdb')[0])
+		self.outputDir 	   = outputDir
+		self.symGroup 	   = symmetrygroup
+		self.VDWR 		   = VDWR
+		self.gridDims 	   = gridDimensions
+		self.mapoutType    = mapoutType # atom-map ATMMOD or solvent-map SOLVMAP
+		self.runLog 	   = runLog
+
 		self.runLog.writeToLog('Running SFALL job')
 
 	def run(self):

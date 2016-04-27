@@ -76,16 +76,18 @@ class eTrack(object):
 			pklSeries = saveGenericObject(obj      = self.combinedAtoms,
 										  fileName = self.seriesName)
 
-			# os.system('mv {} {}{}'.format(pklSeries,self.outputDir,pklSeries))
-			shutil.move(pklSeries,'{}{}'.format(self.outputDir,pklSeries))
+			shutil.move(pklSeries,
+						'{}{}'.format(self.outputDir,pklSeries))
 			self.pklSeries = pklSeries
 
 			# provide summary txt file on Dloss metric metric per-dataset
-			self.summaryFile(normType='Standard') 
+			self.summaryFile(normType = 'Standard') 
 
 			if self.CalphaPresent is True:
 				self.summaryFile(normType='Calpha normalised') 
+			
 			self.writeDamSitesToFile()
+
 		else: 
 			print 'Post processing job not chosen...'
 
@@ -162,8 +164,12 @@ class eTrack(object):
 				print 'Error! Unable to extract list of dataset names from input file'
 			return False
 
-	def checkInOutDirExist(self,printText=True):
-		# check that an input/output directories have been found and make subdirectories if present
+	def checkInOutDirExist(self,
+						   printText = True):
+
+		# check that an input/output directories have been 
+		# found and make subdirectories if present
+
 		for dir in ([[self.inDir,'Input'],[self.outDir,'Output']]):
 			if os.path.isdir(dir[0]) == False:
 				str = '{} file location: {} does not exist. '.format(dir[1],dir[0])+\
@@ -174,7 +180,7 @@ class eTrack(object):
 		return True
 
 	def makeOutputDirs(self):
-		self.outputDir 		= '{}ETRACK_output/'.format(self.outDir)
+		self.outputDir 		= '{}ETRACK-output/'.format(self.outDir)
 		self.outputPlotDir 	= '{}plots/'.format(self.outputDir)
 
 		# add pkl file names as attribute if specified in input file
@@ -213,13 +219,10 @@ class eTrack(object):
 			# move pkl file to working output directory
 			pklFileName = maps2DensMets.pklFileName
 
-			# os.system('mv {} {}{}{}'.format(pklFileName,
-			# 								self.outputDir,
-			# 								pklFileDir,
-			# 								pklFileName))
-			shutil.move(pklFileName,'{}{}{}'.format(self.outputDir,
-													pklFileDir,
-													pklFileName))
+			shutil.move(pklFileName,
+						'{}{}{}'.format(self.outputDir,
+										pklFileDir,
+										pklFileName))
 
 			pklFileNames.append('{}{}{}'.format(self.outputDir,
 												pklFileDir,
@@ -260,42 +263,53 @@ class eTrack(object):
 
 		combinedAtoms.getMultiDoseAtomList()
 
-		# calculate 'standardised' and 'average' variant Dloss metrics
+		# calculate 'average' variant Dloss metrics
 		combinedAtoms.calcAdditionalMetrics(newMetric='average')
-		combinedAtoms.calcStandardisedMetrics()
 
 		# calculate Calpha normalised metrics, if Calpha atoms exist
 		self.CalphaPresent = combinedAtoms.checkCalphaAtomsExist()
 		if self.CalphaPresent is True:
 			for m in ('loss','mean','gain','Bfactor'):
 				combinedAtoms.calcAdditionalMetrics(metric=m)
+		
+		self.combinedAtoms = combinedAtoms
+		self.writeCsvFiles()
 
-		# write atom numbers and density metrics to simple text files - one for 
-		# each density metric separately
+	def writeCsvFiles(self,
+					  move = True):
+
+		# write atom numbers and density metrics to simple 
+		# csv files,one for each density metric separately
+
 		self.fillerLine()
 		print 'Writing .csv file for per-atom density metric:'
-		for densMet in combinedAtoms.getDensMetrics():
+		for densMet in self.combinedAtoms.getDensMetrics():
 			print '\tmetric: {}, normalisation: {}'.format(*densMet)
-			combinedAtoms.writeMetric2File(where    = self.outputDir,
-										   metric   = densMet[0],
-										   normType = densMet[1])
+			self.combinedAtoms.writeMetric2File(where    = self.outputDir,
+										        metric   = densMet[0],
+										        normType = densMet[1])
 
 		for groupBy in ('residue','atomtype'):
-			combinedAtoms.writeMetric2File(where   = self.outputDir,
+			self.combinedAtoms.writeMetric2File(where   = self.outputDir,
 										   groupBy = groupBy)
 			if self.CalphaPresent is True:
-				combinedAtoms.writeMetric2File(where    = self.outputDir,
-										  	   groupBy  = groupBy,
-										       normType = 'Calpha normalised')
+				self.combinedAtoms.writeMetric2File(where    = self.outputDir,
+										  	        groupBy  = groupBy,
+										            normType = 'Calpha normalised')
 
 		# make csvFiles dir and move all generated csv files to this
-		os.system('mkdir {}csvFiles/'.format(self.outputDir))
-		for file in os.listdir(self.outputDir):
-			if file.endswith(".csv"):
-				# os.system('mv {}{} {}csvFiles/{}'.format(self.outputDir,file,self.outputDir,file))
-				shutil.move('{}{}'.format(self.outputDir,file),'{}csvFiles/{}'.format(self.outputDir,file))
-		self.combinedAtoms = combinedAtoms
-		#self.sensAtomPlots()
+		if move is True:
+			os.system('mkdir {}csvFiles/'.format(self.outputDir))
+			os.system('mkdir {}csvFiles/Calpha-normalised/'.format(self.outputDir))
+			os.system('mkdir {}csvFiles/Standard/'.format(self.outputDir))
+			for file in os.listdir(self.outputDir):
+				if file.endswith(".csv"):
+					if '-Calphanormalised' in file:
+						loc = 'Calpha-normalised/'
+					else:
+						loc = 'Standard/'
+					shutil.move('{}{}'.format(self.outputDir,file),
+								'{}csvFiles/{}{}'.format(self.outputDir,loc,file))
 
 	def PDBmulti_retrieve(self):
 		self.fillerLine(blank=True)
@@ -450,6 +464,7 @@ class eTrack(object):
 		av,std = self.combinedAtoms.getAverageMetricVals(densMet  = metric,
 														 normType = normType)
 		for i in range(numDsets):
+			summaryFile.write('<hr>')
 			bodyString = '<h3>Dataset info</h3>\n'+\
 						 'Number in series: {}<br>\n'.format(i+1)+\
 						 'Dose (MGy): {}<br>\n'.format(self.doses[i])+\
@@ -460,8 +475,16 @@ class eTrack(object):
 			if normType == 'Calpha normalised':
 				CAweights = self.combinedAtoms.retrieveCalphaWeight(metric=metric)
 				bodyString += 'Calpha weight for current dataset: {}<br>\n'.format(round(CAweights.weight[metric][i],3))
+			summaryFile.write(bodyString)
 
-			bodyString += '# atoms with {} Dloss metric above N std dev of structure-wide mean:<br><br>\n'.format(normType)
+			failedPlots = self.makeDistnPlots(densMet  = metric,
+										      normType = normType,
+										      plotSet  = 4)
+			plotString = '<h3>Distribution of Dloss for known susceptible residue types</h3>\n'+\
+						 '<img src="plots/all_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+			summaryFile.write(plotString)
+
+			bodyString = '# atoms with {} Dloss metric above N std dev of structure-wide mean:<br><br>\n'.format(normType)
 			summaryFile.write(bodyString)
 
 			n = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = i,
@@ -484,8 +507,13 @@ class eTrack(object):
 
 			statsOut = self.combinedAtoms.getTopNAtomsString(metric,normType,i,25)
 			infoString = '<h3>Per-atom Statistics</h3>\n'+\
-						 'Top hits ranked by D{} metric:<br><br>\n'.format(metric)
-			infoString += self.convertPlainTxtTable2html(statsOut)
+						 'Top hits ranked by D{} metric. Dmean and Dgain are mean '.format(metric)+\
+						 'and maximum voxel difference density values, respectively, '+\
+						 'assigned within a local region around each atom. Proximity (from 0 '+\
+						 'to 1) is a measure of the closeness of the voxel exhibiting the '+\
+						 'maximum density loss Dloss value from the specified atom (with higher '+\
+						 'values indicating a smaller distance:<br><br>\n'
+			infoString += self.convertPlainTxtTable2html(statsOut,width='50%')
 			summaryFile.write(infoString)
 
 			statsOut = self.combinedAtoms.getPerAtmtypeStats(metric   = metric,
@@ -529,7 +557,7 @@ class eTrack(object):
 										      plotSet  = 1)
 			if i not in failedPlots['GLUASPCYSMETTYR']:
 				plotString = '<h3>Distribution of Dloss for known susceptible residue types</h3>\n'+\
-							 '<img src="GLUASPCYSMETTYR_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+							 '<img src="plots/GLUASPCYSMETTYR_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
 				summaryFile.write(plotString)
 
 			failedPlots = self.makeDistnPlots(densMet  = metric,
@@ -537,7 +565,7 @@ class eTrack(object):
 											  plotSet  = 3)
 			if i not in failedPlots['DADCDGDT']:
 				plotString = '<h3>Distribution of Dloss for known susceptible nucleotide types</h3>\n'+\
-							 '<img src="DADCDGDT_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+							 '<img src="plots/DADCDGDT_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
 				summaryFile.write(plotString)
 
 			infoString = '<h3>Suspicious Atoms</h3>\n'
@@ -562,22 +590,26 @@ class eTrack(object):
 		summaryFile.write('</body>\n</html>')
 		summaryFile.close()
 
-		self.combinedAtoms.graphMetric(atomType  = '',
-									   restype  = 'GLU',
-									   errorBars = 'NONE',
+		self.plotLinePlot(restype   = 'GLU',
+						  errorBars = 'NONE',
+						  atomType  = '')
+		self.plotLinePlot(restype   = 'GLU',
+						  errorBars = 'ATOMTYPE',
+						  atomType  = '')
+		self.plotLinePlot(restype   = 'CYS',
+			              errorBars = 'NONE',
+			              atomType  = 'SG')
+
+	def plotLinePlot(self,
+					 restype   = 'GLU',
+					 errorBars = 'NONE',
+					 atomType  = ''):
+
+		self.combinedAtoms.graphMetric(atomType  = atomType,
+									   restype   = restype,
+									   errorBars = errorBars,
+									   outputDir = self.outputPlotDir,
 									   saveFig   = True)
-
-		self.combinedAtoms.graphMetric(atomType  = '',
-									   restype  = 'GLU',
-									   errorBars = 'ATOMTYPE',
-									   saveFig   = True)
-
-		self.combinedAtoms.graphMetric(atomType  = 'SG',
-									   restype  = 'CYS',
-									   errorBars = 'NONE',
-									   saveFig   = True)
-
-
 
 	def convertPlainTxtTable2html(self,
 								  plainText      = '',
@@ -621,6 +653,7 @@ class eTrack(object):
 					  normType  = 'Standard', 
 					  dataset   = 0, 
 					  singleRes = ''):
+
 		# for the initial pdb file in damage series, convert the Bfactor 
 		# column to values for the specified metric. If 'singleRes' is 
 		# specified (use 3-letter residue code) then the average density 
@@ -669,14 +702,17 @@ class eTrack(object):
 						  dataset  = 0, 
 						  metric   = 'loss', 
 						  software = 'pymol', 
-						  size     = 1):
+						  size     = 1,
+						  savePic  = True):
+
 		# open coot/pymol to view top damage sites. size is the 
 		# density metric scale factor used when visualising damage 
 		# sites as spheres of vdw = size*{density metric} within pymol
 
 		if software not in ('coot','pymol'):
-			print "Damage sites can be visualised in either 'coot' or 'pymol"
-			print "Please make sure the paths to these programs are correctly set up before proceeding"
+			print 'Damage sites can be visualised in either "coot" or "pymol"'
+			print 'Please make sure the paths to these programs are '+\
+				  'correctly set up before proceeding'
 			return
 		try: self.damSitesPDB
 		except AttributeError:
@@ -707,15 +743,20 @@ class eTrack(object):
 					   'color red, {}\n'.format(damSitesTag)+\
 					   'color white, {}\n'.format(structureTag)
 
+			if savePic is True:
+				# DOESN'T WORK CURRENTLY
+				pymolStr += 'ray\n png {}\nquit'.format(self.damSitesPDB[dataset].replace('.pdb','.png'))
+
 			pymolScript.write(pymolStr)
 			pymolScript.close()
-			os.system('pymol {}'.format(scriptName))
+			os.system('pymol -q {}'.format(scriptName))
 
 	def makeDistnPlots(self,
 					   densMet  = 'loss',
 					   normType = 'Standard',
 					   plotType = 'both',
 					   plotSet  = 1):
+
 		# retrieve the distribution for damage metric values for all 
 		# atoms of specified residues (see 'resList' below), and then 
 		# plot a kde plot for each
@@ -738,6 +779,10 @@ class eTrack(object):
 				   	   ['GLU','ASP','CYS','MET','TYR']]
 		elif plotSet == 3:
 			resList = [['DA','DC','DG','DT']]
+
+		elif plotSet == 4:
+			resList = ['all']
+
 		for resGroup in resList:
 			k = ''.join(resGroup)
 			failedPlots = {k:[]}
@@ -751,12 +796,16 @@ class eTrack(object):
 														   valType   = i,
 														   plotType  = plotType,
 														   resiType  = resGroup,
+														   outputDir = self.outputPlotDir,
 														   printText = False)	
 				if data == {}:
 					failedPlots[k].append(i)
 		return failedPlots
 
-	def sensAtomPlots(self,metric='loss',normType='Standard'):
+	def sensAtomPlots(self,
+					  metric   = 'loss',
+					  normType = 'Standard'):
+
 		# set of plots investigating damage progression 
 		# for sensitive atoms within structure.
 

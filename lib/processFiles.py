@@ -2,6 +2,7 @@ from CADSCALEITpiped import pipeline as pipe1
 from SFALLFFTpiped import pipeline as pipe2
 import os
 import shutil
+from logFile import logFile
 
 class processFiles():
 
@@ -15,28 +16,32 @@ class processFiles():
 		self.proceedToETRACK = proceedToETRACK
 		self.eTrackInputName = eTrackInputName
 
-		if skipToETRACK is True:
-			self.skipToETRACK(inputName=eTrackInputName)
+		if skipToETRACK is False:
+			success = self.runProcessing()
+			self.jobSuccess = success
+		else:
+			success = self.skipToETRACK(inputName=eTrackInputName)
+			self.jobSuccess = success
 
 	def skipToETRACK(self,inputName='input.txt'):
 		# do not generate maps for job, but proceed directly to metric 
 		# calculations, if correct input file exists in working directory
 			success = self.readMainInputFile()
 			if success == False:
-				return
-			self.checkOutputDirExists()
-			self.findFilesInDir()
+				return False
+			self.checkOutputDirExists(makeProcessDir=False)
+			self.findFilesInDir(mapProcessDir=False)
 			if self.eTrackInputName not in self.filesInDir:
 				print 'Unable to find input file '+\
 					   '"{}" in "{}"'.format(self.eTrackInputName,self.dir)
 				print 'Ensure "python ETRACK -i <input.txt> '+\
 					  '-p" has been run prior to -c'
-				return 
+				return False
 
-			self.writeETRACKInputFile(run          = True,
-							 		  cleanUp      = True,
-							 		  imports      = True,
-							 		  skipToETRACK = True)
+			success = self.writeETRACKInputFile(run          = True,
+							 		            imports      = True,
+							 		            skipToETRACK = True)
+			return True
 
 	def runProcessing(self):
 
@@ -75,11 +80,13 @@ class processFiles():
 
 	def runPipelines(self):
 		# run two processing pipelines sequentially
+		self.setJobName()
+		self.startLogFile()
 		self.writePipeline1Inputs()
-		success = self.runPipeline1()
+		success = self.runPipeline1(logFile = self.logFile)
 		if success == True:
 			self.writePipeline2Inputs()
-			success = self.runPipeline2()
+			success = self.runPipeline2(logFile = self.logFile)
 			if success == True:
 				if self.deleteIntermediateFiles.lower() == 'true':
 					success = self.cleanUpDir()
@@ -310,7 +317,7 @@ class processFiles():
 				self.repeatedFile1InputsUsed = s
 				self.multiDatasets = True
 
-	def checkOutputDirExists(self):
+	def checkOutputDirExists(self,makeProcessDir=True):
 		# check whether output directory exists and make if not
 		if self.dir.endswith('/') is False:
 			print 'Working directory specified in input '+\
@@ -321,6 +328,11 @@ class processFiles():
 			print 'Output directory "{}" not found, making directory'.format(self.dir)
 			os.makedirs(self.dir)
 		print 'Working directory set to "{}"'.format(self.dir)
+
+		self.mapProcessDir = self.dir + 'ETRACK-mapProcessing/'
+		if makeProcessDir is True:
+			if 'ETRACK-mapProcessing' not in os.listdir(self.dir):
+				os.makedirs(self.mapProcessDir)
 
 	def getCurrentInputParams(self, jobNumber = 0):
 		# select correct input parameters if multiple jobs within main input file.
@@ -350,22 +362,22 @@ class processFiles():
 
 	def writePipeline1Inputs(self):
 
-		self.pipe1FileName 	= self.dir+self.inputFile.split('.')[0]+'_cadscaleit.txt'
+		self.pipe1FileName 	= self.mapProcessDir+self.inputFile.split('.')[0]+'_cadscaleit.txt'
 
-		props = {'mtzIn1'         : 'mtz1',
-				 'Mtz1LabelName'  : 'mtzlabels1_current',
-				 'Mtz1LabelRename': 'name1_current',
-				 'RfreeFlag1'     : 'RfreeFlag1_current',
-				 'mtzIn2'         : 'mtz2_current',
-				 'Mtz2LabelName'  : 'mtzlabels2_current',
-				 'Mtz2LabelRename': 'name2_current',
-				 'mtzIn3'         : 'mtz3',
-				 'Mtz3LabelName'  : 'mtzlabels3',
-				 'Mtz3LabelRename': 'name3',
-				 'inputPDBfile'   : 'pdb2_current',
-				 'densMapType'    : 'densMapType',
-				 'deleteMtzs'     : 'deleteIntermediateFiles',
-				 'FFTmapWeight'   : 'FFTmapWeight'}
+		props = {'mtzIn1'          : 'mtz1',
+				 'Mtz1LabelName'   : 'mtzlabels1_current',
+				 'Mtz1LabelRename' : 'name1_current',
+				 'RfreeFlag1'      : 'RfreeFlag1_current',
+				 'mtzIn2'          : 'mtz2_current',
+				 'Mtz2LabelName'   : 'mtzlabels2_current',
+				 'Mtz2LabelRename' : 'name2_current',
+				 'mtzIn3'          : 'mtz3',
+				 'Mtz3LabelName'   : 'mtzlabels3',
+				 'Mtz3LabelRename' : 'name3',
+				 'inputPDBfile'    : 'pdb2_current',
+				 'densMapType'     : 'densMapType',
+				 'deleteMtzs'      : 'deleteIntermediateFiles',
+				 'FFTmapWeight'    : 'FFTmapWeight'}
 
 		fileOut1 = open(self.pipe1FileName,'w')
 		inputString = ''
@@ -375,16 +387,18 @@ class processFiles():
 		fileOut1.write(inputString)
 		fileOut1.close()
 
+	def setJobName(self):
+		# set a name for the current job
 		self.jobName = '{}-{}'.format(self.name2_current,self.name1_current)
 
 	def writePipeline2Inputs(self):
 
-		self.pipe2FileName 	= self.dir+self.inputFile.split('.')[0]+'_sfallfft.txt'
+		self.pipe2FileName 	= self.mapProcessDir+self.inputFile.split('.')[0]+'_sfallfft.txt'
 
 		if self.densMapType != '2FOFC':
-			self.mtzIn = '{}{}_SCALEITcombined.mtz'.format(self.dir,self.jobName)
+			self.mtzIn = '{}{}_SCALEITcombined.mtz'.format(self.mapProcessDir,self.jobName)
 		else:
-			self.mtzIn = '{}{}_sigmaa.mtz'.format(self.dir,self.name2_current)
+			self.mtzIn = '{}{}_sigmaa.mtz'.format(self.mapProcessDir,self.name2_current)
 
 		props = {'pdbIN'       : 'pdb2_current',
 				 'initialPDB'  : 'name1_current',
@@ -402,10 +416,17 @@ class processFiles():
 		fileOut2.write(inputString)
 		fileOut2.close()
 
-	def runPipeline1(self):
-		self.p1 = pipe1(outputDir = self.dir,
+	def startLogFile(self):
+		# create log file for full map processing pipeline
+		log = logFile(fileName = '{}{}_run.log'.format(self.mapProcessDir,self.jobName),
+					  fileDir  = self.mapProcessDir)
+		self.logFile = log
+
+	def runPipeline1(self,logFile = ''):
+		self.p1 = pipe1(outputDir = self.mapProcessDir,
 						inputFile = self.pipe1FileName,
-						jobName   = self.jobName)
+						jobName   = self.jobName,
+						log       = logFile)
 
 		outcome = self.p1.runPipeline()
 		if outcome == 0:
@@ -415,11 +436,12 @@ class processFiles():
 			print 'Pipeline failed to run to completion'
 			return False
 
-	def runPipeline2(self):
-		self.p2 = pipe2(outputDir = self.dir,
-						inputFile = self.pipe2FileName,
-						jobName   = self.jobName)
+	def runPipeline2(self,logFile = ''):
 
+		self.p2 = pipe2(outputDir = self.mapProcessDir,
+						inputFile = self.pipe2FileName,
+						jobName   = self.jobName,
+						log       = logFile)
 
 		outcome = self.p2.runPipeline()
 		if outcome == 0:
@@ -429,9 +451,12 @@ class processFiles():
 			print 'Pipeline failed to run to completion'
 			return False
 
-	def findFilesInDir(self):
+	def findFilesInDir(self,mapProcessDir=True):
 		# find files initially in working directory
-		self.filesInDir = os.listdir(self.dir)
+		if mapProcessDir is True:
+			self.filesInDir = os.listdir(self.mapProcessDir)
+		else:
+			self.filesInDir = os.listdir(self.dir)
 
 	def cleanUpDir(self,
 				   removeMtzs   = True,
@@ -449,19 +474,19 @@ class processFiles():
 		else:
 			densMapProg = 'fft'
 
-		params 		  = [self.dir,self.dsetName]
-		renameParams  = [self.dir,self.name2_current]
-		renameParams2 = [self.dir,self.name1_current]
+		params 		  = [self.mapProcessDir,self.dsetName]
+		renameParams  = [self.mapProcessDir,self.name2_current]
+		renameParams2 = [self.mapProcessDir,self.name1_current]
 
 		keyLogFiles  = [self.p1.runLog.logFile,self.p2.runLog.logFile]
 
 		if self.densMapType != 'END':
-			mapFiles = ['{}{}-{}-{}_cropped_cropped.map'.format(self.dir,
+			mapFiles = ['{}{}-{}-{}_cropped_cropped.map'.format(self.mapProcessDir,
 																self.dsetName,
 																self.densMapType,
 																densMapProg)]
 		else:
-			mapFiles = ['{}{}-{}_cropped_cropped.map'.format(self.dir,
+			mapFiles = ['{}{}-{}_cropped_cropped.map'.format(self.mapProcessDir,
 															 self.dsetName,
 															 densMapProg)]
 		mapFiles += ['{}{}_sfall_cropped.map'.format(*params)]
@@ -470,7 +495,7 @@ class processFiles():
 					   '{}{}_atoms.map'.format(*renameParams)]
 
 		if includeFCmap is True:
-			mapFiles += ['{}{}-FC-{}_cropped_cropped.map'.format(self.dir,
+			mapFiles += ['{}{}-FC-{}_cropped_cropped.map'.format(self.mapProcessDir,
 																 self.dsetName,
 																 densMapProg)]
 			renameMaps += ['{}{}_FC.map'.format(*renameParams2)]
@@ -481,18 +506,17 @@ class processFiles():
 		outputFiles = mapFiles + pdbFiles
 		renameFiles = renameMaps + renamePDB
 
-		subdir = '{}{}_additionalFiles/'.format(self.dir,
+		subdir = '{}{}_additionalFiles/'.format(self.mapProcessDir,
 												self.jobName)
 		os.system('mkdir {}'.format(subdir))
 
 		keyFiles = keyLogFiles + mapFiles + pdbFiles
-		for file in os.listdir(self.dir): 
+		for file in os.listdir(self.mapProcessDir): 
 			if file.endswith('_additionalFiles'):
 				continue
 			if file not in self.filesInDir:
-				fileName = '{}{}'.format(self.dir,file)
+				fileName = '{}{}'.format(self.mapProcessDir,file)
 				if fileName not in keyFiles:
-					# os.system('mv {} {}{}'.format(fileName,subdir,file))
 					shutil.move(fileName,'{}{}'.format(subdir,file))
 		for file in os.listdir(subdir):
 			remove = False
@@ -510,7 +534,6 @@ class processFiles():
 
 		# rename final map & pdb files
 		for i in range(len(outputFiles)): 
-			# os.system('mv {} {}'.format(outputFiles[i],renameFiles[i]))
 			shutil.move(outputFiles[i],renameFiles[i])
 
 		# move initial dataset pdb files to working directory
@@ -529,23 +552,16 @@ class processFiles():
 		# (useful if further ETRACK jobs to be run)
 
 		if self.multiDatasets == False or self.repeatedFile1InputsUsed == True:
-
-			# os.system('cp {} {}{}'.format(self.pdb1,
-			# 							  self.dir,
-			# 							  self.pdb1.split('/')[-1]))
-			shutil.copy2(self.pdb1,'{}{}'.format(self.dir,self.pdb1.split('/')[-1]))
+			shutil.copy2(self.pdb1,
+						 '{}{}'.format(self.mapProcessDir,
+						 			   self.pdb1.split('/')[-1]))
 		else:
 			for pdb in self.pdb1.split(','):
-
-				# os.system('cp {} {}{}'.format(pdb,
-				# 							  self.dir,
-				# 							  pdb.split('/')[-1]))
-				shutil.copy2(pdb,'{}{}'.format(self.dir,pdb.split('/')[-1]))
+				shutil.copy2(pdb,'{}{}'.format(self.mapProcessDir,pdb.split('/')[-1]))
 
 	def writeETRACKInputFile(self,
 							 write        = True,
 							 run          = True,
-							 cleanUp      = False,
 							 imports      = True,
 							 skipToETRACK = False):
 
@@ -562,7 +578,7 @@ class processFiles():
 
 		if skipToETRACK is False:
 			if write is False:
-				return
+				return True
 
 			r = runETRACK(runAll = False)
 			seriesName = self.dir.split('/')[-2]
@@ -570,7 +586,7 @@ class processFiles():
 			if self.multiDatasets is True and self.repeatedFile1InputsUsed is False:
 				print 'Must have single INITIALDATASET inputs in input '+\
 					  'file to run ETRACK immediately here'
-				return
+				return False
 
 			else:
 				if self.dose2 == 'NOTCALCULATED':
@@ -578,29 +594,20 @@ class processFiles():
 				else:
 					doses = self.dose2
 
-			r.writeInputFile(inDir         = self.dir,
+			r.writeInputFile(inDir         = self.mapProcessDir,
 							 outDir        = self.dir,
 							 damSetName    = seriesName,
 							 laterDatasets = self.name2,
 							 initialPDB    = self.pdb1.split('/')[-1],
 							 doses         = doses)
 
-			# os.system('mv {} {}/{}'.format(r.inputFileName,self.dir,r.inputFileName))
-			shutil.move(r.inputFileName,'{}/{}'.format(self.dir,r.inputFileName))
+			shutil.move(r.inputFileName,
+						'{}/{}'.format(self.dir,r.inputFileName))
 
 		if run is True:
 			r = runETRACK(inputFileLoc = self.dir)
 
-		if cleanUp is True:
-			newDir = self.dir+'perDatasetMapFiles/'
-			os.system('mkdir {}'.format(newDir))
-			for f in os.listdir(self.dir):
-				for fType in ['.pdb','.zip','.log','.map']:
-					if f.endswith(fType):
-						# os.system('mv {}{} {}{}'.format(self.dir,f,newDir,f))
-						shutil.move('{}{}'.format(self.dir,f),'{}{}'.format(newDir,f))
-			# os.system('mv {} {}ETRACK_output/'.format(newDir,self.dir))
-			shutil.move(newDir,'{}ETRACK_output/'.format(self.dir))
+		return True
 
 
 

@@ -41,8 +41,7 @@ class process():
 		pro = processFiles(inputFile       = self.inputFile,
 						   proceedToETRACK = self.proceedToETRACK,
 						   skipToETRACK    = self.skipToETRACK)
-		success = pro.runProcessing()
-		return success
+		return pro.jobSuccess
 
 	def printInputFile(self):
 		# print the contents of the specified input file

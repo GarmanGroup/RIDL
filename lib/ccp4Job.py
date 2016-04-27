@@ -35,14 +35,13 @@ class ccp4Job():
 												     self.outputLogfile))
 
 		# move ccp4 job input and log files to working sub directory
-		# os.system('mv {}inputfile.txt {}{}inputfile.txt'.format(self.jobName,
-		# 	    												self.outputDir,
-		# 	    												self.jobName))
-		shutil.move('{}inputfile.txt'.format(self.jobName),'{}{}inputfile.txt'.format(self.outputDir,self.jobName))
-		# os.system('mv {} {}{}'.format(self.outputLogfile,
-		# 							  self.outputDir,
-		# 							  self.outputLogfile))
-		shutil.move(self.outputLogfile,'{}{}'.format(self.outputDir,self.outputLogfile))
+		shutil.move('{}inputfile.txt'.format(self.jobName),
+				    '{}{}inputfile.txt'.format(self.outputDir,
+				    						   self.jobName))
+
+		shutil.move(self.outputLogfile,
+					'{}{}'.format(self.outputDir,
+								  self.outputLogfile))
 
 	def checkJobSuccess(self):
 		# job success checked, based on whether output files exist

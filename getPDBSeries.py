@@ -100,7 +100,7 @@ class getSeries():
 			refType = '0cyc'
 			fileFmt = '.gz'
 
-		for fileType in ('pdb','mtz'):
+		for fileType in ('mtz','pdb'):
 			print 'Downloading {} file..'.format(fileType)
 			os.system('curl "www.cmbi.ru.nl/pdb_redo/{}/{}/{}_{}.{}{}" -o "{}.{}{}"'.format(pdb[1:3],pdb,pdb,refType,fileType,fileFmt,pdb,fileType,fileFmt))
 			
@@ -108,9 +108,9 @@ class getSeries():
 			if self.checkFileExists('{}.{}{}'.format(pdb,fileType,fileFmt)) is False:
 				print 'Failed to download {} file successfully from PDB'.format(fileType)
 				return False
-			else:
-				if self.refineType == 'initial':
-					os.system('gunzip {}.{}.gz -f'.format(pdb,fileType))
+			return
+			if self.refineType == 'initial':
+				os.system('gunzip {}.{}.gz -f'.format(pdb,fileType))
 
 		# want to change label names in mtz file to make unique to pdb code
 		self.changePDBredoMtzLabelInfo(pdb)
@@ -119,8 +119,9 @@ class getSeries():
 		return True
 
 	def changePDBredoMtzLabelInfo(self,pdbcode):
-		# default mtz column labels are FP and SIGFP. Wish to append pdb code to these to make them unique
-		# (important later on for CAD merging of mtz files)
+		# default mtz column labels are FP and SIGFP. Wish to append 
+		# pdb code to these to make them unique (important later on 
+		# for CAD merging of mtz files)
 		self.jobName = 'sftools'
 
 		# run sftools from comman line

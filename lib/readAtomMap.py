@@ -64,7 +64,7 @@ class maps2DensMetrics():
         # write a log file for this eTrack run
         logName = '{}{}_log-mapProcessing.txt'.format(self.filesIn,self.pdbName)
         self.log = logFile(fileName      = logName,
-                           fileDir       = self.filesIn,
+                           fileDir       = self.filesOut,
                            printToScreen = True)
 
         self.lgwrite(ln='eTrack run - map processing\n')
@@ -91,8 +91,7 @@ class maps2DensMetrics():
 
     def readPDBfile(self):
         # read in pdb file info here
-        logfile = open('{}{}_log.txt'.format(self.filesOut,self.pdbName),'a')
-
+        
         self.startTimer()
         self.lgwrite(ln='Reading in pdb file...')
         self.lgwrite(ln='pdb name: {}{}.pdb'.format(self.filesIn,self.pdbName))

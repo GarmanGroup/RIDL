@@ -14,12 +14,20 @@ class pipeline():
 	def __init__(self,
 				 outputDir = '',
 				 inputFile = '',
-				 jobName = 'untitled-job'):
+				 jobName   = 'untitled-job',
+				 log       = ''):
 
 		self.outputDir	= outputDir
 		self.inputFile 	= inputFile
 		self.jobName 	= jobName
 		self.findFilesInDir() # find files initially in working dir
+
+		# create log file
+		if log == '':
+			self.runLog = logFile(fileName = '{}{}_runLog1.log'.format(self.outputDir,jobName),
+								  fileDir  = self.outputDir)
+		else:
+			self.runLog = log
 
 	def runPipeline(self):
 
@@ -27,10 +35,6 @@ class pipeline():
 		success = self.readInputFile()
 		if success is False:
 			return 1
-
-		# create log file
-		self.runLog = logFile(fileName='{}{}_runLog2.log'.format(self.outputDir,self.jobName),
-							  fileDir=self.outputDir)
 
 		# run pdbcur job 
 		pdbcur = PDBCURjob(inputPDBfile = self.pdbcurPDBinputFile,
@@ -52,16 +56,24 @@ class pipeline():
 			return 3
 
 		# run SFALL job
-		sfall = SFALLjob(self.reorderedPDBFile,self.outputDir,self.sfall_VDWR,
-						 self.spaceGroup,self.sfall_GRID,'ATMMOD',self.runLog)
+		sfall = SFALLjob(inputPDBfile   = self.reorderedPDBFile,
+						 outputDir      = self.outputDir,
+						 VDWR           = self.sfall_VDWR,
+						 symmetrygroup  = self.spaceGroup,
+						 gridDimensions = self.sfall_GRID,
+						 runLog         = self.runLog)
 		success = sfall.run()
 		if success is False:
 			return 4
 
 		# run FFT job
 		sfallMap 	= mapTools(sfall.outputMapFile)
-		axes 		= [sfallMap.fastaxis,sfallMap.medaxis,sfallMap.slowaxis]
-		gridSamps 	= [sfallMap.gridsamp1,sfallMap.gridsamp2,sfallMap.gridsamp3]
+		axes 		= [sfallMap.fastaxis,
+					   sfallMap.medaxis,
+					   sfallMap.slowaxis]
+		gridSamps 	= [sfallMap.gridsamp1,
+					   sfallMap.gridsamp2,
+					   sfallMap.gridsamp3]
 
 		if self.densMapType in ('DIFF','SIMPLE'):
 			tags = ['FP_','SIGFP_','FOM_','PHIC_']
@@ -175,15 +187,15 @@ class pipeline():
 			return False
 
 		inputFile = open(self.inputFile,'r')
-		props = {'pdbIN':'pdbcurPDBinputFile',
-				 'runname':'runName',
-				 'sfall_VDWR':'sfall_VDWR',
-				 'mtzIN':'inputMtzFile',
-				 'foldername':'outputDir',
-				 'initialPDB':'initPDB',
-				 'laterPDB':'laterPDB',
-				 'densMapType':'densMapType',
-				 'FFTmapWeight':'FOMweight'}
+		props = {'pdbIN'        : 'pdbcurPDBinputFile',
+				 'runname'      : 'runName',
+				 'sfall_VDWR'   : 'sfall_VDWR',
+				 'mtzIN'        : 'inputMtzFile',
+				 'foldername'   : 'outputDir',
+				 'initialPDB'   : 'initPDB',
+				 'laterPDB'     :  'laterPDB',
+				 'densMapType'  : 'densMapType',
+				 'FFTmapWeight' : 'FOMweight'}
 
 		self.sfall_GRID = []
 		for l in inputFile.readlines():
@@ -196,8 +208,8 @@ class pipeline():
 		return True
 
 	def renumberPDBFile(self):
-		# reorder atoms in pdb file since some may be missing now after
-		# pdbcur has been run
+		# reorder atoms in pdb file since some may be 
+		# missing now after pdbcur has been run
 		self.runLog.writeToLog(str='Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
 		self.reorderedPDBFile = (self.PDBCURoutputFile).split('_pdbcur.pdb')[0]+'_reordered.pdb'
 
@@ -232,8 +244,12 @@ class pipeline():
 			return False
 		return True
 
-	def cropDensmapToSFALLmap(self,mapType='DIFF',densMap='',atmMap=''):
-		# crop the density map to exact same dimensions as SFALL atom-tagged map
+	def cropDensmapToSFALLmap(self,
+							  mapType = 'DIFF',
+							  densMap = '',
+							  atmMap  = ''):
+		# crop the density map to exact same dimensions
+		#  as SFALL atom-tagged map
 		
 		# run MAPMASK job to crop fft density map to asym unit
 		mapmask2 = MAPMASKjob(mapFile1  = densMap,

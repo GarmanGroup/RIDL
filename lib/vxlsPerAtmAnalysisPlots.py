@@ -34,14 +34,14 @@ def plotVxlsPerAtm(pdbName     = 'untitled',
 
     elif plotType == 'both':
         sns.distplot(np.array(datax))
-        yTitle = 'Normed-Frequency'
+        yTitle = 'Normed-frequency'
 
     else:
         print 'Unknown plotting type selected.. cannot plot..'
         return
-    plt.xlabel('Voxels per atom')
+    plt.xlabel('# voxels per atom')
     plt.ylabel(yTitle)
-    plt.title('{} plot of voxels per atom'.format(plotType))
+    plt.title('Plot of # voxels assigned per atom'.format(plotType))
     if saveFig is True:
-        fig.savefig('{}plots/{}vxlsperatm_{}.png'.format(where,pdbName,plotType))
+        fig.savefig('{}plots/{}-vxlsperatm_{}.png'.format(where,pdbName,plotType))
     
