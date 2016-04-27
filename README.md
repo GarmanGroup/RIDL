@@ -44,7 +44,7 @@ Assume here we have a damage series collected on a single crystal, comprising of
 
 The simplest way to run the ETRACK pipeline is run it directly from the command line. 
 
-```python ETRACK.py -i exampleInputFile.txt -p -c```
+```python ETRACK.py -i inputFile.txt -p -c```
 
 An input file *inputFile.txt* is required to specify input *.pdb* coordinate files and *.mtz* merged structure factor files per dataset. The input file provides the information to generate Fourier differences for each high dose dataset successively within the series. See the section "*Writing the ETRACK input file*" for details on how to write this input file.
 
@@ -67,26 +67,26 @@ where `n` is an integer parameter to specified (corresponding to the number of h
 Here is an example input file for a damage series of 3 increasing dose datasets collected on a single insulin crystal.
 
 ```
-dir /Users/charlie/DPhil/YEAR2/MAR/etrack_testing/fileProcessingTesting/TDinsulin
+dir ./TDinsulin/
 
 INITIALDATASET
 name1 insulin1
-mtz1 /Users/charlie/DPhil/TDIXON_InsulinSeries/insu1.mtz
+mtz1 ../insDamSer/insu1.mtz
 mtzlabels1 _New
-pdb1 /Users/charlie/DPhil/TDIXON_InsulinSeries/insu1.pdb
+pdb1 ../insDamSer/insu1.pdb
 RfreeFlag1 FreeR_flag
 dose1 1.2
 
 LATERDATASET
 name2 insulin2, insulin3
-mtz2 /Users/charlie/DPhil/TDIXON_InsulinSeries/insu2.mtz, /Users/charlie/DPhil/TDIXON_InsulinSeries/insu3.mtz
+mtz2 ../insDamSer/insu2.mtz, ../insDamSer/insu3.mtz
 mtzlabels2 _set2, _set3
-pdb2 /Users/charlie/DPhil/TDIXON_InsulinSeries/insu2.pdb, /Users/charlie/DPhil/TDIXON_InsulinSeries/insu3.pdb
+pdb2 ../insDamSer/insu2.pdb, ../insDamSer/insu3.pdb
 dose2 3.1, 5.6
 
 PHASEDATASET
-name3 insu1
-mtz3 /Users/charlie/DPhil/TDIXON_InsulinSeries/insu1.mtz
+name3 insulin1
+mtz3 ../insDamSer/insu1.mtz
 mtzlabels3 C
 
 MAPINFO
@@ -98,7 +98,7 @@ deleteIntermediateFiles TRUE
 
 `dir` The directory where the output files should be written.
 
-The dataset information for the damage series is input broken down into three sections: `INITIALDATASET`, `LATERDATASET` and `PHASEDATASET`. 
+The dataset information for the damage series is broken down into three sections: `INITIALDATASET`, `LATERDATASET` and `PHASEDATASET`. 
 
 The `INITIALDATASET` section contains information about the first dataset within the damage series:
 
@@ -114,17 +114,19 @@ The `INITIALDATASET` section contains information about the first dataset within
 
 - `dose1` is the calculated dose for the first dataset within the damage series. It is recommended that *RADDOSE-3D* is run prior to ETRACK (see www.raddo.se). If doses are unknown, set this input to `NOTCALCULATED`.
 
-The `LATERDATASET` section contains the information about the later (higher dose) dataset within the damage series. See the `INITIALDATASET` section above for details of the inputs to be specified. The main noticable difference is that multiple higher dose datasets can be processed successively within the same input file, by including comma-separated inputs within this section. This is the recommended way to process a damage series comprising multiple higher dose datasets.
+The `LATERDATASET` section contains the information about the later (higher dose) dataset within the damage series. See the `INITIALDATASET` section above for details of the inputs to be specified. The main noticable difference for `LATERDATASET` is that multiple higher dose datasets can be processed successively within the same input file, by including comma-separated inputs within this section (see the input file example above). This is the recommended way to process a damage series comprising multiple higher dose datasets.
 
-The `PHASEDATASET` contains information of .mtz file from which the phases will be taken. These are required for generating Fourier difference maps at run time. In the above example, the first dataset .mtz is again chosen. The `mtzlabels3` parameter specifies the Fcalc and PHIcalc column labels within the input .mtz file. For columns labelled *FC* and *PHIC*, the `mtzlabels3` input is simply `C`.
+The `PHASEDATASET` contains information of .mtz file from which the phases will be taken. These are required for generating Fourier difference maps at run time. In the above example, the first dataset .mtz is again chosen, and this is the recommended dataset to take. The `mtzlabels3` parameter specifies the Fcalc and PHIcalc column labels within the input .mtz file. For columns labelled *FC* and *PHIC*, the `mtzlabels3` input is simply `C`.
 
 The `MAPINFO` section contains additional run information for ETRACK. It is recommended that the parameters within this section are not modified as this may lead to run issues.
+
+Below is a screenshot indicate how to choose label names from your .mtz files for each dataset within the damage series.
 
 ![howToFillInputFile](howToFillInputFile.png)
 
 ### The methodology explained with an example from PDB_redo
 
-To demonstrate how ETRACK can be run (and what it is doing), the following section walks through how to process an example damage series retrieved from PDB_redo. In general
+To demonstrate how ETRACK can be run (and what it is doing), the following section walks through how to process an example damage series retrieved from PDB_redo.
 
 ##### Retrieving an example damage series from PDB_redo
 
@@ -143,19 +145,24 @@ Now that the *.pdb* and *.mtz* files have been retrieved for each dataset within
 
 For each high dose dataset (*1qie* or *1qif*, n=2,3 respectively here):
 
-- A single *.mtz* file is written combining F<sub>obs</sub> columns from the initial low dose dataset (*1qid*, n=1 here) with the F<sub>obs</sub> columns of the high dose dataset using *CAD*
-- The later dataset F<sub>obs</sub> column is scaled to the initial dataset F<sub>obs</sub> column values using *SCALEIT*
-- A F<sub>obs</sub>(d<sub>n</sub>)-F<sub>obs</sub>(d<sub>1</sub>) Fourier difference map *.map* file is computed over the unit cell for each higher dose dataset (n=2,3 here) using *FFT*
-- Any hydrogens and alternative conformations are stripped, and anisotropic B-factors are removed from the input *.pdb* file using *PDBCUR* and then an *atom-tagged* .map file is generated over the crystal unit cell in *SFALL* using the exact same grid sampling dimensions as the *FFT*-output Fourier difference map above, using this stripped *.pdb* file. In this map, each voxel is assigned the atom number of the refined atom within the structure that contributes the most electron density to that specific region in space. Note that not all voxels are assigned to atom numbers (with some voxels instead assigned to bulk solvent)
+- A single *.mtz* file is written combining F<sub>obs</sub> columns from the initial low dose dataset (*1qid*, n=1 here) with the F<sub>obs</sub> columns of the high dose dataset using *CAD*.
+
+- The later dataset F<sub>obs</sub> column is scaled to the initial dataset F<sub>obs</sub> column values using *SCALEIT*.
+
+- A F<sub>obs</sub>(d<sub>n</sub>)-F<sub>obs</sub>(d<sub>1</sub>) Fourier difference map *.map* file is computed over the unit cell for each higher dose dataset (n=2,3 here) using *FFT*.
+
+- Any hydrogens and alternative conformations are stripped, and anisotropic B-factors are removed from the input *.pdb* file using *PDBCUR* and then an *atom-tagged* .map file is generated over the crystal unit cell in *SFALL* using the exact same grid sampling dimensions as the *FFT*-output Fourier difference map above, using this stripped *.pdb* file. In this map, each voxel is assigned the atom number of the refined atom within the structure that contributes the most electron density to that specific region in space. Note that not all voxels are assigned to atom numbers (with some voxels instead assigned to bulk solvent).
+
 - Both the atom-tagged map and the Fourier difference map are cropped to the crystal asymmetric unit using *MAPMASK*. The resulting atom-tagged map and Fourier difference map are now of compatible grid sampling dimensions.
+
 - Using these two map types, each refined atom within a structure can now be assigned a set of *difference density* values X(atom) directly from the Fourier difference map.
+
 - To describe the electron density behaviour of each refined atom with increasing dose, the most negative *difference density* value within the set X(atom) is assigned as D<sub>loss</sub>(dose). Since Fourier difference maps have been used, negative difference density values correspond to localised regions of electron density loss with increasing dose.
 
 
-## Interpreting the output files
+For this damage series, an example input file has been supplied called *exampleInputFile.txt*. ETRACK can now be run by running:
 
-Within the directory `./testOutput/ETRACK/` the results of this run should be detailed. For each of the 3 runs, an atom-tagged map file e.g. `1qie_atoms.map` and corresponding Fourier difference map file `1qie_density.map` have been generated. A compressed directory `1qie-1qidinit_additionalFiles.tar` contains CCP4 log files and intermediate run files, and additionally 2 run logs `1qie-1qidinit_runLog_1.txt` and `1qie-1qidinit_runLog_2.txt` are generated to indicate the success or failure of the run.
+```python ETRACK.py -i exampleInputFile.txt -pc```
 
-**The rest of this example is to come!...**
-
+from the directory containing the *exampleInputFile.txt* file.
 
