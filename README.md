@@ -124,7 +124,7 @@ Below is a screenshot indicate how to choose label names from your .mtz files fo
 
 ![howToFillInputFile](howToFillInputFile.png)
 
-### The methodology explained with an example from PDB_redo
+## The methodology explained with an example from PDB_redo
 
 To demonstrate how ETRACK can be run (and what it is doing), the following section walks through how to process an example damage series retrieved from PDB_redo.
 
