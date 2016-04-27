@@ -98,7 +98,7 @@ FFTmapWeight False
 deleteIntermediateFiles TRUE
 ```
 
-`dir` The directory where the output files should be written.
+`dir` is the directory where the output files should be written.
 
 The dataset information for the damage series is broken down into three sections: `INITIALDATASET`, `LATERDATASET` and `PHASEDATASET`. 
 
