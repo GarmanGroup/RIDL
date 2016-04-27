@@ -45,7 +45,7 @@ class ENDjob():
 		os.system('{} > {}'.format(cmdLineStr,self.outputLogfile))
 		os.system('mv 2FoFc_END.map {}'.format(self.outputMapFile))
 		os.system('mv {} {}/{}'.format(self.outputLogfile,self.outputDir,self.outputLogfile))
-		os.system('mkdir ENDmapFiles')
+		os.makedirs('ENDmapFiles')
 
 		for f in self.filesForDir():
 			os.system('mv {} ENDmapFiles/{}'.format(f,f))

@@ -61,7 +61,7 @@ class eTrack(object):
 		success = self.checkInOutDirExist()
 		if success is False: 
 			return
-		self.makeOutputDirs()
+		self.setOutputDirs()
 
 		if map_process is True:
 			self.map_processing()
@@ -140,6 +140,9 @@ class eTrack(object):
 				self.plot = True
 		inputfile.close()
 
+		if not self.initialPDB.endswith('.pdb'):
+			self.initialPDB += '.pdb'
+
 		# locate the correct format for the list of datasets within damage 
 		# series. Currently two formats acceptable: (a) series-name + dataset-id
 		# (per dataset), (b) input list of full dataset names (recommended).
@@ -179,7 +182,13 @@ class eTrack(object):
 				return False
 		return True
 
-	def makeOutputDirs(self):
+	def makeOutputDir(self,dirName='./'):
+		# if the above sub directory does not exist, make it
+		if not os.path.exists(dirName):
+			os.makedirs(dirName)
+			print 'New sub directory "{}" created to contain output files'.format(dirName)
+
+	def setOutputDirs(self):
 		self.outputDir 		= '{}ETRACK-output/'.format(self.outDir)
 		self.outputPlotDir 	= '{}plots/'.format(self.outputDir)
 
@@ -192,12 +201,11 @@ class eTrack(object):
 
 		# create additional subdirectories
 		for oDir in (self.outputDir,self.outputPlotDir):
-			if not os.path.exists(oDir):
-				os.makedirs(oDir)
+			self.makeOutputDir(dirName = oDir)
 
 		# make pklFiles and dir to move all generated per-dataset pkl files to this
 		pklFileDir = 'pklFiles-perDataset/'
-		os.system('mkdir {}{}'.format(self.outputDir,pklFileDir))
+		self.makeOutputDir(dirName = '{}{}'.format(self.outputDir,pklFileDir))
 
 		pklFileNames = []
 		for dataset in self.pdbNames:
@@ -299,9 +307,10 @@ class eTrack(object):
 
 		# make csvFiles dir and move all generated csv files to this
 		if move is True:
-			os.system('mkdir {}csvFiles/'.format(self.outputDir))
-			os.system('mkdir {}csvFiles/Calpha-normalised/'.format(self.outputDir))
-			os.system('mkdir {}csvFiles/Standard/'.format(self.outputDir))
+			self.makeOutputDir(dirName = '{}csvFiles/'.format(self.outputDir))
+			self.makeOutputDir(dirName = '{}csvFiles/Calpha-normalised/'.format(self.outputDir))
+			self.makeOutputDir(dirName = '{}csvFiles/Standard/'.format(self.outputDir))
+
 			for file in os.listdir(self.outputDir):
 				if file.endswith(".csv"):
 					if '-Calphanormalised' in file:
@@ -457,7 +466,7 @@ class eTrack(object):
 					 '<li>#atoms: total number of atoms of a specified type</li>\n'+\
 					 '<li>outliers: assuming a symmetric distn around the mode, number of atoms that fall outside this domain</li>\n'+\
 					 '<li>skew: skewness of metric distribution for atoms of specified type</li>\n'+\
-					 '<li>ratio: net ratio of distn values either side of metric distn mode</li>\n</ul>'
+					 '<li>normality: p-value for null hypothesis that distribution of metric values is normally distributed. If not enough atoms are present to perform this test, "n/a" is given</li>\n</ul>'
 		summaryFile.write(bodyString)
 
 		# get structure-wide metric average & std dev
@@ -473,15 +482,15 @@ class eTrack(object):
 						 'Std dev in D{}: {}<br>\n'.format(metric,round(std[i],3))
 
 			if normType == 'Calpha normalised':
-				CAweights = self.combinedAtoms.retrieveCalphaWeight(metric=metric)
+				CAweights = self.combinedAtoms.retrieveCalphaWeight(metric = metric)
 				bodyString += 'Calpha weight for current dataset: {}<br>\n'.format(round(CAweights.weight[metric][i],3))
 			summaryFile.write(bodyString)
 
 			failedPlots = self.makeDistnPlots(densMet  = metric,
 										      normType = normType,
 										      plotSet  = 4)
-			plotString = '<h3>Distribution of Dloss for known susceptible residue types</h3>\n'+\
-						 '<img src="plots/all_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+			plotString = '<h3>Distribution of Dloss for all refined atoms within structure</h3>\n'+\
+						 '<img src="plots/all_{}D{}-both-{}.png"><br>'.format(normType.replace(' ',''),metric,i)
 			summaryFile.write(plotString)
 
 			bodyString = '# atoms with {} Dloss metric above N std dev of structure-wide mean:<br><br>\n'.format(normType)
@@ -507,12 +516,12 @@ class eTrack(object):
 
 			statsOut = self.combinedAtoms.getTopNAtomsString(metric,normType,i,25)
 			infoString = '<h3>Per-atom Statistics</h3>\n'+\
-						 'Top hits ranked by D{} metric. Dmean and Dgain are mean '.format(metric)+\
+						 'Top hits ranked by D{} metric.<br>Dmean and Dgain are mean '.format(metric)+\
 						 'and maximum voxel difference density values, respectively, '+\
-						 'assigned within a local region around each atom. Proximity (from 0 '+\
+						 'assigned within a local region around each atom.<br>Proximity (from 0 '+\
 						 'to 1) is a measure of the closeness of the voxel exhibiting the '+\
-						 'maximum density loss Dloss value from the specified atom (with higher '+\
-						 'values indicating a smaller distance:<br><br>\n'
+						 'maximum density loss Dloss value from the specified atom (higher '+\
+						 'values indicate smaller distances):<br><br>\n'
 			infoString += self.convertPlainTxtTable2html(statsOut,width='50%')
 			summaryFile.write(infoString)
 
@@ -569,6 +578,7 @@ class eTrack(object):
 				summaryFile.write(plotString)
 
 			infoString = '<h3>Suspicious Atoms</h3>\n'
+			suspAtomLens = []
 			for t in [6,5,4,3,2]:
 				suspAtoms = self.combinedAtoms.detectSuspiciousAtoms(dataset   = i,
 							  										 metric    = metric,
@@ -581,10 +591,15 @@ class eTrack(object):
 
 				if len(suspAtoms) > 0:
 					infoString += ':<br>'
+					suspAtomLens.append(len(suspAtoms))
 					for s in suspAtoms:
 						infoString += '{}<br>'.format(s)
-				else:
-					infoString += '<br>'
+				infoString += '<br>'
+
+				if len(suspAtomLens) > 1:
+					if suspAtomLens[-1] > 0 and suspAtomLens[-2] > 0:
+						break
+
 			summaryFile.write(infoString)
 
 		summaryFile.write('</body>\n</html>')

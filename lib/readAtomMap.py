@@ -156,7 +156,7 @@ class maps2DensMetrics():
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Reading in FC density map file...')
-        self.lgwrite(ln='Density map name: {}{}'.format(self.filesIn, self.map2))
+        self.lgwrite(ln='Density map name: {}{}'.format(self.filesIn, self.map3))
 
         self.FCmap = readMap(dirIn    = self.filesIn,
                              dirOut   = self.filesOut,

@@ -508,7 +508,7 @@ class processFiles():
 
 		subdir = '{}{}_additionalFiles/'.format(self.mapProcessDir,
 												self.jobName)
-		os.system('mkdir {}'.format(subdir))
+		self.makeOutputDir(dirName = subdir)
 
 		keyFiles = keyLogFiles + mapFiles + pdbFiles
 		for file in os.listdir(self.mapProcessDir): 
@@ -553,11 +553,11 @@ class processFiles():
 
 		if self.multiDatasets == False or self.repeatedFile1InputsUsed == True:
 			shutil.copy2(self.pdb1,
-						 '{}{}'.format(self.mapProcessDir,
-						 			   self.pdb1.split('/')[-1]))
+						 '{}{}.pdb'.format(self.mapProcessDir,
+						 			   self.name1))
 		else:
 			for pdb in self.pdb1.split(','):
-				shutil.copy2(pdb,'{}{}'.format(self.mapProcessDir,pdb.split('/')[-1]))
+				shutil.copy2(pdb,'{}{}.pdb'.format(self.mapProcessDir,self.name1))
 
 	def writeETRACKInputFile(self,
 							 write        = True,
@@ -598,7 +598,7 @@ class processFiles():
 							 outDir        = self.dir,
 							 damSetName    = seriesName,
 							 laterDatasets = self.name2,
-							 initialPDB    = self.pdb1.split('/')[-1],
+							 initialPDB    = self.name1,
 							 doses         = doses)
 
 			shutil.move(r.inputFileName,
@@ -609,6 +609,11 @@ class processFiles():
 
 		return True
 
+	def makeOutputDir(self,dirName='./'):
+		# if the above sub directory does not exist, make it
+		if not os.path.exists(dirName):
+			os.makedirs(dirName)
+			print 'New sub directory "{}" created to contain output files'.format(dirName)
 
 
 

@@ -18,11 +18,18 @@ def readMap(dirIn    = './',
     # define 'rho' electron map object
     rho = MapInfo()
 
-    # open electron density .map file here (bmf for binary map file)
     mapName = dirIn + mapName
-    with open( mapName ) as f:
-        bmf = mmap.mmap( f.fileno(), 0, prot = mmap.PROT_READ, flags = mmap.MAP_PRIVATE )
-    
+    filesize = os.path.getsize(mapName)
+    print 'Map file of size {} bytes to be read'.format(filesize)
+
+    # open electron density .map file here (bmf for binary map file)
+    if os.name != 'nt': # if not windows 
+        with open( mapName ) as f:
+            bmf = mmap.mmap( f.fileno(), 0, prot = mmap.PROT_READ, flags = mmap.MAP_PRIVATE )
+    else:
+        with open( mapName ,"r+b") as f:
+            bmf = mmap.mmap( f.fileno(), 0)
+
     # start adding header information into MapInfo class format. 
     # Note the unpacking of a struct for each byte, read as a long 'l'
     for n in ('nx','ny','nz'):
@@ -53,11 +60,10 @@ def readMap(dirIn    = './',
             for l in s.split('\n'): log.writeToLog(l)
     else: print s
 
-    # next find .map file size, to calculate the last nx*ny*nz bytes of 
-    # file (corresponding to the position of the 3D electron density 
-    # array). Note factor of 4 is included since 4-byte floats used for 
-    # electron density array values.
-    filesize = os.path.getsize(mapName)
+    # calculate the last nx*ny*nz bytes of file (corresponding to 
+    # the position of the 3D electron density array). Note factor 
+    # of 4 is included since 4-byte floats used for electron 
+    # density array values.
     densitystart = filesize - 4*(reduce(lambda x, y: x*y, rho.nxyz.values()))
     
     # next seek start of electron density data
@@ -138,7 +144,8 @@ def readMap(dirIn    = './',
         if max(density) == rho.density['max']:
             print 'calculated max voxel value match value stated in file header'
         else:
-            print 'calculated max voxel value:{} does NOT match value stated in file header:{}'.format(max(density),rho.density['max'])
+            print 'calculated max voxel value:{} does NOT '.format(max(density))+\
+                  'match value stated in file header:{}'.format(rho.density['max'])
             sys.exit()
     
     # if each voxel value is an atom number, then want to convert to integer

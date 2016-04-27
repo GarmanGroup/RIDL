@@ -8,6 +8,7 @@ from ENDjob import ENDjob
 from MAPMASKjob import MAPMASKjob
 from mapTools import mapTools
 from logFile import logFile
+import shutil
 
 class pipeline():
 
@@ -305,17 +306,27 @@ class pipeline():
 		return True
 
 	def cleanUpDir(self):
+
 		# give option to clean up working directory 
 		print 'Cleaning up working directory...\n'
+
 		# move txt files to subdir
-		os.system('mkdir {}txtFiles/'.format(self.outputDir))
+		self.makeOutputDir(dirName = '{}txtFiles/'.format(self.outputDir))
+		
 		for file in os.listdir(self.outputDir): 
 			if file.endswith('.txt') and file not in self.filesInDir:
-				os.system('mv {}{} {}txtFiles/{}'.format(self.outputDir,file,self.outputDir,file))
+				args = [self.outputDir,file]
+				shutil.move('{}{}'.format(*args),'{}txtFiles/{}'.format(*args))
 
 	def findFilesInDir(self):
 		# find files initially in working directory
 		self.filesInDir = os.listdir(self.outputDir)
+
+	def makeOutputDir(self,dirName='./'):
+		# if the above sub directory does not exist, make it
+		if not os.path.exists(dirName):
+			os.makedirs(dirName)
+			print 'New sub directory "{}" created to contain output files'.format(dirName)
 
 
 

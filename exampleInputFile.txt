@@ -3,23 +3,25 @@ dir ./testOutput/ETRACK/
 INITIALDATASET
 name1 1qidinit
 mtz1 ./testOutput/1qid/1qid.mtz
-mtzlabels1 P_1qid
+mtzlabels1 P
 pdb1 ./testOutput/1qid/1qid.pdb
 RfreeFlag1 FreeR_flag
+dose1 1
 
 LATERDATASET
 name2 1qie,1qif
 mtz2 ./testOutput/1qie/1qie.mtz,./testOutput/1qif/1qif.mtz
-mtzlabels2 P_1qie,P_1qif
+mtzlabels2 P,P
 pdb2 ./testOutput/1qie/1qie.pdb,./testOutput/1qif/1qif.pdb
+dose2 2,3
 
 PHASEDATASET
 name3 1qidinit
 mtz3 ./testOutput/1qid/1qid.mtz
-mtzlabels3 C_1qid
+mtzlabels3 C_ALL
 
 MAPINFO
 sfall_VDWR 1
 densMapType DIFF
-FFTmapWeight preset,_1qid
+FFTmapWeight preset,
 deleteIntermediateFiles TRUE

@@ -19,7 +19,7 @@ class pipeline():
 
 		# specify where output files should be written
 		self.outputDir 			= outputDir
-		self.makeOutputDir()
+		self.makeOutputDir(dirName = self.outputDir)
 		self.findFilesInDir() 	
 		self.txtInputFile 		= inputFile
 		self.jobName 			= jobName
@@ -35,11 +35,11 @@ class pipeline():
 		self.SCALEITinputMtz 	= self.CADoutputMtz
 		self.SCALEIToutputMtz 	= '{}{}_SCALEITcombined.mtz'.format(self.outputDir,self.jobName)
 
-	def makeOutputDir(self):
+	def makeOutputDir(self,dirName='./'):
 		# if the above sub directory does not exist, make it
-		if not os.path.exists(self.outputDir):
-			os.makedirs(self.outputDir)
-			print 'New sub directory "{}" made to contain output files'.format(self.outputDir)
+		if not os.path.exists(dirName):
+			os.makedirs(dirName)
+			print 'New sub directory "{}" created to contain output files'.format(dirName)
 
 	def runPipeline(self):
 
@@ -191,16 +191,20 @@ class pipeline():
 				os.system('rm {}{}'.format(self.outputDir,f))
 
 	def cleanUpDir(self):
+
 		# give option to clean up working directory 
 		# delete non-final mtz files
 		print 'Cleaning up working directory...\n'
 		self.deleteNonFinalMtzs()
+
 		# move txt files to subdir
-		os.system('mkdir {}txtFiles/'.format(self.outputDir))
+		self.makeOutputDir(dirName = '{}txtFiles/'.format(self.outputDir))
+
 		for file in os.listdir(self.outputDir): 
 			if file.endswith('.txt') and file not in self.filesInDir:
-				os.system('mv {}{} {}txtFiles/{}'.format(self.outputDir,file,self.outputDir,file))
-
+				args = [self.outputDir,file]
+				shutil.move('{}{}'.format(*args),'{}txtFiles/{}'.format(*args))
+				
 	def findFilesInDir(self):
 		# find files initially in working directory
 		self.filesInDir = os.listdir(self.outputDir)

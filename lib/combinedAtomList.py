@@ -686,7 +686,7 @@ class combinedAtomList(object):
 														  vals = vals)
 			else:
 				countDic[atomID] += 1
-		headerString  = 'Partition of atom {} D{} values by {}.\n'.format(normType,metric,' & '.join(sortby))
+		headerString  = 'Partition of top atom {} D{} values by {}.\n'.format(normType,metric,' & '.join(sortby))
 		fracOfTotal   = round((float(n)/self.getNumAtoms())*100,2) # n as fraction of total atoms
 		headerString += 'For dataset {}, top {} ({}%) atoms included.\n'.format(dataset,int(n),fracOfTotal)
 		outputString  = 'Type\t\tFraction'
@@ -801,12 +801,12 @@ class combinedAtomList(object):
 		statsDic['#atoms']	 	= len(metricList)
 		statsDic['mean'] 		= np.mean(metricList)
 		statsDic['std'] 		= np.std(metricList)
-		statsDic['skew'] 		= self.calculateSkew(metricList=[])
-		statsDic['ratio'] 		= self.calcNetRatio(metricList=metricList)
+		statsDic['skew'] 		= self.calculateSkew(metricList = metricList)
+		statsDic['ratio'] 		= self.calcNetRatio(metricList = metricList)
 		statsDic['outliers'] 	= self.calcNumOutliers(metricList = metricList,
 													   metric     = metric,
 													   normType   = normType)
-		statsDic['normality']   = self.testForNormality(metricList=metricList)
+		statsDic['normality']   = self.testForNormality(metricList = metricList)
 		statsDic['returnOrder'] = ['mean',
 								   'std',
 								   '#atoms',
@@ -822,6 +822,7 @@ class combinedAtomList(object):
 					n        = 20,
 					normType = 'Standard',
 					format   = 'txt'):
+
 		# format stats defined in 'stats' dictionary into an 
 		# output string. 'sortby' specifies how the output should 
 		# be ranked. 'n' is number of entries to print (specify 
@@ -1031,6 +1032,7 @@ class combinedAtomList(object):
 						 printText = True,
 						 axesFont  = 18,
 						 titleFont = 20):
+
 		# histogram/kde plot of density metric per atom.
 		# plotType is 'histogram' or 'kde'.
 		# resiType is 'all' or list of residue types.
@@ -1071,41 +1073,63 @@ class combinedAtomList(object):
 		if valType == 'all':
 			numDsets = self.getNumDatasets()
 			for j,(i, color) in enumerate(zip(range(numDsets), sns.color_palette('Blues', numDsets))):
+				presentAtms = self.getAtomListWithoutPartialAtoms(dataset = i)
+
 				if resiType == 'all':
-						datax = [atm.densMetric[metric][normType]['values'][i] for atm in self.atomList]
-						self.plotHist(plotType=plotType,datax=datax,
-									  lbl='Dataset {}'.format(i),color=color)
+						datax = [atm.densMetric[metric][normType]['values'][i] for atm in presentAtms]
+						self.plotHist(plotType = plotType,
+									  datax    = datax,
+									  lbl      = 'Dataset {}'.format(i),
+									  color    = color)
 						plotData[resiType] = datax
+
 				else:
 					for res in resiType:
-						datax = [atm.densMetric[metric][normType]['values'][i] for atm in self.atomList if atm.basetype == res]
+						datax = [atm.densMetric[metric][normType]['values'][i] for atm in presentAtms if atm.basetype == res]
 						if len(datax) > 0:
-							self.plotHist(plotType=plotType,datax=datax,
-										  lbl='Dataset {},{}'.format(i,res),color=color)
-						plotData[res] = datax					
+							self.plotHist(plotType = plotType,
+										  datax    = datax,
+										  lbl      = 'Dataset {},{}'.format(i,res),
+										  color    = color)
+						plotData[res] = datax	
+
 		else:
 			self.calcAdditionalMetrics(metric    = metric,
 									   normType  = normType,
 									   newMetric = 'average')
 			if resiType == 'all':
+
 				if valType == 'average':
 					datax = [atm.densMetric[metric][normType]['average'] for atm in self.atomList]
 					lbl = 'average'
 				else:
-					datax = [atm.densMetric[metric][normType]['values'][valType] for atm in self.atomList]
+					presentAtms = self.getAtomListWithoutPartialAtoms(dataset = valType)
+					datax = [atm.densMetric[metric][normType]['values'][valType] for atm in presentAtms]
 					lbl = 'Dataset '+str(valType)
-				self.plotHist(plotType=plotType,datax=datax,lbl=lbl,color='r')
+
+				self.plotHist(plotType = plotType,
+							  datax    = datax,
+							  lbl      = lbl,
+							  color    = 'r')
 				plotData[resiType] = datax
+
 			else:
 				for j,(res, color) in enumerate(zip(resiType, sns.color_palette('hls', len(resiType)))):
+
 					if valType == 'average':
 						datax = [atm.densMetric[metric][normType]['average'] for atm in self.atomList if atm.basetype == res]
 						lbl = 'average, {}'.format(res)
+
 					else:
-						datax = [atm.densMetric[metric][normType]['values'][valType] for atm in self.atomList if atm.basetype == res]
+						presentAtms = self.getAtomListWithoutPartialAtoms(dataset = valType)
+						datax = [atm.densMetric[metric][normType]['values'][valType] for atm in presentAtms if atm.basetype == res]
 						lbl = 'Dataset {}, {}'.format(valType,res)
+
 					if len(datax) > 0:
-						self.plotHist(plotType=plotType,datax=datax,lbl=lbl,color=color)
+						self.plotHist(plotType = plotType,
+									  datax    = datax,
+									  lbl      = lbl,
+									  color    = color)
 					plotData[res] = datax	
 
 		plt.legend()
@@ -1117,8 +1141,10 @@ class combinedAtomList(object):
 			plt.show()
 		else:
 			saveName = '{}{}_{}D{}-{}.{}'.format(outputDir,''.join(resiType),
-												 normType.replace(" ",""),metric,
-												 plotType,fileType)
+												 normType.replace(" ",""),
+												 metric,
+												 plotType,
+												 fileType)
 			if valType != 'all':
 				saveName = saveName.replace('.'+fileType,'-{}.'.format(valType,fileType))
 			fig.savefig(saveName)
@@ -1130,11 +1156,17 @@ class combinedAtomList(object):
 				 datax    = [],
 				 lbl      = '',
 				 color    = 'b'):
+
 		# plot histogram or kde plot for datax and give current label
 		# 'nBins' is number of bins (only used if plotType is 'hist' or 'both')
 
 		if plotType == 'hist':
-			plt.hist(datax, nBins, histtype="stepfilled", alpha=.7, label=lbl, color=color)
+			plt.hist(datax,
+					 nBins,
+					 histtype = "stepfilled",
+					 alpha    = .7,
+					 label    = lbl,
+					 color=color)
 		elif plotType == 'kde':
 			sns.kdeplot(np.array(datax), shade=True, label=lbl, color=color)
 		elif plotType == 'both':
