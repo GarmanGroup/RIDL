@@ -36,7 +36,7 @@ The scripts require the following to run:
 
 - The *CCP4 suite* downloaded (version non-specific, but tested on 6.4.0, 6.5, and some minor testing on version 7.0)
 
-- The *seaborn* python plotting library is essential (use `pip install seaborn` to gain access to this plotting library)
+- The *seaborn* python plotting library is highly recommended (use `pip install seaborn` to gain access to this plotting library). The scripts should now be able to run to completion without seaborn, however no plots will be produced at run time.
 
 - A list of calculated doses for the series is ideal for radiation damage analysis (but not essential). Visit www.raddo.se for full details on how to download the current version of *RADDOSE-3D*.
 
@@ -50,7 +50,13 @@ The simplest way to run the ETRACK pipeline is run it directly from the command 
 
 An input file *inputFile.txt* is required to specify input *.pdb* coordinate files and *.mtz* merged structure factor files per dataset. The input file provides the information to generate Fourier differences for each high dose dataset successively within the series. See the section "*Writing the ETRACK input file*" for details on how to write this input file.
 
-Several command line flags are required to run the program. `-p` indicates that the *processing* step is to be performed, in order to generate compatible Fourier difference maps and atom-tagged maps at each dose level. `-c` indicates that the *calculation* step is to be performed, in order to then calculate the per-atom *D<sub>loss</sub>* metric.
+Several command line flags are required to run the program:
+
+- `-p` indicates that the *processing* step is to be performed, in order to generate compatible Fourier difference maps and atom-tagged maps at each dose level.
+
+- `-c` indicates that the *calculation* step is to be performed, in order to then calculate the per-atom *D<sub>loss</sub>* metric. 
+
+- `-g` (optional) can be used to prevent any graphs from being plotted at run time (will speed up the run). 
 
 ### Writing the ETRACK input file
 
