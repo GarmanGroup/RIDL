@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Dec 29 23:56:28 2014
 
-@author: charlie
-"""
 import numpy as np 
 import matplotlib as mpl 
+import matplotlib.pyplot as plt
+
+try:
+    import seaborn as sns
+    seabornFound = True
+except ImportError:
+    seabornFound = False
 
 ## agg backend is used to create plot as a .png file
 mpl.use('agg')
@@ -62,14 +65,12 @@ def residue_boxplotter(densitylist_atomorder,atoms_labels,residue_name,quantity)
     
     ## Save the figure
     fig.savefig(str(residue_name)+'_boxplot.png', bbox_inches='tight')
-    
-    
-
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 def residue_violinplotter(where,densitylist_atomorder,atoms_labels,
                           residue_name,quantity,pdbname,densmet):
+
+    if seabornFound is False:
+        return
 
     # Create a figure instance
     fig = plt.figure()
@@ -82,11 +83,16 @@ def residue_violinplotter(where,densitylist_atomorder,atoms_labels,
         count += 1
         densityList += densities
         atomList += [atoms_labels[count]]*len(densities)
-    dataDict = {'Atoms':atomList,'Densities':densityList}
+        
+    dataDict = {'Atoms'     : atomList,
+                'Densities' : densityList}
 
     # Create an axes instance
     ax = fig.add_subplot(111)    
-    sns.violinplot(x='Atoms',y='Densities',lw=2,data=dataDict)
+    sns.violinplot(x    = 'Atoms',
+                   y    = 'Densities',
+                   lw   = 2,
+                   data = dataDict)
     
     # ## Custom x-axis labels
     # ax.set_xticklabels(atoms_labels)
