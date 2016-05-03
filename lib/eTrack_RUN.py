@@ -8,6 +8,16 @@ import numpy as np
 import shutil
 import os
 
+print 'Checking whether seaborn plotting library present...'
+try:
+	import seaborn as sns
+	seabornFound = True
+except ImportError:
+	print 'Plotting library seaborn not found..'
+	print 'Will not create any plots for current run.'
+	print 'Use "pip install seaborn" to install for future use'
+	seabornFound = False
+
 class eTrack(object):
 	# A class for retrieving the eTrack input text file information and running 
 	# the eTrack pipeline functions separately or together in full pipeline
@@ -21,7 +31,8 @@ class eTrack(object):
 				 seriesName = "untitled-series",
 				 pklSeries  = "",
 				 doses      = [],
-				 plot       = False):
+				 plot       = False,
+				 output     = 'simple'):
 
 		self.inDir 		= inDir 		# the input file directory
 		self.outDir  	= outDir 		# the output file directory
@@ -32,6 +43,11 @@ class eTrack(object):
 		self.pklSeries	= pklSeries 	# the combined series pkl file from post_processing
 		self.doses 		= doses 		# list of increasing doses
 		self.plot       = plot 			# (bool) decide to plot per-residue summary plots per dataset
+		self.output     = output        # the amount of output to provide (either 'simple' for just Dloss
+										# info or 'full' larger selection of output files)
+		
+		if seabornFound is False:
+			self.plot = False 
 
 	def runPipeline(self,
 					map_process   = True,
@@ -111,7 +127,8 @@ class eTrack(object):
 			return False
 		return True
 
-	def readInputFile(self,printText=True):
+	def readInputFile(self, printText = True):
+
 		# read input file e_Track_input.txt to specify location 
 		# of input files and where to write output files
 
@@ -182,13 +199,18 @@ class eTrack(object):
 				return False
 		return True
 
-	def makeOutputDir(self,dirName='./'):
+	def makeOutputDir(self, dirName = './'):
+
 		# if the above sub directory does not exist, make it
+
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
 			print 'New sub directory "{}" created to contain output files'.format(dirName)
 
 	def setOutputDirs(self):
+
+		# set the locations of the output directories
+
 		self.outputDir 		= '{}ETRACK-output/'.format(self.outDir)
 		self.outputPlotDir 	= '{}plots/'.format(self.outputDir)
 
@@ -220,7 +242,9 @@ class eTrack(object):
 											   atomTagMap = mapName1,
 											   densityMap = mapName2,
 											   FCmap 	  = mapName3,
-											   plot       = self.plot)
+											   plotScatter = False,
+											   plotHist   = self.plot,
+											   plotBar    = False)
 
    			maps2DensMets.maps2atmdensity()
 
@@ -239,10 +263,10 @@ class eTrack(object):
 		self.pklFiles = pklFileNames
 
 	def post_processing(self):
-		self.titleCaption(title='Post Processing')
+		self.titleCaption(title = 'Post Processing')
 		print 'Input pkl files for post processing chosen from input file:'
 		for file in self.pklFiles: 
-			print '\t{}'.format(file.replace(self.inDir,""))
+			print '\t{}'.format(file.replace(self.outDir,""))
 
 		# next read in the pdb structure file as list of atom objects
 		print 'Reading in initial pdb file...'
@@ -281,17 +305,26 @@ class eTrack(object):
 				combinedAtoms.calcAdditionalMetrics(metric=m)
 		
 		self.combinedAtoms = combinedAtoms
-		self.writeCsvFiles()
+		self.writeCsvFiles(output = self.output)
 
 	def writeCsvFiles(self,
-					  move = True):
+					  move   = True,
+					  output = 'simple'):
 
 		# write atom numbers and density metrics to simple 
 		# csv files,one for each density metric separately
 
 		self.fillerLine()
 		print 'Writing .csv file for per-atom density metric:'
-		for densMet in self.combinedAtoms.getDensMetrics():
+
+		if output == 'simple':
+			metrics = [['loss','Standard'],
+					   ['loss','Calpha normalised'],
+					   ['loss','reliability']]
+		else:
+			metrics = self.combinedAtoms.getDensMetrics()
+
+		for densMet in metrics:
 			print '\tmetric: {}, normalisation: {}'.format(*densMet)
 			self.combinedAtoms.writeMetric2File(where    = self.outputDir,
 										        metric   = densMet[0],
@@ -299,7 +332,7 @@ class eTrack(object):
 
 		for groupBy in ('residue','atomtype'):
 			self.combinedAtoms.writeMetric2File(where   = self.outputDir,
-										   groupBy = groupBy)
+										   		groupBy = groupBy)
 			if self.CalphaPresent is True:
 				self.combinedAtoms.writeMetric2File(where    = self.outputDir,
 										  	        groupBy  = groupBy,
@@ -321,7 +354,7 @@ class eTrack(object):
 								'{}csvFiles/{}{}'.format(self.outputDir,loc,file))
 
 	def PDBmulti_retrieve(self):
-		self.fillerLine(blank=True)
+		self.fillerLine(blank = True)
 		self.titleCaption(title='Atom List Retrieval')
 		print 'Input pkl file for data retrieval chosen from input file:'
 		print '\t{}'.format(self.pklSeries)
@@ -486,12 +519,13 @@ class eTrack(object):
 				bodyString += 'Calpha weight for current dataset: {}<br>\n'.format(round(CAweights.weight[metric][i],3))
 			summaryFile.write(bodyString)
 
-			failedPlots = self.makeDistnPlots(densMet  = metric,
-										      normType = normType,
-										      plotSet  = 4)
-			plotString = '<h3>Distribution of Dloss for all refined atoms within structure</h3>\n'+\
-						 '<img src="plots/all_{}D{}-both-{}.png"><br>'.format(normType.replace(' ',''),metric,i)
-			summaryFile.write(plotString)
+			if seabornFound is True and self.plot is True:
+				failedPlots = self.makeDistnPlots(densMet  = metric,
+											      normType = normType,
+											      plotSet  = 4)
+				plotString = '<h3>Distribution of Dloss for all refined atoms within structure</h3>\n'+\
+							 '<img src="plots/all_{}D{}-both-{}.png"><br>'.format(normType.replace(' ',''),metric,i)
+				summaryFile.write(plotString)
 
 			bodyString = '# atoms with {} Dloss metric above N std dev of structure-wide mean:<br><br>\n'.format(normType)
 			summaryFile.write(bodyString)
@@ -561,21 +595,22 @@ class eTrack(object):
 			infoString += self.convertPlainTxtTable2html(statsOut[0],width='60%')
 			summaryFile.write(infoString)
 
-			failedPlots = self.makeDistnPlots(densMet  = metric,
-										      normType = normType,
-										      plotSet  = 1)
-			if i not in failedPlots['GLUASPCYSMETTYR']:
-				plotString = '<h3>Distribution of Dloss for known susceptible residue types</h3>\n'+\
-							 '<img src="plots/GLUASPCYSMETTYR_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
-				summaryFile.write(plotString)
+			if seabornFound is True and self.plot is True:
+				failedPlots = self.makeDistnPlots(densMet  = metric,
+											      normType = normType,
+											      plotSet  = 1)
+				if i not in failedPlots['GLUASPCYSMETTYR']:
+					plotString = '<h3>Distribution of Dloss for known susceptible residue types</h3>\n'+\
+								 '<img src="plots/GLUASPCYSMETTYR_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+					summaryFile.write(plotString)
 
-			failedPlots = self.makeDistnPlots(densMet  = metric,
-											  normType = normType,
-											  plotSet  = 3)
-			if i not in failedPlots['DADCDGDT']:
-				plotString = '<h3>Distribution of Dloss for known susceptible nucleotide types</h3>\n'+\
-							 '<img src="plots/DADCDGDT_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
-				summaryFile.write(plotString)
+				failedPlots = self.makeDistnPlots(densMet  = metric,
+												  normType = normType,
+												  plotSet  = 3)
+				if i not in failedPlots['DADCDGDT']:
+					plotString = '<h3>Distribution of Dloss for known susceptible nucleotide types</h3>\n'+\
+								 '<img src="plots/DADCDGDT_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+					summaryFile.write(plotString)
 
 			infoString = '<h3>Suspicious Atoms</h3>\n'
 			suspAtomLens = []
@@ -605,15 +640,16 @@ class eTrack(object):
 		summaryFile.write('</body>\n</html>')
 		summaryFile.close()
 
-		self.plotLinePlot(restype   = 'GLU',
-						  errorBars = 'NONE',
-						  atomType  = '')
-		self.plotLinePlot(restype   = 'GLU',
-						  errorBars = 'ATOMTYPE',
-						  atomType  = '')
-		self.plotLinePlot(restype   = 'CYS',
-			              errorBars = 'NONE',
-			              atomType  = 'SG')
+		# TEST CASES - NOT NORMALLY PLOTTED
+		# self.plotLinePlot(restype   = 'GLU',
+		# 				  errorBars = 'NONE',
+		# 				  atomType  = '')
+		# self.plotLinePlot(restype   = 'GLU',
+		# 				  errorBars = 'ATOMTYPE',
+		# 				  atomType  = '')
+		# self.plotLinePlot(restype   = 'CYS',
+		# 	              errorBars = 'NONE',
+		# 	              atomType  = 'SG')
 
 	def plotLinePlot(self,
 					 restype   = 'GLU',

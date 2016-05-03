@@ -10,27 +10,33 @@ class processFiles():
 				 inputFile       = '',
 				 proceedToETRACK = False,
 				 skipToETRACK	 = False,
+				 outputGraphs    = True,
 				 eTrackInputName = 'e_Track_inputfile.txt'):
 
 		self.inputFile 		 = inputFile
 		self.proceedToETRACK = proceedToETRACK
+		self.outputGraphs    = outputGraphs
 		self.eTrackInputName = eTrackInputName
 
 		if skipToETRACK is False:
 			success = self.runProcessing()
 			self.jobSuccess = success
 		else:
-			success = self.skipToETRACK(inputName=eTrackInputName)
+			success = self.skipToETRACK(inputName = eTrackInputName)
 			self.jobSuccess = success
 
-	def skipToETRACK(self,inputName='input.txt'):
+	def skipToETRACK(self,inputName = 'input.txt'):
+
 		# do not generate maps for job, but proceed directly to metric 
 		# calculations, if correct input file exists in working directory
+
 			success = self.readMainInputFile()
 			if success == False:
 				return False
-			self.checkOutputDirExists(makeProcessDir=False)
-			self.findFilesInDir(mapProcessDir=False)
+
+			self.checkOutputDirExists(makeProcessDir = False)
+			self.findFilesInDir(mapProcessDir = False)
+
 			if self.eTrackInputName not in self.filesInDir:
 				print 'Unable to find input file '+\
 					   '"{}" in "{}"'.format(self.eTrackInputName,self.dir)
@@ -114,7 +120,8 @@ class processFiles():
 				continue # ignore blank lines
 			if line.strip()[0] == '#':
 				continue # ignore commented lines
-			setattr(self,line.split()[0],line.split()[1])
+			inputPart = ''.join(line.split()[1:])
+			setattr(self,line.split()[0],inputPart)
 		fileIn.close()
 
 		success = self.checkAllRequiredInputsFound()
@@ -599,7 +606,8 @@ class processFiles():
 							 damSetName    = seriesName,
 							 laterDatasets = self.name2,
 							 initialPDB    = self.name1,
-							 doses         = doses)
+							 doses         = doses,
+							 outputGraphs  = self.outputGraphs)
 
 			shutil.move(r.inputFileName,
 						'{}/{}'.format(self.dir,r.inputFileName))

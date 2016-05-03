@@ -37,6 +37,13 @@ parser.add_argument('-j',
 					const   = True,
                     help    = 'Provide information to help user complete input file')
 
+parser.add_argument('-g',
+					dest    = 'noGraphs',
+					action  = 'store_const',
+					default = True,
+					const   = False,
+                    help    = 'Include if no graphs should be output (for case where seaborn plotting library not accessible, for example)')
+
 args = parser.parse_args()
 
 if args.template != 0:
@@ -50,7 +57,8 @@ if args.inputFileHelp is True:
 
 if args.process is True:
 	p = process(inputFile       = args.inputFile,
-				proceedToETRACK = args.calculate)
+				proceedToETRACK = args.calculate,
+				outputGraphs    = args.noGraphs)
 else:
 	if args.calculate is True:
 		p = process(inputFile    = args.inputFile,

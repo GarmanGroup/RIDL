@@ -21,7 +21,7 @@ def save_objectlist(PDBlist,pdbName):
             
     return filename
 
-def retrieve_objectlist(fileName):
+def retrieve_objectlist(fileName,loadBar=False):
     # this function retrieves a list of objects from a file, given name
     # of form filename = str(len(PDBlist))+'_'+str(pdbName)+'_data.pkl'
     print 'Retrieving dataset from .pkl file...'
@@ -40,7 +40,8 @@ def retrieve_objectlist(fileName):
             PDBretrieved.append(atom)
 
             # unessential loading bar add-in
-            progress(i+1, num_atoms, suffix='')
+            if loadBar is True:
+                progress(i+1, num_atoms, suffix='')
        
     # return the list of atom objects  
     PDBretrieved.sort(key=lambda x: x.atomnum)

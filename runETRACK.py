@@ -4,8 +4,10 @@ from eTrack_RUN import eTrack
 import os
 
 class run():
+
 	# run the main ETRACK scripts to calculate per-atom density 
 	# metrics for a series of increasing doses
+
 	def __init__(self,
 				 runAll       = True,
 				 inputFileLoc = ''):
@@ -19,6 +21,7 @@ class run():
 				  mapProcess  = True,
 				  postProcess = True,
 				  retrieve    = False):
+
 		# run the ETRACK processing for the currently defined input file
 
 		print 'Running main ETRACK script...'
@@ -33,7 +36,9 @@ class run():
 		self.et = eT
 
 	def defineDoseList(self,doses,names,version):
+
 		# do not include first dataset dose if difference maps chosen
+
 		if version == 'DIFF':
 			if len(doses.split(',')[1:])>1:
 				dosesOut = ','.join(doses.split(',')[1:])
@@ -45,7 +50,9 @@ class run():
 		else: return doses,names
 
 	def writeBlankInputFile(self):
-		# Need to create input file for a generic damage series to be completed by the user
+
+		# Need to create input file for a generic damage 
+		# series to be completed by the user
 
 		args = ['inDir <input file location>',
 				'outDir <output file location>',
@@ -63,7 +70,9 @@ class run():
 					   laterDatasets = '',
 					   initialPDB    = '',
 					   doses         = '',
-					   PKLMULTIFILE  = ''):
+					   PKLMULTIFILE  = '',
+					   outputGraphs  = True):
+
 		# write a generic input file for a damage series here
 
 		inputString = 'inDir {}\n'.format(inDir)+\
@@ -72,13 +81,19 @@ class run():
 					  'laterDatasets {}\n'.format(laterDatasets)+\
 					  'initialPDB {}\n'.format(initialPDB)+\
 					  'doses {}\n'.format(doses)
+
 		if PKLMULTIFILE != '':
 			inputString += 'PKLMULTIFILE {}'.format(PKLMULTIFILE)
+
+		if outputGraphs is True:
+			inputString += 'plot'
+
 		inputFile  = open(self.inputFileName,'w')
 		inputFile.write(inputString)
 		inputFile.close()	
 
 	def checkInputFileExists(self):
+
 		if os.path.isfile(self.inputFileName) and os.access(self.inputFileName,os.R_OK):
 			print "Input file exists and is readable"
 			return True

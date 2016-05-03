@@ -13,12 +13,21 @@ import numpy as np
 import operator
 import os
 
+try:
+	import seaborn as sns
+	seabornFound = True
+except ImportError:
+	print 'Plotting library seaborn not found..'
+	print 'Will not create any plots for current run.'
+	print 'Use "pip install seaborn" to install for future use'
+	seabornFound = False
+
 class combinedAtomList(object):
 	# class for list of atom objects defined by combinedAtom class
 
 	def __init__(self,
 				 datasetList       = [],
-				 numLigRegDsets = 1,
+				 numLigRegDsets    = 1,
 				 doseList          = [],
 				 initialPDBList    = [],
 				 outputDir         = './',
@@ -33,12 +42,14 @@ class combinedAtomList(object):
 		self.partialDatasets	= partialDatasets   # Bool, whether atoms only in subset of datasets are included
 		self.seriesName			= seriesName
 		
-		# if number of datasets to perform lin reg not stated then set to total number of datasets in series
+		# if number of datasets to perform lin reg not stated then 
+		# set to total number of datasets in series
 		if self.numLigRegDatasets == 0:
 			self.numLigRegDatasets = len(self.datasetList[0].mindensity)
 
 
-	def getMultiDoseAtomList(self,printText=True):
+	def getMultiDoseAtomList(self,printText = True):
+
 		# this function inputs a list of lists of PDB atom objects 
 		# (see StructurePDB class) and formats as an object of the 
 		# class 'multiPDB'. It is a variant of the function above which 
@@ -159,8 +170,11 @@ class combinedAtomList(object):
 		self.atomList = PDBdoses
 
 	def findMetricName(self,metricName):
-		# a conversion between the naming convention used by singlePDB class for each individual
-		# dataset and that to be used by dictionary of density metrics for combinedAtom class
+
+		# a conversion between the naming convention used by singlePDB class 
+		# for each individual dataset and that to be used by dictionary of 
+		# density metrics for combinedAtom class
+
 		conversions = (['Bfactor','Bfactor'],
 					   ['Occupancy','occupancy'],
 					   ['meandensity','mean'],
@@ -184,6 +198,7 @@ class combinedAtomList(object):
 	def getAverageMetricVals(self,
 							 densMet  = 'loss',
 							 normType = 'Standard'):
+
 		# get structure-wide average of selected density metric
 
 		densList = [atom.densMetric[densMet][normType]['values'] for atom in self.atomList]
@@ -197,6 +212,7 @@ class combinedAtomList(object):
 				resnum      = '',
 				atomtype    = '',
 				printOutput = False):
+
 		# get atom(s) matching specified description if found
 
 		foundAtoms = []
@@ -215,8 +231,10 @@ class combinedAtomList(object):
 		return False
 
 	def getDensMetrics(self):
-		# get a list of all density metrics and normalisations that currently have been defined
-		# with a set of values
+
+		# get a list of all density metrics and normalisations that 
+		# currently have been defined with a set of values
+
 		currentMetrics = []
 		for metric in self.atomList[0].densMetric.keys():
 			for normType in self.atomList[0].densMetric[metric].keys():
@@ -224,7 +242,10 @@ class combinedAtomList(object):
 		return currentMetrics
 
 	def calcBfactorChange(self):
-		# calculate Bfactor change between initial and each later dataset
+
+		# calculate Bfactor change between initial 
+		# and each later dataset
+
 		findBchange(self.initialPDBList,self.atomList,'Bfactor')
 
 	def calcAdditionalMetrics(self,
@@ -232,6 +253,7 @@ class combinedAtomList(object):
 							  normType  = 'Standard',
 							  newMetric = 'Calpha normalised',
 							  printText = False):
+
 		# calculate the Calpha weights for each dataset (see CalphaWeight 
 		# class for details) for metric "metric" (loss, gain, mean etc.)
 		# 'newMetric' takes values in 'options' list
@@ -277,8 +299,11 @@ class combinedAtomList(object):
 			elif newMetric == 'average':
 				atom.calcAvMetric(normType,metric)
 
-	def retrieveCalphaWeight(self,metric='loss'):
-		# retrieve the metric average over all Calpha atoms for current model
+	def retrieveCalphaWeight(self,metric = 'loss'):
+
+		# retrieve the metric average over all Calpha atoms 
+		# for current model
+
 		CAweights = CalphaWeight(self.atomList)
 		CAweights.calculateWeights(metric)
 		return CAweights
@@ -287,6 +312,7 @@ class combinedAtomList(object):
 								 metric   = 'loss',
 								 normType = 'Standard',
 								 vector   = []):
+
 		# for a specified metric calculate new vector-weighted 
 		# values, where the metric over a series of doses
 		# is multiplied by a vector of per-dataset scalings
@@ -298,6 +324,7 @@ class combinedAtomList(object):
 								   metric   = 'loss',
 								   normType = 'Standard',
 								   vector   = []):
+
 		# for a specified metric calculate new vector-weighted 
 		# values, where the metric over a series of doses
 		# is subtracted from a vector of per-dataset scalings
@@ -305,9 +332,11 @@ class combinedAtomList(object):
 		for atom in self.atomList:
 			atom.calcVectorSubtractedMetric(metric,normType,vector)	
 
-	def calcStandardisedMetrics(self,metric='loss'):
+	def calcStandardisedMetrics(self,metric = 'loss'):
+
 		# standardise distribution of a given metric to have 
 		# (mean=0,std=1) for each dataset within a damage series
+
 		data  = [atm.densMetric[metric]['Standard']['values'] for atm in self.atomList]
 		meand = np.nanmean(data,0)
 		stdd  = np.nanstd(data,0)
@@ -320,6 +349,7 @@ class combinedAtomList(object):
 						 groupBy  = 'none',
 						 metric   = 'loss',
 						 normType = 'Standard'):
+
 		# write all metric values to a .csv file to location 'where'
 		# 'groupBy' takes values 'none','residue','atomtype'
 
@@ -382,6 +412,7 @@ class combinedAtomList(object):
 						resiType  = '',
 						atomType1 = '',
 						atomType2 = ''):
+
 		# find ratio between metric for two atom 
 		# types within a single residue type
 
@@ -414,17 +445,24 @@ class combinedAtomList(object):
 		return ratioDic,summary
 
 	def findMetricRatioKeyResidues(self,
-								   metric    = 'loss',
-								   normType  = 'Standard',
-								   rType     = 'ratio',
-								   errorBars = True,
-								   pairs     = [],
-								   title     = '',
-								   fileType  = '.png'):
+								   metric     = 'loss',
+								   normType   = 'Standard',
+								   rType      = 'ratio',
+								   errorBars  = True,
+								   pairs      = [],
+								   title      = '',
+								   fileType   = '.png',
+								   axesFont   = 18,
+								   legendFont = 18,
+								   titleFont  = 24):
+
 		# run the above findMetricRatio method for known susceptible 
 		# residues and write to file. 'rType' takes values ('ratio','distance')
 		# 'pairs' is list of residues and atoms of form 
 		# [['GLU','CD','CG'],['GLU','CD','OE1'],..] etc
+
+		if seabornFound is False:
+			return
 
 		fileout = open('{}{}_{}-D{}-{}.txt'.format(self.outputDir,title,normType,metric,rType),'w')
 
@@ -459,20 +497,33 @@ class combinedAtomList(object):
 				plt.plot(xData,yData,label=key)
 			else:
 				yError = np.std(foundPairs[key][rType],0)
-				plt.errorbar(xData,yData,yerr=yError,fmt='-o',capthick=2,label=key)
-		plt.xlabel('Dataset #', fontsize=18)
-		plt.ylabel('D{} {}'.format(metric,rType), fontsize=18)
+				plt.errorbar(xData,
+							 yData,
+							 yerr     = yError,
+							 fmt      = '-o',
+							 capthick = 2,
+							 label    = key)
+
+		plt.xlabel('Dataset #', fontsize = axesFont)
+		plt.ylabel('D{} {}'.format(metric,rType), fontsize = axesFont)
 		# place legend outside to right of plot
 		box = ax.get_position()
 		ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),fontsize=18)
-		fig.suptitle('{} D{} {}'.format(normType,metric,rType),fontsize=24)
-		fig.savefig('{}{}-D{}-{}-{}_{}{}'.format(self.outputDir,normType,metric,rType,title,fileType))
+		ax.legend(loc            = 'center left',
+				  bbox_to_anchor = (1, 0.5),
+				  fontsize       = legendFont)
+		fig.suptitle('{} D{} {}'.format(normType,metric,rType),fontsize = titleFont)
+
+		figName = '{}{}-D{}-{}-{}_{}'.format(self.outputDir,normType,metric,rType,title)
+		fileName = self.checkUniqueFileName(fileName = figName,
+								 			fileType = fileType)
+		fig.savefig(fileName)
 
 	def calcMetricDiffFromStructureMean(self,
 										metric   = 'loss',
 										normType = 'Standard',
 										diff     = 'difference'):
+
 		# for a specified metric calculate difference between metric 
 		# for atom and from mean of structure. 'diff' takes three 
 		# forms: (a) 'difference', (b) 'ratio', (c) 'num-stds'
@@ -492,6 +543,7 @@ class combinedAtomList(object):
 									normType  = 'Standard',
 									threshold = 0,
 									printStr  = False):
+
 		# determine the number of atoms with metric value above a 
 		# specified threshold 'threshold' determined as number of 
 		# std dev away from structure-wide average for metric 'printStr' 
@@ -511,16 +563,23 @@ class combinedAtomList(object):
 		return count
 
 	def findMetricRatioKeyResidues_scatterplot(self,
-											   metric   = 'loss',
-											   normType = 'Standard',
-											   rType    = 'ratio',
-											   pairs    = [['GLU','CD','CG'],['GLU','CD','OE1']],
-											   title    = '',
-											   fileType = '.png'):
+											   metric     = 'loss',
+											   normType   = 'Standard',
+											   rType      = 'ratio',
+											   pairs      = [['GLU','CD','CG'],['GLU','CD','OE1']],
+											   title      = '',
+											   fileType   = '.png',
+											   axesFont   = 18,
+											   legendFont = 18,
+											   titleFont  = 24):
+
 		# run the above findMetricRatio method for known susceptible 
 		# residues and write to file. 'rType' takes values ('ratio',
 		# 'distance'). 'pairs' is list of residues and atoms of form 
 		# [['GLU','CD','CG'],['GLU','CD','OE1'],..] etc.
+
+		if seabornFound is False:
+			return
 
 		foundPairs = {}
 		for pair in pairs:
@@ -548,7 +607,11 @@ class combinedAtomList(object):
 		cmap = cm.Set1
 		nsteps = len(foundPairs.keys())
 
-		colors = ['#737474','#409cd6','#58bb6b','#faa71a','#ff6a6a']
+		colors = ['#737474',
+				  '#409cd6',
+				  '#58bb6b',
+				  '#faa71a',
+				  '#ff6a6a']
 
 		DataSave = {}
 		for key in foundPairs.keys():	
@@ -562,21 +625,49 @@ class combinedAtomList(object):
 		# place legend outside to right of plot
 		box = ax.get_position()
 		ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),fontsize=18)
+		ax.legend(loc            ='center left',
+				  bbox_to_anchor = (1, 0.5),
+				  fontsize       = legendFont)
 
-		plt.xlabel(' ', fontsize=18)
-		plt.ylabel('D{} {}'.format(metric,rType), fontsize=18)
+		plt.xlabel(' ', fontsize = axesFont)
+		plt.ylabel('D{} {}'.format(metric,rType), fontsize = axesFont)
 		figtitle = '{} D{} {}'.format(normType,metric,rType)
-		fig.suptitle(figtitle,fontsize=24)
-		saveTitle = figtitle.replace(' ','_')
-		fname = lambda x: saveTitle.strip(fileType)+'_{}{}'.format(x,fileType)
-		i = 0
-		while os.path.isfile(fname(i)): i += 1 
-		fig.savefig(fname(i))
+		fig.suptitle(figtitle, fontsize = titleFont)
+
+		fileName = self.checkUniqueFileName(fileName = figtitle,
+								 			fileType = fileType)
+		fig.savefig(fileName)
+
 		return DataSave
 
-	def getAtomListWithoutPartialAtoms(self,dataset=0):
-		# return new list of atoms with partial atoms removed for that dataset
+	def checkUniqueFileName(self,
+							fileName = '',
+							fileType = '.png'):
+
+		# check that a given file name for a figure is unique before 
+		# it is saved and append index if not
+
+		strippedName = fileName.replace(' ','') # remove whitespace
+		if os.path.isfile(strippedName) is False:
+			if strippedName.endswith(fileType):
+				return strippedName
+			else:
+				if '.' not in strippedName:
+					return strippedName + fileType
+				else:
+					return strippedName.split('.')[0]+fileType # this may give wrong name..
+
+		fname = lambda x: strippedName.strip(fileType)+'_{}{}'.format(x,fileType)
+		i = 1
+		while os.path.isfile(fname(i)): 
+			i += 1 
+		return fname(i)
+
+	def getAtomListWithoutPartialAtoms(self,dataset = 0):
+
+		# return new list of atoms with partial atoms 
+		# removed for that dataset
+
 		newList = []
 		for atom in self.atomList:
 			if dataset in atom.getPresentDatasets():
@@ -588,6 +679,7 @@ class combinedAtomList(object):
 					 normType = 'Standard',
 					 dataset  = 0,
 					 n        = 25):
+
 		# for a given metric type, determine top 
 		# n damage sites. 'n' is integer or 'all'.
 
@@ -612,9 +704,11 @@ class combinedAtomList(object):
 							dataset  = 0,
 							n        = 'all',
 							pdbFile  = 'untitled.pdb'):
+
 		# for a given metric type, determine top n damage sites. 
 		# 'n' is integer (not 'all' here). method writes locations 
 		# of top damage sites to pdb file
+
 		pdbIn = open(pdbFile,'r')
 		pdbOutName = '{}top{}-{}D{}sites-dset{}.pdb'.format(self.outputDir,n,normType,metric,dataset)
 		pdbOut = open(pdbOutName,'w')
@@ -644,6 +738,7 @@ class combinedAtomList(object):
 						   normType = 'Standard',
 						   dataset  = 0,
 						   n        = 25):
+
 		# return the top n atoms within structure in terms of 
 		# metric 'metric'. 'n' takes values 'all' or an integer
 
@@ -670,6 +765,7 @@ class combinedAtomList(object):
 							 dataset  = 0,
 							 n        = 0,
 							 sortby   = ['basetype','atomtype']):
+
 		# find the top n atoms and sort them by grouping 'sortby'
 
 		topN = self.getTopNAtoms(metric   = metric,
@@ -704,6 +800,7 @@ class combinedAtomList(object):
 		# get number of atoms with attribute 'att' at specified 
 		# value 'val' set 'att' and 'val' as lists of strings, 
 		# i.e. att = ['chaintype','restype'], val = ['A','GLU']
+
 		i = 0
 		for atom in self.atomList:
 			if vals == [getattr(atom,att) for att in atts]: i += 1
@@ -715,19 +812,22 @@ class combinedAtomList(object):
 						   dataset  = 0,
 						   sortby   = 'mean',
 						   n        = 25):
+
 		# for a given metric type, determine per-atom-type 
 		# statistics on the distribution of damage
 
-		atmtypeDict 		= self.groupByAtmType(dataset=dataset) # group atoms by atom type
-		statsDic 			= self.getStats(metric   = metric,
-											normType = normType,
-											dataset  = dataset,
-											dic      = atmtypeDict)
-		statsString		 	= self.reportStats(stats    = statsDic,
-											   name     = 'Type',
-											   sortby   = sortby,
-											   n        = n,
-											   normType = normType)
+		atmtypeDict = self.groupByAtmType(dataset=dataset) # group atoms by atom type
+
+		statsDic 	= self.getStats(metric   = metric,
+									normType = normType,
+									dataset  = dataset,
+									dic      = atmtypeDict)
+
+		statsString	= self.reportStats(stats    = statsDic,
+									   name     = 'Type',
+									   sortby   = sortby,
+									   n        = n,
+									   normType = normType)
 		return statsString,statsDic
 
 	def getPerResidueStats(self,
@@ -736,19 +836,22 @@ class combinedAtomList(object):
 						   dataset  = 0,
 						   sortby   = 'mean',
 						   n        = 25):
+
 		# for a given metric type, determine per-residue 
 		# statistics on the distribution of damage
 
-		resDict 			= self.groupByResType(dataset=dataset) # group atoms by residue type
-		statsDic 			= self.getStats(metric   = metric,
-											normType = normType,
-											dataset  = dataset,
-											dic      = resDict)
-		statsString		 	= self.reportStats(stats    = statsDic,
-											   name     = 'Residue',
-											   sortby   = sortby,
-											   n        = n,
-											   normType = normType)
+		resDict     = self.groupByResType(dataset = dataset) # group atoms by residue type
+
+		statsDic 	= self.getStats(metric   = metric,
+									normType = normType,
+									dataset  = dataset,
+									dic      = resDict)
+
+		statsString	= self.reportStats(stats    = statsDic,
+									   name     = 'Residue',
+									   sortby   = sortby,
+									   n        = n,
+									   normType = normType)
 
 		return statsString,statsDic
 
@@ -758,19 +861,22 @@ class combinedAtomList(object):
 						   dataset  = 0,
 						   sortby   = 'mean',
 						   n        = 25):
+
 		# for a given metric type, determine per-chain 
 		# statistics on the distribution of damage
 
-		chainDict 			= self.groupByChainType(dataset=dataset) # group atoms by chain type
-		statsDic 			= self.getStats(metric   = metric,
-											normType = normType,
-											dataset  = dataset,
-											dic      = chainDict)
-		statsString		 	= self.reportStats(stats    = statsDic,
-											   name     = 'Chain',
-											   sortby   = sortby,
-											   n        = n,
-											   normType = normType)
+		chainDict 	= self.groupByChainType(dataset = dataset) # group atoms by chain type
+
+		statsDic 	= self.getStats(metric   = metric,
+									normType = normType,
+									dataset  = dataset,
+									dic      = chainDict)
+
+		statsString	= self.reportStats(stats    = statsDic,
+									   name     = 'Chain',
+									   sortby   = sortby,
+									   n        = n,
+									   normType = normType)
 
 		return statsString,statsDic
 
@@ -779,6 +885,7 @@ class combinedAtomList(object):
 				 normType = 'Standard',
 				 dataset  = 0,
 				 dic      = {}):
+
 		# output distribution stats for each element 
 		# in dictionary dic as a new dictionary
 
@@ -794,6 +901,7 @@ class combinedAtomList(object):
 					    metricList = [],
 					    metric     = 'loss',
 					    normType   = 'Standard'):
+
 		# calculate measures of the distribution 
 		# of values in a list metricList
 
@@ -860,7 +968,8 @@ class combinedAtomList(object):
 			stringOut =	'\n'.join(sortedList1)	
 		return headerString+stringOut
 
-	def calcDiscreteDistMode(self,metricList=[]):
+	def calcDiscreteDistMode(self,metricList = []):
+
 		# calculate mode of discrete histogram with 100 bins
 
 		h = np.histogram(metricList,bins=100)
@@ -868,10 +977,11 @@ class combinedAtomList(object):
 		mode_val = np.mean(h[1][mode_ind:mode_ind+2])
 		return mode_val
 
-	def calcNetRatio(self,metricList=[]):
+	def calcNetRatio(self,metricList = []):
+
 		# calculate net ratio of distn values either side of distn mode
 
-		switchVal = self.calcDiscreteDistMode(metricList=metricList)
+		switchVal = self.calcDiscreteDistMode(metricList = metricList)
 		group = {'above':[],'below':[]}
 		for val in metricList:
 			if val >= switchVal: 
@@ -887,10 +997,11 @@ class combinedAtomList(object):
 						metricList = [],
 						metric    = 'loss',
 						normType  = 'Standard'):
+
 		# by assuming a symmetric distn around the mode, flag 
 		# specific atoms that fall outside this range
 
-		distMode = self.calcDiscreteDistMode(metricList=metricList)
+		distMode = self.calcDiscreteDistMode(metricList = metricList)
 		if normType == 'Standard':
 			distMax  = np.max(metricList)
 			sudoMin  = distMode - np.linalg.norm(distMax-distMode)
@@ -905,7 +1016,8 @@ class combinedAtomList(object):
 				if val > sudoMax: count+=1
 		return count
 
-	def calculateSkew(self,metricList=[]):
+	def calculateSkew(self,metricList = []):
+
 		# calculate skewness for a distribution of 
 		# metric values for an input list of atoms
 
@@ -915,6 +1027,7 @@ class combinedAtomList(object):
 	def testForNormality(self,
 						 metricList   = [],
 						 suppressText = True):
+
 		# test whether the metric values for a list of 
 		# atoms differs from a normal distribution
 
@@ -932,7 +1045,8 @@ class combinedAtomList(object):
 			return 'n/a'
 		return pvalue
 
-	def groupByAtmType(self,dataset=0):
+	def groupByAtmType(self,dataset = 0):
+
 		# group atoms in a dictionary by atom type
 
 		atmtypeDict = {}
@@ -945,8 +1059,10 @@ class combinedAtomList(object):
 				atmtypeDict[atmtype].append(atom)
 		return atmtypeDict
 
-	def groupByResType(self,dataset=0):
+	def groupByResType(self,dataset = 0):
+
 		# group atoms in a dictionary by residue type
+
 		resDict = {}
 		for atom in self.atomList:
 			if dataset not in atom.getPresentDatasets(): continue
@@ -956,8 +1072,10 @@ class combinedAtomList(object):
 				resDict[atom.basetype].append(atom)
 		return resDict
 
-	def groupByChainType(self,dataset=0):
+	def groupByChainType(self,dataset = 0):
+
 		# group atoms in a dictionary by chain type
+
 		chainDict = {}
 		for atom in self.atomList:
 			if dataset not in atom.getPresentDatasets(): continue
@@ -967,9 +1085,11 @@ class combinedAtomList(object):
 				chainDict[atom.chaintype].append(atom)
 		return chainDict
 
-	def checkCalphaAtomsExist(self,printText=True):
+	def checkCalphaAtomsExist(self,printText = True):
+
 		# check that Calpha backbone protein atoms 
 		# actually exist within structure
+
 		aminoAcids = ['ALA','ARG','ASN','ASP','CYS',
 					  'GLN','GLU','GLY','HIS','ILE',
 					  'LEU','LYS','MET','PHE','PRO',
@@ -994,6 +1114,7 @@ class combinedAtomList(object):
 							  normType     = 'Standard',
 							  threshold    = 5,
 							  suppressText = True):
+
 		# detect any atoms within a speicific type (e.g. LYS-NZ) 
 		# that do not behaviour like rest of that type
 
@@ -1018,6 +1139,9 @@ class combinedAtomList(object):
 		return suspAtoms
 
 	def getNumDatasets(self):
+
+		# get the number of datasets within the damage series
+
 		return self.atomList[0].getNumDatasets()
 
 	def graphMetricDistn(self,
@@ -1039,6 +1163,9 @@ class combinedAtomList(object):
 		# 'valType' takes values 'average' (compute average),
 		# 'all' (plot all datasets), or 'n' for int (not str)
 		#  n (plot dataset n).
+
+		if seabornFound is False:
+			return
 
 		# attempt to find atoms of type 'resiType' and 
 		# flag if not all found
@@ -1133,21 +1260,29 @@ class combinedAtomList(object):
 					plotData[res] = datax	
 
 		plt.legend()
-		plt.xlabel('{} D{} per atom'.format(normType,metric),fontsize=axesFont)
-		plt.ylabel('Normed-frequency',fontsize=axesFont)
-		plt.title('{} D{} per atom, residues: {}'.format(normType,metric,resiType),fontsize=titleFont)
+		plt.xlabel('{} D{} per atom'.format(normType,metric), fontsize = axesFont)
+		plt.ylabel('Normed-frequency', fontsize = axesFont)
+		plt.title('{} D{} per atom, residues: {}'.format(normType,metric,resiType),fontsize = titleFont)
 
 		if not save: 
 			plt.show()
 		else:
-			saveName = '{}{}_{}D{}-{}.{}'.format(outputDir,''.join(resiType),
-												 normType.replace(" ",""),
+			saveName = '{}DistnPlot_Residues-{}_Metric-D{}_Normalisation-{}.{}'.format(outputDir,
+												 ''.join(resiType),
 												 metric,
+												 normType.replace(" ",""),
 												 plotType,
 												 fileType)
 			if valType != 'all':
-				saveName = saveName.replace('.'+fileType,'-{}.'.format(valType,fileType))
-			fig.savefig(saveName)
+				if valType == 'average':
+					saveName = saveName.replace('.'+fileType,'_{}.'.format(valType,fileType))
+				else:
+					saveName = saveName.replace('.'+fileType,'_Dataset-{}.'.format(valType,fileType))
+
+			fileName = self.checkUniqueFileName(fileName = saveName,
+									 			fileType = fileType)
+			fig.savefig(fileName)
+
 		return plotData
 
 	def plotHist(self,
@@ -1159,6 +1294,9 @@ class combinedAtomList(object):
 
 		# plot histogram or kde plot for datax and give current label
 		# 'nBins' is number of bins (only used if plotType is 'hist' or 'both')
+
+		if seabornFound is False:
+			return
 
 		if plotType == 'hist':
 			plt.hist(datax,
@@ -1189,6 +1327,9 @@ class combinedAtomList(object):
 		# produce a graph of selected metric against dataset number 
 		# for a specified atom. 'errorBars' takes values in ('NONE',
 		# 'RESNUM','ATOMTYPE')
+
+		if seabornFound is False:
+			return
 
 		errorOptions = ('NONE',
 					    'RESNUM',
@@ -1257,8 +1398,8 @@ class combinedAtomList(object):
 							 capthick = 2,
 							 label    = key)
 
-		plt.xlabel('Dataset', fontsize=axesFont)
-		plt.ylabel('{} D{}'.format(normType,densMet),fontsize=axesFont)
+		plt.xlabel('Dataset', fontsize = axesFont)
+		plt.ylabel('{} D{}'.format(normType,densMet), fontsize = axesFont)
 		plt.legend()
 
 		args = [normType,
@@ -1267,21 +1408,33 @@ class combinedAtomList(object):
 				resiNum,
 				atomType]
 
-		f.suptitle('{} D{}: {} {} {}'.format(*args),fontsize=titleFont)
+		f.suptitle('{} D{}: {} {} {}'.format(*args), fontsize = titleFont)
 		if saveFig is False:
 			plt.show()
 		else:
 			name = '{}D{}-{}-{}-{}'.format(*args)
 			if errorBars != 'NONE':
 				name += 'witherrorbars'
-			f.savefig('{}{}{}'.format(outputDir,name,fileType))
+
+			fileName = self.checkUniqueFileName(fileName = outputDir+name,
+								 				fileType = fileType)
+			fig.savefig(fileName)
 
 	def plotSusceptibleAtoms(self,
 							 densMet   = 'loss',
 							 errorbars = True,
 							 saveFig   = False,
 							 susAtms   = [],
-							 fileType  = 'png'):
+							 fileType  = '.png',
+							 axesFont  = 18,
+							 titleFont = 24):
+
+		# create a line plot of metric values for susceptible atoms within
+		# structure. Susceptible atoms are defined as below
+
+		if seabornFound is False:
+			return
+
 		if susAtms == []: 
 			susAtms = [['GLU','CD'],
 					   ['ASP','CG'],
@@ -1315,34 +1468,46 @@ class combinedAtomList(object):
 			else:
 				yData = np.mean([atom.densMetric[densMet][normType]['values'] for atom in sDic[key]],0)
 				yErr  = np.std([atom.densMetric[densMet][normType]['values'] for atom in sDic[key]],0)
-				plt.errorbar(x,yData,yerr=yErr,fmt='-o',capthick=2,label=key,color=cmap(i/float(nsteps)))
+				plt.errorbar(x,
+							 yData,
+							 yerr     = yErr,
+							 fmt      = '-o',
+							 capthick = 2,
+							 label    = key,
+							 color    = cmap(i/float(nsteps)))
 
 		av,std = self.getAverageMetricVals(densMet,normType) # get structure-wide average and std dev
-		plt.errorbar(x,av,yerr=std,fmt=':o',capthick=2,color='k') 
+		plt.errorbar(x,
+					 av,
+					 yerr     = std,
+					 fmt      = ':o',
+					 capthick = 2,
+					 color    = 'k') 
 
-		plt.xlabel('Dataset', fontsize=18)
-		plt.ylabel('{} D{}'.format(normType,densMet), fontsize=18)
+		plt.xlabel('Dataset', fontsize = axesFont)
+		plt.ylabel('{} D{}'.format(normType,densMet), fontsize = axesFont)
 		plt.legend()
-		f.suptitle('{} D{}: susceptible residues'.format(normType,densMet),fontsize=24)
+		f.suptitle('{} D{}: susceptible residues'.format(normType,densMet),fontsize = titleFont)
 		if saveFig is False:
 			plt.show()
 		else:
 			i = 0
-			fname = lambda x: '{}{}_D{}_susceptResis_{}.{}'.format(self.outputDir,
-																   normType,
-																   densMet,
-																   x,
-																   fileType)
-			while os.path.isfile(fname(i)):
-				i += 1 
-			f.savefig(fname(i))
+			figName = '{}{}_D{}_susceptResis'.format(self.outputDir,
+													 normType,
+													 densMet)
+
+			fileName = self.checkUniqueFileName(fileName = figName,
+								 				fileType = fileType)
+			fig.savefig(fileName)
 
 	def checkMetricPresent(self,
 						   atom     = '',
 						   metric   = 'loss',
 						   normType = 'Standard'):
+
 		# method to check whether a method is valid 
 		# for selected atom object
+
 		if atom == '':
 			atom = self.atomList[0]
 		try:
@@ -1361,6 +1526,7 @@ class combinedAtomList(object):
 					 normType = 'Standard',
 					 shift    = True,
 					 offset   = True):
+
 		# call the external halfDoseCalc class to calculate a rough half 
 		# dose decay value for a specified atom. 'shift' (Bool) determines 
 		# whether half dose is dose for density to reach half of initial 
@@ -1395,7 +1561,9 @@ class combinedAtomList(object):
 								offset   = True,
 								n        = 1,
 								fileType = '.png'):
-		# call the above calcHalfDose method for instances of of restype and atomtype
+
+		# call the above calcHalfDose method for instances 
+		# of restype and atomtype
 
 		atoms = self.getAtom(restype  = restype,
 							 atomtype = atomtype)
@@ -1451,6 +1619,7 @@ class combinedAtomList(object):
 						     normType  = 'Standard',
 						     n         = 1,
 						     fileType  = '.png'):
+
 		# after above method calcHalfDoseForAtomtype is run for 
 		# two atom types atomtype1 and atomtype2 can compare 
 		# half-doses between two atoms within same side-chain
@@ -1499,10 +1668,15 @@ class combinedAtomList(object):
 					  atomtype = '',
 					  save     = False,
 					  nBins    = 300,
-					  colour   = 'b'):
+					  colour   = 'b',
+					  fileType = '.svg'):
+
 		# temporary method to do a specific plot.
 		# histogram/kde plot of density metric per atom.
 		# plotType is 'histogram' or 'kde'
+
+		if seabornFound is False:
+			return
 
 		if plotType not in ('hist','kde','both'): 
 			return 'Unknown plotting type selected.. cannot plot..'
@@ -1525,7 +1699,10 @@ class combinedAtomList(object):
 		if not save: 
 			plt.show()
 		else:
-			fig.savefig('{}halfDoseDistn-{}{}.svg'.format(self.outputDir,restype,atomtype))
+			figName = '{}halfDoseDistn-{}{}'.format(self.outputDir,restype,atomtype)
+			fileName = self.checkUniqueFileName(fileName = figName,
+								 				fileType = fileType)
+			fig.savefig(fileName)
 
 	def compareSensAtoms(self,
 						 densMet  = 'loss',
@@ -1561,6 +1738,7 @@ class combinedAtomList(object):
 								   normType  = 'Standard',
 								   fileType  = '.svg',
 								   dataset   = 0):
+
 		# for two atom types atomtype1 and atomtype2, compare 
 		# density metric between two atoms within same side-chain
 
@@ -1613,6 +1791,7 @@ class combinedAtomList(object):
 					   normType2 = 'Standard',
 					   dSet      = 0,
 					   fileType  = '.png'):
+
 		# for all atoms of type restype and atomtype plot scatter plot 
 		# comparing metric1 and 2 for chosen dataset dSet set restype = '' 
 		# and atomtype = '' to include all atoms
@@ -1644,41 +1823,62 @@ class combinedAtomList(object):
 						fileType     = '.png',
 						lineBestFit  = False,
 						yequalsxLine = False,
-						colors       = '#50527A'):
+						colors       = '#50527A',
+						axesFont     = 18,
+						titleFont    = 24):
 
 		# plot the relationship between xData and yData.
 		# if 'lineBestFit' is True then linear line of best fit 
 		# is calculated and plotted. if 'yequalsxLine' is 
 		# True then line y=x plotted
-		sns.set_context("talk")
 
-		# sns.set(font_scale=1)
+		if seabornFound is False:
+			return
+
+		sns.set_context("talk")
 		fig = plt.figure(figsize=(10, 10))
 		ax = plt.subplot(111)
 
-		plt.scatter(xData,yData,marker='o',s=100,c=colors,edgecolors='#FFFFFF',cmap='copper')
+		plt.scatter(xData,
+					yData,
+					marker     = 'o',
+					s          = 100,
+					c          = colors,
+					edgecolors = '#FFFFFF',
+					cmap       = 'copper')
 
 		if lineBestFit is True: # plot line of best if specified
 			slope, intercept, r_value, p_value, std_err = stats.linregress(xData,yData)
 			x = np.linspace(min(xData), max(xData),10)
 			y = slope*np.array(x) + np.array(intercept)
-			plt.plot(x, y, '-',color='#d11141',linewidth=3)
+			plt.plot(x,
+					 y,
+					 '-',
+					 color     = '#d11141',
+					 linewidth = 3)
 			figtitle += ', R^2:{}'.format(round(r_value**2,2))
 
 		if yequalsxLine is True:
 			x = np.linspace(min(xData), max(xData),10)
 			y = x
-			plt.plot(x, y, ':',color='#9890af',linewidth=3)
+			plt.plot(x, 
+					 y,
+					 ':',
+					 color     = '#9890af',
+					 linewidth = 3)
 
-		plt.xlabel(xLabel, fontsize=24)
-		plt.ylabel(ylabel, fontsize=24)
-		fig.suptitle(figtitle,fontsize=24)
+		plt.xlabel(xLabel, fontsize = axesFont)
+		plt.ylabel(ylabel, fontsize = axesFont)
+		fig.suptitle(figtitle, fontsize = titleFont)
 		sns.despine()
-		fname = lambda x: self.outputDir+saveTitle.strip(fileType)+'_{}{}'.format(x,fileType)
-		i = 0
-		while os.path.isfile(fname(i)): i += 1 
-		fig.savefig(fname(i))
-		if lineBestFit is True: return r_value**2
+
+		figName = self.outputDir+saveTitle
+		fileName = self.checkUniqueFileName(fileName = figName,
+								 			fileType = fileType)
+		fig.savefig(fileName)
+
+		if lineBestFit is True: 
+			return r_value**2
 
 	def damageVdistPlot(self,
 						type1    = '',
@@ -1687,6 +1887,7 @@ class combinedAtomList(object):
 						densMet  = 'loss',
 						normType = 'Standard',
 						fileType = '.png'):
+
 		# for atom of type1 determine a correlation between the closest 
 		# distance to atom type2 and the damage to atom type1.
 		# type1,type2 of form [['GLU','CD'],['ASP','CG'],..] depending 
@@ -1723,6 +1924,7 @@ class combinedAtomList(object):
 	def getDistanceBetweenAtoms(self,
 							    atom1='',
 							    atom2=''):
+
 		# get distance between two atoms
 
 		xyz1 = np.array([atom1.X_coord,atom1.Y_coord,atom1.Z_coord])
@@ -1730,7 +1932,10 @@ class combinedAtomList(object):
 		return np.linalg.norm(xyz1-xyz2)
 
 	def getAtomsWithinDist(self,atom,distLim):
-		# find all atoms within 'distLim' angstroms of selected atomtype
+
+		# find all atoms within 'distLim' angstroms 
+		# of selected atomtype
+
 		nearAtmDic = {'atoms':[],'distances':[]}
 		for otheratom in self.atomList:
 			if (otheratom.getAtomID()).split('-')[:-1] == (atom.getAtomID()).split('-')[:-1]: 
@@ -1753,6 +1958,7 @@ class combinedAtomList(object):
 								  pdbName       = '',
 								  symmetrygroup = '',
 								  fileType      = '.png'):
+
 		# determine whether there is a correlation between density metric 
 		# and types of surrounding atoms if 'crystConts' is True then crystal
 		# contacts will also be located here
@@ -1868,9 +2074,14 @@ class combinedAtomList(object):
 									dataset  = 0,
 									set      = 1,
 									box      = 'Box',
-									fileType = '.png'):
+									fileType = '.png',
+									axesFont = 18):
+
 		# produce a barplot to compare the damage metric of 
 		# susceptible atom types at a given dataset
+
+		if seabornFound is False:
+			return
 
 		if set == 1:
 			keyAtomTypes = [['GLU','CD'],['ASP','CG'],['TYR','OH'],['CYS','SG'],['MET','SD'],
@@ -1900,16 +2111,18 @@ class combinedAtomList(object):
 			print 'Unknown graph type - specify "Box" or "Bar"'
 			return
 
-		plt.xlabel('Atom type', fontsize=18)
-		plt.ylabel('{} D{}'.format(normType,metric), fontsize=18)
+		plt.xlabel('Atom type', fontsize = axesFont)
+		plt.ylabel('{} D{}'.format(normType,metric), fontsize = axesFont)
 
-		fig.savefig('{}SusceptAtms{}plot-{}-D{}_{}-set{}{}'.format(self.outputDir,
-																	 box,
-																	 normType,
-																	 metric,
-																	 dataset,
-																	 set,
-																	 fileType))
+		figName = '{}SusceptAtms{}plot-{}-D{}_{}-set{}'.format(self.outputDir,
+															   box,
+															   normType,
+															   metric,
+															   dataset,
+															   set)
+		fileName = self.checkUniqueFileName(fileName = figName,
+								 			fileType = fileType)
+		fig.savefig(fileName)
 
 	def compareSolvAccessWithAndWithoutGluAspGroups(self,
 													pdbName       = '',
@@ -1920,6 +2133,7 @@ class combinedAtomList(object):
 													densMet       = 'loss',
 													normType      = 'Standard',
 													fileType      = '.png'):
+
 		# determine the change in solvent accessibility for 'resType'-'atomType' 
 		# atoms before & after Glu/Asp decarboxylation events 'specialAtoms' 
 		# is an optional parameter, which specifies a subset of atoms objects 
@@ -2015,6 +2229,7 @@ class combinedAtomList(object):
 							normType = 'Standard',
 							weighted = False,
 							fileType = '.png'):
+
 		# for a given residue, calculate the average density metric 
 		# (for a specified metric) within a given region of space 
 		# around that particular residue. if 'weighted' is True 
@@ -2069,6 +2284,7 @@ class combinedAtomList(object):
 							   densMet  = 'loss',
 							   normType = 'Standard',
 							   dataset  = 0):
+
 		# for specified residue type, calculate the average 
 		# metric for each atom type within the residue
 
@@ -2108,12 +2324,15 @@ class combinedAtomList(object):
 
 	################################################################################
 	# SOME METHODS WHICH DEPEND ON TOM'S BDAMAGE PYTHON SCRIPT
+
 	def parseBDamageFile(self,
 						 BDamageFile = '',
 						 atomtype    = '',
 						 restype     = ''):
+
 		# parse the output file to a separately generated BDamage calculation job
 		# (see https://github.com/td93/B_Damage/tree/master/Python for code to do this)
+
 		fileIn = open(BDamageFile,'r')
 		BdamDic = {}
 		for l in fileIn.readlines():
@@ -2126,8 +2345,11 @@ class combinedAtomList(object):
 						BdamDic[atomID] = Bdam
 		return BdamDic
 
-	def getBdamageStats(self,BDamageFile=''):
-		# retrieve BDamage values for each atom type and calculate mean & std dev
+	def getBdamageStats(self,BDamageFile = ''):
+
+		# retrieve BDamage values for each atom type and
+		#  calculate mean & std dev
+
 		csvFile = open('{}bDamageStats.csv'.format(self.outputDir),'w')
 		csvFile.write('id,mean,std dev\n')
 		atmTypeDic = self.groupByAtmType()
@@ -2148,7 +2370,9 @@ class combinedAtomList(object):
 								densMet     = 'loss',
 								normType    = 'Standard',
 								fileType    = '.png'):
-		# compare calculated density metric values to calculated Bdamage values
+
+		# compare calculated density metric values to 
+		# calculated Bdamage values
 
 		# get required atoms in structure
 		atms = self.getAtom(restype  = resType,

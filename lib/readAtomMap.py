@@ -42,21 +42,25 @@ class maps2DensMetrics():
     # are to be assigned to each atom
 
     def __init__(self,
-                 filesIn    = '',
-                 filesOut   = '',
-                 pdbName    = '',
-                 atomTagMap = '',
-                 densityMap = '',
-                 FCmap      = '',
-                 plot       = False):
+                 filesIn     = '',
+                 filesOut    = '',
+                 pdbName     = '',
+                 atomTagMap  = '',
+                 densityMap  = '',
+                 FCmap       = '',
+                 plotScatter = False,
+                 plotHist    = False,
+                 plotBar     = False):
 
-        self.filesIn  = filesIn
-        self.filesOut = filesOut # output directory
-        self.pdbName  = pdbName
-        self.map1     = atomTagMap # atom-tagged map
-        self.map2     = densityMap # density map (typically Fo-Fo)
-        self.map3     = FCmap # FC map
-        self.plot     = plot
+        self.filesIn     = filesIn
+        self.filesOut    = filesOut # output directory
+        self.pdbName     = pdbName
+        self.map1        = atomTagMap # atom-tagged map
+        self.map2        = densityMap # density map (typically Fo-Fo)
+        self.map3        = FCmap # FC map
+        self.plotScatter = plotScatter
+        self.plotHist    = plotHist
+        self.plotBar     = plotBar
 
     def maps2atmdensity(self):
         self.printTitle()
@@ -77,16 +81,15 @@ class maps2DensMetrics():
         self.readDensityMap()
         self.reportDensMapInfo()
         self.checkMapCompatibility()
-
         self.readFCMap()
-
         self.createVoxelList()
-        self.plotDensHistPlots()
-        self.calculateDensMetrics()
-
-        self.plotDensScatterPlots(plot = self.plot)
-        self.plotPerResidueBoxPlots(plot = self.plot)
-
+        if self.plotHist is True:
+            self.plotDensHistPlots()
+        self.calculateDensMetrics(plotDistn = False)
+        if self.plotScatter is True:
+            self.plotDensScatterPlots()
+        if self.plotBar is True:
+            self.plotPerResidueBoxPlots()
         self.pickleAtomList()
 
     def readPDBfile(self):
@@ -94,7 +97,7 @@ class maps2DensMetrics():
         
         self.startTimer()
         self.lgwrite(ln='Reading in pdb file...')
-        self.lgwrite(ln='pdb name: {}{}.pdb'.format(self.filesIn,self.pdbName))
+        self.lgwrite(ln='pdb name: {}.pdb'.format(self.pdbName))
 
         # read in the pdb file to fill list of atom objects
         self.PDBarray = PDBtoList('{}{}.pdb'.format(self.filesIn,self.pdbName))
@@ -113,7 +116,7 @@ class maps2DensMetrics():
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Reading in atom-tagged map file...')
-        self.lgwrite(ln='Atom map name: {}{}'.format(self.filesIn,self.map1))
+        self.lgwrite(ln='Atom map name: {}'.format(self.map1))
 
         self.atmmap,self.atomIndices = readMap(dirIn   = self.filesIn,
                                                dirOut  = self.filesOut,
@@ -140,7 +143,7 @@ class maps2DensMetrics():
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Reading in Density map file...')
-        self.lgwrite(ln='Density map name: {}{}'.format(self.filesIn, self.map2))
+        self.lgwrite(ln='Density map name: {}'.format(self.map2))
         
         self.densmap = readMap(dirIn    = self.filesIn,
                                dirOut   = self.filesOut,
@@ -156,7 +159,7 @@ class maps2DensMetrics():
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Reading in FC density map file...')
-        self.lgwrite(ln='Density map name: {}{}'.format(self.filesIn, self.map3))
+        self.lgwrite(ln='Density map name: {}'.format(self.map3))
 
         self.FCmap = readMap(dirIn    = self.filesIn,
                              dirOut   = self.filesOut,
@@ -269,7 +272,10 @@ class maps2DensMetrics():
                        plotType    = 'both')
         self.stopTimer()
 
-    def calculateDensMetrics(self, FCweighted=True, plotDistn=True):
+    def calculateDensMetrics(self,
+                             FCweighted = True,
+                             plotDistn  = True):
+
         # determine density summary metrics per atom
 
         self.fillerLine()
@@ -356,12 +362,9 @@ class maps2DensMetrics():
 
 
     def plotDensScatterPlots(self,
-                             plot      = False,
                              printText = False):
-        # plot scatter plots for density metrics 
 
-        if plot is False:
-            return
+        # plot scatter plots for density metrics 
 
         self.startTimer()
         self.fillerLine(style='line')
@@ -386,15 +389,11 @@ class maps2DensMetrics():
             self.lgwrite(ln=logStr)
 
     def plotPerResidueBoxPlots(self,
-                               plot      = False,
                                lineStyle = 'line'):
 
         # perform residue analysis for datatset, outputting boxplots
         # for each atom specific to each residue, and also a combined 
         # boxplot across all residues in structures.
-
-        if plot is False:
-            return
 
         self.fillerLine(style=lineStyle)
         for densMet in ('mean','min','max'):

@@ -10,12 +10,14 @@ class process():
 				 inputFile       = 'fullInput.txt',
 				 run             = True,
 				 proceedToETRACK = False,
-				 skipToETRACK    = False):
+				 skipToETRACK    = False,
+				 outputGraphs    = True):
 
 		self.inputFile = inputFile
 		self.titleCaption('ETRACK file preparation')
 		self.proceedToETRACK = proceedToETRACK
 		self.skipToETRACK    = skipToETRACK
+		self.outputGraphs    = outputGraphs
 
 		if run is True:
 			self.run()
@@ -40,7 +42,8 @@ class process():
 			return success
 		pro = processFiles(inputFile       = self.inputFile,
 						   proceedToETRACK = self.proceedToETRACK,
-						   skipToETRACK    = self.skipToETRACK)
+						   skipToETRACK    = self.skipToETRACK,
+						   outputGraphs    = self.outputGraphs)
 		return pro.jobSuccess
 
 	def printInputFile(self):
