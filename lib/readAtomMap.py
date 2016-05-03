@@ -9,8 +9,6 @@ from PDBFileManipulation import PDBtoList
 from map2VoxelClassList import readMap
 from progbar import progress
 from logFile import logFile
-import seaborn as sns               # 
-import matplotlib.pyplot as plt     #
 import numpy as np
 import sys  
 import time
@@ -336,6 +334,17 @@ class maps2DensMetrics():
                         reliability       = [],
                         plotType          = '.png'):
 
+        # plot a kde & histrogram distribution plot for the FCalc values for an 
+        # atom, both raw, and after being divided by the maximum FCalc value
+        # attained for that atom (normalised-FCalc). The plot will also include 
+        # vertical lines indicating the FCalc and normalised-FCalc values attained
+        # for the voxel where the most negative density map (not FC map) voxel 
+        # within the local region around the atom (this is the voxel corresponding
+        # to the DLoss metric value).
+
+        import seaborn as sns           # imports here as otherwise not needed    
+        import matplotlib.pyplot as plt 
+
         for tag in atomsToPlot:
             if tag in atomOfInterest.getAtomID():
                 sns.set_style("dark")
@@ -359,7 +368,6 @@ class maps2DensMetrics():
                 plt.ylabel('Normed-frequency',fontsize=18)
                 plt.title('Distribution of Fcalc density values: {}'.format(atomOfInterest.getAtomID()))
                 fig.savefig('testDistnPlot-{}{}'.format(atomOfInterest.getAtomID(),plotType))
-
 
     def plotDensScatterPlots(self,
                              printText = False):
