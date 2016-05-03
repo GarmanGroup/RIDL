@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 
-import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+
+try:
+    import seaborn as sns
+    seabornFound = True
+except ImportError:
+    seabornFound = False
 
 def plotVxlsPerAtm(pdbName     = 'untitled',
                    where       = '',
@@ -18,11 +23,16 @@ def plotVxlsPerAtm(pdbName     = 'untitled',
     if printText is True:
         print 'Plotting {} plot of number of voxels per atom...'.format(plotType)
         
-    sns.set_palette("deep", desat=.6)
-    sns.set_context(rc={"figure.figsize": (10, 6)})
+    if seabornFound is True:    
+        sns.set_palette("deep", desat=.6)
+        sns.set_context(rc={"figure.figsize": (10, 6)})
+
     fig = plt.figure()
 
     datax = [len(vxlsPerAtom[key]) for key in vxlsPerAtom.keys()]
+
+    if seabornFound is False:
+        plotType = 'histogram'
 
     if plotType == 'histogram':
         plt.hist(datax, 300, histtype="stepfilled", alpha=.7)

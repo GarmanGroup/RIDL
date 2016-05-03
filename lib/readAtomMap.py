@@ -332,7 +332,8 @@ class maps2DensMetrics():
                         atomFCvalsMaxNorm = [],
                         FCatMin           = [],
                         reliability       = [],
-                        plotType          = '.png'):
+                        plotType          = '.png',
+                        axesFont          = 18):
 
         # plot a kde & histrogram distribution plot for the FCalc values for an 
         # atom, both raw, and after being divided by the maximum FCalc value
@@ -340,7 +341,7 @@ class maps2DensMetrics():
         # vertical lines indicating the FCalc and normalised-FCalc values attained
         # for the voxel where the most negative density map (not FC map) voxel 
         # within the local region around the atom (this is the voxel corresponding
-        # to the DLoss metric value).
+        # to the DLoss metric value)./
 
         import seaborn as sns           # imports here as otherwise not needed    
         import matplotlib.pyplot as plt 
@@ -351,8 +352,8 @@ class maps2DensMetrics():
                 sns.set_context(rc={"figure.figsize": (10, 6)})
                 fig = plt.figure()
                 ax = plt.subplot(111)
-                sns.distplot(np.array(atomFCvals),label='Fcalc')
-                sns.distplot(np.array(atomFCvalsMaxNorm),label='Fcalc/max(Fcalc)')
+                sns.distplot(np.array(atomFCvals), label = 'Fcalc')
+                sns.distplot(np.array(atomFCvalsMaxNorm), label = 'Fcalc/max(Fcalc)')
                 ylims = ax.get_ylim()
 
                 plt.plot((FCatMin,FCatMin),
@@ -360,12 +361,12 @@ class maps2DensMetrics():
                          label='Fcalc, at position of min diff density')
                 plt.plot((reliability,reliability),
                          (ylims[0],ylims[1]),
-                         label='Fcalc/max(Fcalc), at position of min diff density')
-                leg = plt.legend(frameon=1)
+                         label = 'Fcalc/max(Fcalc), at position of min diff density')
+                leg = plt.legend(frameon = 1)
                 frame = leg.get_frame()
                 frame.set_color('white')
-                plt.xlabel('Per-voxel density map values',fontsize=18)
-                plt.ylabel('Normed-frequency',fontsize=18)
+                plt.xlabel('Per-voxel density map values', fontsize = axesFont)
+                plt.ylabel('Normed-frequency', fontsize = axesFont)
                 plt.title('Distribution of Fcalc density values: {}'.format(atomOfInterest.getAtomID()))
                 fig.savefig('testDistnPlot-{}{}'.format(atomOfInterest.getAtomID(),plotType))
 

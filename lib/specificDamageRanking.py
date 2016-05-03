@@ -1,16 +1,28 @@
-# class to determine the ordering of specific damage within a MX structure
-# using multiple difference maps collected over increasing doses from the 
-# same crystal
-
 import numpy as np
 from scipy import stats
-import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
 
+print 'Checking whether seaborn plotting library present...'
+try:
+    import seaborn as sns
+    seabornFound = True
+except ImportError:
+    print 'Plotting library seaborn not found..'
+    print 'Will not create any plots for current run.'
+    print 'Use "pip install seaborn" to install for future use'
+    seabornFound = False
+
 class specificDamageRank(object):
-	def __init__(self, residueName = "", atomType = "", densMetric = "", boundOrUnbound = "",
-				 damageRank = 0 ,densSlope = 0, slopeError = 0):
+
+	def __init__(self,
+				 residueName    = "",
+				 atomType       = "",
+				 densMetric     = "",
+				 boundOrUnbound = "",
+				 damageRank     = 0 ,
+				 densSlope      = 0,
+				 slopeError     = 0):
 
 		self.residueName 		= residueName
 		self.atomType			= atomType
@@ -21,14 +33,26 @@ class specificDamageRank(object):
 		self.slopeError			= slopeError
 
 class specificDamageRanking(object):
-	def __init__(self,atomList = [],densMetric = "Loss",numLines = 0,normalised = False):
+
+	# class to determine the ordering of specific damage within a MX structure
+	# using multiple difference maps collected over increasing doses from the 
+	# same crystal
+
+	def __init__(self,
+				 atomList   = [],
+				 densMetric = "Loss",
+				 numLines   = 0,
+				 normalised = False):
+
 		self.atomList 	= atomList
 		self.densMetric = densMetric # the density metric for which the ranking will be based
-		self.numLines 	= numLines # specify the number of lines of output to display to command line
+		self.numLines 	= numLines   # specify the number of lines of output to display to command line
 		self.normalised = normalised # (Boolian) specifies whether the 'Standard' or 'Calpha normalised' metric values are used
 	
 	def normaliseType(self):
-		# determine the normalisation type 
+
+		# determine the normalisation type
+
 		if self.normalised == False:
 			# no normalisation (default)
 			return 'Standard'
@@ -36,6 +60,7 @@ class specificDamageRanking(object):
 			return 'Calpha normalised'
 
 	def calculateRanks(self):
+
 		# for each atom within the atomList list of atom objects, group into 
 		# residue/nucleotide types and determine the average slope for straight
 		# lines of best fit for each residue/nucleotide type (for plots of 
@@ -86,8 +111,9 @@ class specificDamageRanking(object):
 		self.specificDamageRanks = specificDamageRanks
 
 	def getDamageRanks(self):
-		# following on from the above function, output the calculated ordering of
-		# damage within the current structure
+
+		# following on from the above function, output the calculated 
+		# ordering of damage within the current structure
 
 		# don't run if damage ranks not yet determined above
 		try:
@@ -110,9 +136,15 @@ class specificDamageRanking(object):
 																str(res.slopeError)[:6])
 
 	def printComparisonPlots(self):
-		# run the compareDamageRanks method multiple times to compare multiple pairs of density metrics
 
-		metrics = ['loss','gain','mean','net']
+		# run the compareDamageRanks method multiple times to 
+		# compare multiple pairs of density metrics
+
+		metrics = ['loss',
+				   'gain',
+				   'mean',
+				   'net']
+
 		norms = [0,1]
 		linFitSummary = ""
 		for i in range(0,len(metrics)):
@@ -124,7 +156,9 @@ class specificDamageRanking(object):
 		print linFitSummary
 
 	def compareDamageRanks(self,met1,norm1,met2,norm2):
-		# for two different density change metrics, compare the rankings for correlations
+
+		# for two different density change metrics, compare 
+		# the rankings for correlations
 
 		self.densMetric = met1
 		self.normalised = bool(norm1)
@@ -147,8 +181,10 @@ class specificDamageRanking(object):
 					ranks2.append(otheratom.damageRank)
 
 		# Create a figure instance
-		sns.set_palette("deep", desat=.6)
-		sns.set_context(rc={"figure.figsize": (12, 12)})
+		if seabornFound is True:
+			sns.set_palette("deep", desat=.6)
+			sns.set_context(rc={"figure.figsize": (12, 12)})
+
 		f = plt.figure()
 		ax = plt.subplot(1,1,1)
 		plt.scatter(ranks1, ranks2, s=100, c='#d64d4d')

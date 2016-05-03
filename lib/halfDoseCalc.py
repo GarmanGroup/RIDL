@@ -1,7 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-import seaborn as sns
+
+print 'Checking whether seaborn plotting library present...'
+try:
+	import seaborn as sns
+	seabornFound = True
+except ImportError:
+	print 'Plotting library seaborn not found..'
+	print 'Will not create any plots for current run.'
+	print 'Use "pip install seaborn" to install for future use'
+	seabornFound = False
 
 class halfDoseApprox():
 	def __init__(self,
@@ -29,6 +38,9 @@ class halfDoseApprox():
 		self.plotDir 			= plotDir # where saved plots will go
 		self.shiftedHalfDose 	= shiftedHalfDose # see method for half-dose calculation below
 		self.zeroOffset 		= zeroOffset # takes values 'y' (fit end density) or float n for fixed end density n 
+
+		if seabornFound is False:
+			self.plot = False
 
 		# define fitting functions here
 		self.decayFuncOffset = lambda x, *p: p[0]*np.exp(-p[1]*x) + p[2]
