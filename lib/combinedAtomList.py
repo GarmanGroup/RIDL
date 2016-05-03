@@ -7,7 +7,6 @@ from CalphaWeight import CalphaWeight
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy import stats
-import seaborn as sns
 import scipy.stats
 import numpy as np
 import operator
