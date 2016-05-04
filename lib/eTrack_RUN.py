@@ -368,8 +368,9 @@ class eTrack(object):
 					normType = 'Standard'):
 
 		if fileType == 'html':
-			self.summaryHTML(metric   = metric,
-							 normType = normType)
+			self.summaryHTML(metric        = metric,
+							 normType      = normType,
+							 includeGraphs = self.plot)
 		else:
 			self.summaryTxt(metric   = metric,
 				            normType = normType)
@@ -474,8 +475,10 @@ class eTrack(object):
 					self.combinedAtoms.susceptAtmComparisonBarplot(metric,normType,i,set,b)
 
 	def summaryHTML(self, 
-					metric   = 'loss', 
-					normType = 'Standard'):
+					metric        = 'loss', 
+					normType      = 'Standard',
+					includeGraphs = True):
+
 		# produce a selection of per-dataset summary statistics
 
 		numDsets = self.getNumDatasets()
@@ -519,12 +522,12 @@ class eTrack(object):
 				bodyString += 'Calpha weight for current dataset: {}<br>\n'.format(round(CAweights.weight[metric][i],3))
 			summaryFile.write(bodyString)
 
-			if seabornFound is True and self.plot is True:
+			if includeGraphs is True:
 				failedPlots = self.makeDistnPlots(densMet  = metric,
 											      normType = normType,
 											      plotSet  = 4)
 				plotString = '<h3>Distribution of Dloss for all refined atoms within structure</h3>\n'+\
-							 '<img src="plots/all_{}D{}-both-{}.png"><br>'.format(normType.replace(' ',''),metric,i)
+							 '<img src="plots/DistnPlot_Residues-all_Metric-D{}_Normalisation-{}_Dataset-{}.png"><br>'.format(metric,normType.replace(' ',''),i)
 				summaryFile.write(plotString)
 
 			bodyString = '# atoms with {} Dloss metric above N std dev of structure-wide mean:<br><br>\n'.format(normType)
@@ -595,13 +598,13 @@ class eTrack(object):
 			infoString += self.convertPlainTxtTable2html(statsOut[0],width='60%')
 			summaryFile.write(infoString)
 
-			if seabornFound is True and self.plot is True:
+			if includeGraphs is True:
 				failedPlots = self.makeDistnPlots(densMet  = metric,
 											      normType = normType,
 											      plotSet  = 1)
 				if i not in failedPlots['GLUASPCYSMETTYR']:
 					plotString = '<h3>Distribution of Dloss for known susceptible residue types</h3>\n'+\
-								 '<img src="plots/GLUASPCYSMETTYR_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+							 '<img src="plots/DistnPlot_Residues-GLUASPCYSMETTYR_Metric-D{}_Normalisation-{}_Dataset-{}.png"><br>'.format(metric,normType.replace(' ',''),i)
 					summaryFile.write(plotString)
 
 				failedPlots = self.makeDistnPlots(densMet  = metric,
@@ -609,7 +612,7 @@ class eTrack(object):
 												  plotSet  = 3)
 				if i not in failedPlots['DADCDGDT']:
 					plotString = '<h3>Distribution of Dloss for known susceptible nucleotide types</h3>\n'+\
-								 '<img src="plots/DADCDGDT_{}D{}-both-{}.png">'.format(normType.replace(' ',''),metric,i)
+								 '<img src="plots/DistnPlot_Residues-DADCDGDT_Metric-D{}_Normalisation-{}_Dataset-{}.png"><br>'.format(metric,normType.replace(' ',''),i)
 					summaryFile.write(plotString)
 
 			infoString = '<h3>Suspicious Atoms</h3>\n'

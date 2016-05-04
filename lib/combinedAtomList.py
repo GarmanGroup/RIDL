@@ -647,14 +647,12 @@ class combinedAtomList(object):
 		# it is saved and append index if not
 
 		strippedName = fileName.replace(' ','') # remove whitespace
+
 		if os.path.isfile(strippedName) is False:
 			if strippedName.endswith(fileType):
 				return strippedName
 			else:
-				if '.' not in strippedName:
-					return strippedName + fileType
-				else:
-					return strippedName.split('.')[0]+fileType # this may give wrong name..
+				return strippedName+fileType # this may give wrong name..
 
 		fname = lambda x: strippedName.strip(fileType)+'_{}{}'.format(x,fileType)
 		i = 1
@@ -1266,17 +1264,16 @@ class combinedAtomList(object):
 		if not save: 
 			plt.show()
 		else:
-			saveName = '{}DistnPlot_Residues-{}_Metric-D{}_Normalisation-{}.{}'.format(outputDir,
+			saveName = '{}DistnPlot_Residues-{}_Metric-D{}_Normalisation-{}'.format(outputDir,
 												 ''.join(resiType),
 												 metric,
 												 normType.replace(" ",""),
-												 plotType,
-												 fileType)
+												 plotType)
 			if valType != 'all':
 				if valType == 'average':
-					saveName = saveName.replace('.'+fileType,'_{}.'.format(valType,fileType))
+					saveName += '_{}'.format(valType)
 				else:
-					saveName = saveName.replace('.'+fileType,'_Dataset-{}.'.format(valType,fileType))
+					saveName += '_Dataset-{}'.format(valType)
 
 			fileName = self.checkUniqueFileName(fileName = saveName,
 									 			fileType = fileType)
