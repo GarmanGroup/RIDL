@@ -2193,6 +2193,7 @@ class combinedAtomList(object):
 		# remove pdb files since no longer needed after job run
 		for f in [fullPDB,partialPDB]:
 			os.system('rm {}'.format(f))
+			os.remove(f)
 
 		plotData = {'x':[],'y':[],'colours':[]}
 		for atm in TyrOHatms:

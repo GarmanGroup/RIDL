@@ -534,10 +534,10 @@ class processFiles():
 			if removePdbs is True and file.endswith('.pdb'):
 				remove = True
 			if remove is True:
-				os.system('rm {}{}'.format(subdir,file))
+				os.remove(subdir+file)
 
 		shutil.make_archive(subdir, 'zip', subdir)
-		os.system('rm -rf {}'.format(subdir))
+		shutil.rmtree(subdir)
 
 		# rename final map & pdb files
 		for i in range(len(outputFiles)): 

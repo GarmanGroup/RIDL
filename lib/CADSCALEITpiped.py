@@ -188,7 +188,7 @@ class pipeline():
 			fileEnd = 'SCALEITcombined.mtz'
 		for f in os.listdir(self.outputDir): 
 			if (f.endswith('.mtz') and not f.endswith(fileEnd)) or f.endswith('.tmp'):
-				os.system('rm {}{}'.format(self.outputDir,f))
+				os.remove(self.outputDir+f)
 
 	def cleanUpDir(self):
 

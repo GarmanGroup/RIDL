@@ -1,4 +1,5 @@
 import os.path
+import shutil
 
 class getSeries():
 	# retrieve pdb codes from pdb or pdb_redo
@@ -33,7 +34,7 @@ class getSeries():
 
 			# copy input files to directory
 			for fileName in (self.mtzFile,self.pdbFile):
-				os.system('mv {} {}/{}'.format(fileName,self.outputDir,fileName))
+				shutil.move('{} {}/{}'.format(fileName,self.outputDir,fileName))
 
 		elif pdb_redo == 'false':
 			# downloading pdb and mmcif files from PDB
@@ -45,8 +46,7 @@ class getSeries():
 
 			# copy input files to directory
 			for fileName in (self.mmcifFile,self.pdbFile):
-				os.system('mv {} {}/{}'.format(fileName,self.outputDir,fileName))
-
+				shutil.move('{} {}/{}'.format(fileName,self.outputDir,fileName))
 			print 'running cif2mtz...'
 			self.runCif2MTZ()
 
@@ -114,8 +114,7 @@ class getSeries():
 
 		# want to change label names in mtz file to make unique to pdb code
 		self.changePDBredoMtzLabelInfo(pdb)
-		# os.system('rm -f {}.mtz'.format(pdb))
-		os.system('mv -f {}_editedLabels.mtz {}.mtz'.format(pdb,pdb))
+		shutil.move('{}_editedLabels.mtz {}.mtz'.format(pdb,pdb))
 		return True
 
 	def changePDBredoMtzLabelInfo(self,pdbcode):
