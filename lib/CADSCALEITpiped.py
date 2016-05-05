@@ -7,6 +7,7 @@ from SIGMAAjob import SIGMAAjob
 import shutil
 
 class pipeline():
+
 	# class to run CAD job to combine F and SIGF columns from
 	# two merged mtz files, then to scale the 2nd datasets F 
 	# structure factors against the 1st datasets
@@ -35,15 +36,22 @@ class pipeline():
 		self.SCALEITinputMtz 	= self.CADoutputMtz
 		self.SCALEIToutputMtz 	= '{}{}_SCALEITcombined.mtz'.format(self.outputDir,self.jobName)
 
-	def makeOutputDir(self,dirName='./'):
+	def makeOutputDir(self,
+					  dirName = './'):
+
 		# if the above sub directory does not exist, make it
+
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
 			print 'New sub directory "{}" created to contain output files'.format(dirName)
 
 	def runPipeline(self):
 
-		# read input file
+		# run the current subroutine to parse an input 
+		# file and run CAD and SCALEIT to combine the 
+		# mtz information for a low and high dose 
+		# dataset within a damage series
+
 		success = self.readInputs()	
 		if success is False:
 			return 1
@@ -118,7 +126,9 @@ class pipeline():
 		return 0
 
 	def readInputs(self):
-		# open input file and parse inputs for CAD job.
+
+		# open input file and parse inputs for the current subroutine
+
 		# if Input.txt not found, flag error
 		if self.checkFileExists(self.txtInputFile) is False:
 			self.runLog.writeToLog(str='Required input file {} not found..'.format(self.txtInputFile))
@@ -164,7 +174,9 @@ class pipeline():
 		return True
 
 	def moveInputMtzs(self):
+
 		# move input mtz files to working directory and rename as suitable
+
 		if self.densMapType == '2FOFC':
 			self.SIGMAAinputMtz  = '{}{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
 			shutil.copy2(self.mtzIn2,self.SIGMAAinputMtz)
@@ -177,7 +189,12 @@ class pipeline():
 			shutil.copy2(self.mtzIn3,self.CADinputMtz3)
 
 	def deleteNonFinalMtzs(self):
+
+		# delete all non-final mtz files within run
+		#(such as those output by CAD before SCALEIT etc).
+		# Not current used at runtime!
 		return
+		
 		# give option to delete all mtz files within output directory except the final 
 		# resulting mtz for job - used to save room if necessary
 		if self.deleteMtzs.lower() != 'true': 
@@ -193,6 +210,7 @@ class pipeline():
 	def cleanUpDir(self):
 
 		# give option to clean up working directory 
+
 		# delete non-final mtz files
 		print 'Cleaning up working directory...\n'
 		self.deleteNonFinalMtzs()
@@ -206,11 +224,15 @@ class pipeline():
 				shutil.move('{}{}'.format(*args),'{}txtFiles/{}'.format(*args))
 				
 	def findFilesInDir(self):
+
 		# find files initially in working directory
+
 		self.filesInDir = os.listdir(self.outputDir)
 
 	def checkFileExists(self,filename):
-		# method to check if file exists
+
+		# check if file exists
+
 		if os.path.isfile(filename) is False:
 			ErrorString = 'File {} not found'.format(filename)
 			print ErrorString

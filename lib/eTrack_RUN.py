@@ -11,8 +11,16 @@ import os
 
 class eTrack(object):
 
-	# A class for retrieving the eTrack input text file information and running 
-	# the eTrack pipeline functions separately or together in full pipeline
+	# a class for retrieving the eTrack input text file information and running 
+	# the eTrack pipeline to calculate per-atom damage metrics for a specified 
+	# damage series. This code requires previously generated atom-tagged and
+	# density maps (typically Fobs(n) - Fobs(1) Fourier difference maps) to 
+	# have been generated for the current damage series (as specified within 
+	# the input .txt file parsed below). If run as part of the full ETRACK 
+	# pipeline (by running 'python ETRACK.py -i [inputfile.txt] -pc') then 
+	# this will automatically run directly after the suitable map files have
+	# been generated, with no need to explicitly write a new input file for
+	# this class to work.
 
 	def __init__(self,
 				 inDir      = './',

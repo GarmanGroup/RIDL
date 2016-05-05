@@ -7,6 +7,7 @@ from savevariables import save_objectlist
 from itertools import izip as zip, count
 from PDBFileManipulation import PDBtoList
 from map2VoxelClassList import readMap
+import matplotlib.pyplot as plt 
 from progbar import progress
 from logFile import logFile
 import numpy as np
@@ -14,13 +15,14 @@ import sys
 import time
 import math
 
-import matplotlib.pyplot as plt 
+# check if seaborn library is present and include if so
 from checkSeabornPresent import checkSeabornPresent as checkSns
 seabornFound = checkSns()
 if seabornFound is True:
     import seaborn as sns
 
 class voxel_density():
+
     # A class for .map file voxel
 
     def __init__(self,
@@ -31,6 +33,7 @@ class voxel_density():
         self.atmnum  = atmnum
 
 class vxls_of_atm():
+    
     # A class for collecting voxels per atom
 
     def __init__(self,
@@ -41,8 +44,9 @@ class vxls_of_atm():
         self.atmnum = atmnum
 
 class maps2DensMetrics():
-    # assign values within a density map (mapFileName2) to specific atoms, using
-    # the an atom-tagged map (mapFileName1) to determine which regions of space
+
+    # assign values within a density map to specific atoms, using
+    # the an atom-tagged map to determine which regions of space
     # are to be assigned to each atom
 
     def __init__(self,
@@ -56,17 +60,24 @@ class maps2DensMetrics():
                  plotHist    = False,
                  plotBar     = False):
 
-        self.filesIn     = filesIn
-        self.filesOut    = filesOut # output directory
-        self.pdbName     = pdbName
-        self.map1        = atomTagMap # atom-tagged map
-        self.map2        = densityMap # density map (typically Fo-Fo)
-        self.map3        = FCmap # FC map
-        self.plotScatter = plotScatter
-        self.plotHist    = plotHist
-        self.plotBar     = plotBar
+        self.filesIn     = filesIn     # the input directory
+        self.filesOut    = filesOut    # the output directory
+        self.pdbName     = pdbName     # the pdb file name
+        self.map1        = atomTagMap  # atom-tagged map
+        self.map2        = densityMap  # density map (typically Fo-Fo)
+        self.map3        = FCmap       # FC map
+        self.plotScatter = plotScatter # (bool) plot scatter plots or not
+        self.plotHist    = plotHist    # (bool) plot histogram plots or not
+        self.plotBar     = plotBar     # (bool) plot bar plots or not
 
     def maps2atmdensity(self):
+
+        # the map run method for this class. Will read in an atom-tagged map
+        # and density map and assign density values for each individual atom
+        # (as specified within the atom-tagged map). From these summary metrics
+        # describing the density map behaviour in the vicinity of each refined 
+        # atom can be calculated 
+
         self.printTitle()
 
         # write a log file for this eTrack run
@@ -97,6 +108,7 @@ class maps2DensMetrics():
         self.pickleAtomList()
 
     def readPDBfile(self):
+
         # read in pdb file info here
         
         self.startTimer()
@@ -116,7 +128,9 @@ class maps2DensMetrics():
             atom.VDW_get()  
         
     def readAtomMap(self):
+
         # read in the atom map
+
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Reading in atom-tagged map file...')
@@ -143,7 +157,9 @@ class maps2DensMetrics():
         self.lgwrite(ln='Number of atoms not assigned to voxels: {}'.format(len(Atms_notpres)))
 
     def readDensityMap(self):
+
         # read in the density map
+
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Reading in Density map file...')
@@ -159,7 +175,9 @@ class maps2DensMetrics():
         self.stopTimer()
 
     def readFCMap(self):
-        # read in the FC density map
+
+        # read in the FC (calculated structure factor) density map
+
         self.startTimer()
         self.fillerLine()
         self.lgwrite(ln='Reading in FC density map file...')
@@ -176,7 +194,9 @@ class maps2DensMetrics():
         self.stopTimer()
 
     def reportDensMapInfo(self):
+
         # print density map summary information to command line
+
         totalNumVxls     = np.product(self.atmmap.nxyz.values())
         structureNumVxls = len(self.densmap.vxls_val)
         totalMean        = self.densmap.density['mean']
@@ -195,7 +215,10 @@ class maps2DensMetrics():
         self.lgwrite(ln = '\t# voxels included : {}'.format(solvNumVxls))
 
     def checkMapCompatibility(self):
-        # check that atom-tagged and density map can be combined successfully
+
+        # check that atom-tagged and density map 
+        # can be combined successfully
+
         self.fillerLine()
         # print 'Checking that maps have same dimensions and sampling properties...' 
         self.lgwrite(ln='Checking that maps have same dimensions and sampling properties...' )
@@ -242,7 +265,9 @@ class maps2DensMetrics():
         str = 'Total number of voxels assigned to atoms: {}'.format(len(self.atmmap.vxls_val))
         self.lgwrite(ln = str)
 
-    def createVoxelList(self,useFCmap=True):
+    def createVoxelList(self,
+                        useFCmap = True):
+
         # create dictionary of voxels with atom numbers as keys 
 
         self.startTimer()
@@ -265,6 +290,7 @@ class maps2DensMetrics():
         self.stopTimer()
  
     def plotDensHistPlots(self):
+
         # histogram & kde plots of number of voxels per atom
 
         self.startTimer()
@@ -422,13 +448,19 @@ class maps2DensMetrics():
 
     def pickleAtomList(self):
 
+        # save list of atom objects to a .pkl file
+
         self.pklFileName = save_objectlist(self.PDBarray,self.pdbName)
 
     def startTimer(self):
 
+        # start a timer
+
         self.timeStart = time.time()
 
     def stopTimer(self):
+
+        # stop a timer (must run startTimer before)
 
         elapsedTime = time.time() - self.timeStart
         self.lgwrite(ln='section time: {}s\n'.format(round(elapsedTime,3)))
@@ -436,9 +468,15 @@ class maps2DensMetrics():
 
     def success(self):
 
+        # report success to log file
+
         self.lgwrite(ln='---> success')
 
-    def fillerLine(self,style='stars'):
+    def fillerLine(self,
+                   style = 'stars'):
+
+        # print a filler line (several styles)
+        # to command line
 
         if style == 'stars':
             print '\n***'
@@ -448,6 +486,9 @@ class maps2DensMetrics():
             print '\n'
 
     def printTitle(self,title = 'eTrack run'):
+
+        # print a large title block of text
+        # to the command line
 
         print '\n'+'='*50
         print '-'*50
@@ -459,6 +500,7 @@ class maps2DensMetrics():
                 ln         = '',
                 strip      = True,
                 forcePrint = False):
+
         # write line to log file
 
         self.log.writeToLog(str        = ln, 

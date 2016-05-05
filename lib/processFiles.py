@@ -1,8 +1,9 @@
 from CADSCALEITpiped import pipeline as pipe1
 from SFALLFFTpiped import pipeline as pipe2
-import os
-import shutil
+from cleanUpFiles import cleanUpFinalFiles
 from logFile import logFile
+import shutil
+import os
 
 class processFiles():
 
@@ -11,7 +12,16 @@ class processFiles():
 				 proceedToETRACK = False,
 				 skipToETRACK	 = False,
 				 outputGraphs    = True,
-				 eTrackInputName = 'e_Track_inputfile.txt'):
+				 eTrackInputName = 'e_Track_inputfile.txt',
+				 cleanFinalFiles = False):
+
+		# class to read an input file and generate a set of density 
+		# and atom-tagged maps for a damage series. Can handle a single
+		# low & high dose dataset pair, or a low dose dataset and a series
+		# of high dose datasets. Can optionally proceed directly on to
+		# the metric calculation stage of the pipeline with 'proceedToETRACK'
+		# or skip directly to it (if the maps have already been created) 
+		# with 'skipToETRACK'.
 
 		self.inputFile 		 = inputFile
 		self.proceedToETRACK = proceedToETRACK
@@ -25,13 +35,18 @@ class processFiles():
 			success = self.skipToETRACK(inputName = eTrackInputName)
 			self.jobSuccess = success
 
+		if self.jobSuccess is True and cleanFinalFiles is True:
+				if skipToETRACK is True or proceedToETRACK is True:
+					cleanUpFinalFiles(outputDir = self.dir)
+
 	def skipToETRACK(self,inputName = 'input.txt'):
 
-		# do not generate maps for job, but proceed directly to metric 
-		# calculations, if correct input file exists in working directory
+		# do not generate maps for job, but proceed 
+		# directly to metric calculations, if correct 
+		# input file exists in working directory
 
 			success = self.readMainInputFile()
-			if success == False:
+			if success is False:
 				return False
 
 			self.checkOutputDirExists(makeProcessDir = False)
@@ -39,8 +54,8 @@ class processFiles():
 
 			if self.eTrackInputName not in self.filesInDir:
 				print 'Unable to find input file '+\
-					   '"{}" in "{}"'.format(self.eTrackInputName,self.dir)
-				print 'Ensure "python ETRACK -i <input.txt> '+\
+					  '"{}" in "{}"\n'.format(self.eTrackInputName,self.dir)+\
+					  'Ensure "python ETRACK -i <input.txt> '+\
 					  '-p" has been run prior to -c'
 				return False
 
@@ -52,7 +67,7 @@ class processFiles():
 	def runProcessing(self):
 
 		success = self.readMainInputFile()
-		if success == False:
+		if success is False:
 			return
 
 		self.checkOutputDirExists()
@@ -70,11 +85,11 @@ class processFiles():
 
 		if self.multiDatasets is False:
 			self.getCurrentInputParams()
-			success = self.runPipelines()
+			success = self.runMapGenerationPipelines()
 		else:
 			for i in range(self.numDsets):
-				self.getCurrentInputParams(jobNumber=i)
-				success = self.runPipelines()
+				self.getCurrentInputParams(jobNumber = i)
+				success = self.runMapGenerationPipelines()
 				if success is False:
 					return success
 
@@ -84,27 +99,31 @@ class processFiles():
 
 		return success
 
-	def runPipelines(self):
-		# run two processing pipelines sequentially
+	def runMapGenerationPipelines(self):
+
+		# run two map generation pipelines sequentially 
+		# for a single dataset
+
 		self.setJobName()
 		self.startLogFile()
 		self.writePipeline1Inputs()
 		success = self.runPipeline1(logFile = self.logFile)
-		if success == True:
+		if success is True:
 			self.writePipeline2Inputs()
 			success = self.runPipeline2(logFile = self.logFile)
-			if success == True:
+			if success is True:
 				if self.deleteIntermediateFiles.lower() == 'true':
-					success = self.cleanUpDir()
+					success = self.cleanUpIntermediateFiles()
 				else:
-					success = self.cleanUpDir(removeMtzs = False,
-											  removeMaps = False,
-											  removePdbs = False)
+					success = self.cleanUpIntermediateFiles(removeMtzs = False,
+											  				removeMaps = False,
+											  				removePdbs = False)
 		return success
 
 	def readMainInputFile(self):
-		# split the input file into separate input files for 
-		# each section of the pipeline
+
+		# split the input file into separate input 
+		# files for each section of the pipeline
 
 		# if Input.txt not found, flag error
 		if os.path.isfile(self.inputFile) is False:
@@ -128,7 +147,9 @@ class processFiles():
 		return success
 
 	def checkAllRequiredInputsFound(self):
+
 		# check that all required properties have been found
+
 		requiredProps = ['name1',
 						 'mtz1',
 						 'mtzlabels1',
@@ -159,8 +180,15 @@ class processFiles():
 		return True
 
 	def checkCorrectInputFormats(self):
+
 		# check that the required properties have correct formats
-		props = ['mtz1','pdb1','mtz2','pdb2','mtz3']
+
+		props = ['mtz1',
+				 'pdb1',
+				 'mtz2',
+				 'pdb2',
+				 'mtz3']
+
 		for p in props:
 			if self.multiDatasets is False:
 				success = self.checkFileExists(fileName=getattr(self,p))
@@ -275,7 +303,11 @@ class processFiles():
 		print 'All input file parameters appear to be of suitable format'
 		return True
 
-	def checkFileExists(self, fileName = ''):
+	def checkFileExists(self, 
+					    fileName = ''):
+
+		# check that file exists and return bool 
+
 		if os.path.isfile(fileName) and os.access(fileName,os.R_OK):
 			return True
 		else:
@@ -283,12 +315,17 @@ class processFiles():
 			return False
 
 	def checkForMultipleDatasets(self):
+
 		# multiple processing jobs can be run sequentially if input 
 		# file contains comma separated lists for particular files. 
 		# Determine whether this is the case and check that correctly 
 		# formatted.
 
-		props = ['name2','mtz2','mtzlabels2','pdb2']
+		props = ['name2',
+				 'mtz2',
+				 'mtzlabels2',
+				 'pdb2']
+
 		if self.dose2 != 'NOTCALCULATED':
 			props.append('dose2')
 
@@ -296,6 +333,7 @@ class processFiles():
 		for p in props:
 			val = getattr(self,p)
 			lengths.append(len(val.split(',')))
+
 		self.numDsets  = lengths[0]
 		if lengths == [1]*4:
 			print 'Only single dataset located and will be processed'
@@ -307,7 +345,11 @@ class processFiles():
 
 		else:
 			print 'Multiple datasets located in input file to be processed'
-			props = ['name1','mtz1','mtzlabels1','pdb1','RfreeFlag1']
+			props = ['name1',
+					 'mtz1',
+					 'mtzlabels1',
+					 'pdb1',
+					 'RfreeFlag1']
 			lengths = []
 			for p in props:
 				val = getattr(self,p)
@@ -324,8 +366,11 @@ class processFiles():
 				self.repeatedFile1InputsUsed = s
 				self.multiDatasets = True
 
-	def checkOutputDirExists(self,makeProcessDir=True):
+	def checkOutputDirExists(self,
+							 makeProcessDir = True):
+
 		# check whether output directory exists and make if not
+
 		if self.dir.endswith('/') is False:
 			print 'Working directory specified in input '+\
 				  'file must end in "/" - appending'
@@ -341,35 +386,56 @@ class processFiles():
 			if 'ETRACK-mapProcessing' not in os.listdir(self.dir):
 				os.makedirs(self.mapProcessDir)
 
-	def getCurrentInputParams(self, jobNumber = 0):
-		# select correct input parameters if multiple jobs within main input file.
-		# used when writing separate input files for each part of pipeline.
+	def getCurrentInputParams(self, 
+							  jobNumber = 0):
 
-		props1 = ['name2','mtz2','mtzlabels2','pdb2']
-		props2 = ['name1','mtz1','mtzlabels1','pdb1','RfreeFlag1']
+		# select correct input parameters if multiple jobs within 
+		# main input file. used when writing separate input files 
+		# for each part of pipeline.
+
+		props1 = ['name2',
+				  'mtz2',
+				  'mtzlabels2',
+				  'pdb2']
+
+		props2 = ['name1',
+				  'mtz1',
+				  'mtzlabels1',
+				  'pdb1',
+				  'RfreeFlag1']
 
 		if self.multiDatasets == False:
 			for prop in props1+props2:
 				setattr(self,prop+'_current',getattr(self,prop))
 			self.createDatasetName()
 			return
+
 		for prop in props1:
 			setattr(self,prop+'_current',getattr(self,prop).split(',')[jobNumber])
+
 		for prop in props2:
 			if self.repeatedFile1InputsUsed == True:
 				setattr(self,prop+'_current',getattr(self,prop))
 			else:
 				setattr(self,prop+'_current',getattr(self,prop).split(',')[jobNumber])
+
 		self.createDatasetName()
 
 	def createDatasetName(self):
-		# create dataset name here, used to distinguish input file naming 
-		# scheme (if name2 not the same as pdb2 then this is required)
+
+		# create dataset name here, used to distinguish 
+		# input file naming scheme (if name2 not the same 
+		# as pdb2 then this is required)
+
 		self.dsetName = str((self.pdb2_current).split('/')[-1]).strip('.pdb')
 
 	def writePipeline1Inputs(self):
 
-		self.pipe1FileName 	= self.mapProcessDir+self.inputFile.split('.')[0]+'_cadscaleit.txt'
+		# write the input file for the first subroutine
+		# (run of CAD and SCALEIT)
+
+		self.pipe1FileName 	= '{}{}_cadscaleit.txt'.format(self.mapProcessDir,
+														   self.inputFile.split('.')[0])
 
 		props = {'mtzIn1'          : 'mtz1',
 				 'Mtz1LabelName'   : 'mtzlabels1_current',
@@ -395,12 +461,18 @@ class processFiles():
 		fileOut1.close()
 
 	def setJobName(self):
+
 		# set a name for the current job
+
 		self.jobName = '{}-{}'.format(self.name2_current,self.name1_current)
 
 	def writePipeline2Inputs(self):
 
-		self.pipe2FileName 	= self.mapProcessDir+self.inputFile.split('.')[0]+'_sfallfft.txt'
+		# write input file for the second subroutine 
+		# (run of SFALL and FFT)
+
+		self.pipe2FileName 	= '{}{}_sfallfft.txt'.format(self.mapProcessDir,
+														 self.inputFile.split('.')[0])
 
 		if self.densMapType != '2FOFC':
 			self.mtzIn = '{}{}_SCALEITcombined.mtz'.format(self.mapProcessDir,self.jobName)
@@ -424,12 +496,19 @@ class processFiles():
 		fileOut2.close()
 
 	def startLogFile(self):
+
 		# create log file for full map processing pipeline
-		log = logFile(fileName = '{}{}_run.log'.format(self.mapProcessDir,self.jobName),
+
+		fName = '{}{}_run.log'.format(self.mapProcessDir,self.jobName)
+		log = logFile(fileName = fName,
 					  fileDir  = self.mapProcessDir)
 		self.logFile = log
 
-	def runPipeline1(self,logFile = ''):
+	def runPipeline1(self,
+				     logFile = ''):
+
+		# run the first subroutine (CAD and SCALEIT run)
+
 		self.p1 = pipe1(outputDir = self.mapProcessDir,
 						inputFile = self.pipe1FileName,
 						jobName   = self.jobName,
@@ -443,7 +522,10 @@ class processFiles():
 			print 'Pipeline failed to run to completion'
 			return False
 
-	def runPipeline2(self,logFile = ''):
+	def runPipeline2(self,
+					 logFile = ''):
+
+		# run the second subroutine (SFALL and FFT etc)
 
 		self.p2 = pipe2(outputDir = self.mapProcessDir,
 						inputFile = self.pipe2FileName,
@@ -458,24 +540,30 @@ class processFiles():
 			print 'Pipeline failed to run to completion'
 			return False
 
-	def findFilesInDir(self,mapProcessDir=True):
+	def findFilesInDir(self,
+					   mapProcessDir = True):
+
 		# find files initially in working directory
+
 		if mapProcessDir is True:
 			self.filesInDir = os.listdir(self.mapProcessDir)
 		else:
 			self.filesInDir = os.listdir(self.dir)
 
-	def cleanUpDir(self,
-				   removeMtzs   = True,
-				   removeMaps   = True,
-				   removePdbs   = True,
-				   includeFCmap = True):
-		# after successful completion of pipeline clean up working directory
+	def cleanUpIntermediateFiles(self,
+				   				 removeMtzs   = True,
+				   				 removeMaps   = True,
+				   				 removePdbs   = True,
+				   				 includeFCmap = True):
+
+		# after successful completion of the map processing 
+		# part of the pipeline for each SINGLE dataset
+		# clean up working directory
 
 		print '\nCleaning up working directory'
 
-		# distinguish between FFT and END map output formats depending 
-		# on program used (FFT/END shellscript)
+		# distinguish between FFT and END map output formats 
+		# depending on program used (FFT/END shellscript)
 		if self.densMapType == 'END':
 			densMapProg = 'END_switchedAxes'
 		else:
@@ -555,8 +643,9 @@ class processFiles():
 		return True
 
 	def moveInitialPDBfile(self):
-		# copy the initial dataset pdb file to the working directory
-		# (useful if further ETRACK jobs to be run)
+
+		# copy the initial dataset pdb file to the working 
+		# directory useful if further ETRACK jobs to be run)
 
 		if self.multiDatasets == False or self.repeatedFile1InputsUsed == True:
 			shutil.copy2(self.pdb1,
@@ -617,11 +706,15 @@ class processFiles():
 
 		return True
 
-	def makeOutputDir(self,dirName='./'):
+	def makeOutputDir(self,
+					  dirName = './'):
+
 		# if the above sub directory does not exist, make it
+
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
-			print 'New sub directory "{}" created to contain output files'.format(dirName)
+			print 'New sub directory "{}"'.format(dirName)+\
+				  'created to contain output files'
 
 
 

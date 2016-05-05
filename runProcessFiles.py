@@ -3,31 +3,44 @@ sys.path.insert(0,'./lib')
 from processFiles import processFiles
 
 class process():
-	# process pdb & mtz files to generate suitable density 
-	# map files for subsequent analysis
+
+	# a class to overview the generation of atom-tagged and
+	# density maps from pdb & mtz files for a specified damage
+	# series. This class contains some methods to write input 
+	# files, and can call the class processFiles, in which the 
+	# actual map-generation (and subsequent calculation of 
+	# per-atom damage metrics) can be performed
 
 	def __init__(self,
-				 inputFile       = 'fullInput.txt',
-				 run             = True,
-				 proceedToETRACK = False,
-				 skipToETRACK    = False,
-				 outputGraphs    = True):
+				 inputFile         = 'fullInput.txt',
+				 run               = True,
+				 proceedToETRACK   = False,
+				 skipToETRACK      = False,
+				 outputGraphs      = True,
+				 cleanUpFinalFiles = False):
 
-		self.inputFile = inputFile
 		self.titleCaption('ETRACK file preparation')
-		self.proceedToETRACK = proceedToETRACK
-		self.skipToETRACK    = skipToETRACK
-		self.outputGraphs    = outputGraphs
+
+		self.inputFile         = inputFile
+		self.proceedToETRACK   = proceedToETRACK
+		self.skipToETRACK      = skipToETRACK
+		self.outputGraphs      = outputGraphs
+		self.cleanUpFinalFiles = cleanUpFinalFiles
 
 		if run is True:
 			self.run()
 
 	def setInputFile(self,name):
-		# specify input file name as required
+
+		# specify input file name as required for the run
+
 		self.inputFile = name
 		print 'Input file name set as "{}"'.format(self.inputFile)
 
 	def checkInputFileExists(self):
+
+		# check if input file exists and is readable 
+
 		if os.path.isfile(self.inputFile) and os.access(self.inputFile,os.R_OK):
 			print "Input file exists and is readable"
 			return True
@@ -36,18 +49,23 @@ class process():
 			return False
 
 	def run(self):
+
 		# run to process files with the specified input file
+
 		success = self.checkInputFileExists()
 		if success is False: 
 			return success
 		pro = processFiles(inputFile       = self.inputFile,
 						   proceedToETRACK = self.proceedToETRACK,
 						   skipToETRACK    = self.skipToETRACK,
-						   outputGraphs    = self.outputGraphs)
+						   outputGraphs    = self.outputGraphs,
+						   cleanFinalFiles = self.cleanUpFinalFiles)
 		return pro.jobSuccess
 
 	def printInputFile(self):
+
 		# print the contents of the specified input file
+
 		fileIn = open(self.inputFile,'r')
 		for line in fileIn.readlines():
 			if len(line.strip()) != 0:
@@ -55,7 +73,9 @@ class process():
 		fileIn.close()
 
 	def writeTemplateInputFile(self,numHigherDoseDatasets = 1):
+
 		# write a template input file to current directory to be completed
+
 		f = open(self.inputFile,'w')
 		highDoseStrs = [','.join(['???']*numHigherDoseDatasets)]*4
 		string   = 	'dir ???\n'+\
@@ -68,9 +88,11 @@ class process():
 		print 'Template input file "{}" written'.format(self.inputFile)
 
 	def writePDBredoInputFile(self,pdb1,pdb2,inputFileDir,outputDir):
+
 		# write an input file that is suitable for a pdb_redo-downloaded damage series
 		# inputFileDir = '/Users/charlie/DPhil/PDBredo_damageSeries/??'
 		# outputDir = '/Users/charlie/DPhil/YEAR2/JAN/??'
+
 		self.setInputFile('fullInput_{}-{}DIFF.txt'.format(pdb2,pdb1))
 		f = open(self.inputFile,'w')
 		string 	 = 	'dir {}\n'.format(outputDir)+\
@@ -96,8 +118,11 @@ class process():
 		f.write(string)
 		f.close()
 
-	def howToWriteInputFile(self,printStr=True):
-		# information on how write the input file
+	def howToWriteInputFile(self,
+							printStr = True):
+
+		# some information on how write the input file
+
 		infoString 	= """
 *** Information on how to successfully write an input file for job ***
 
@@ -135,7 +160,9 @@ MAPINFO
 		return infoString
 
 	def writeTestInputFile(self,dataset):
+
 		# write an input file for the test case on the github README.md
+
 		inds = ['d','e','f']
 		if dataset not in range(1,4):
 			print 'Select dataset between 1-3'
@@ -168,8 +195,14 @@ MAPINFO
 		f.close()
 
 	def fillerLine(self):
+
+		# a simple filler line to print to command line
+
 		print '---------------------------------------------------------------'	
 
 	def titleCaption(self,title):
+
+		# a template title line to print to command line
+
 		print '\n\n||========================== {} ==========================||'.format(title)
 

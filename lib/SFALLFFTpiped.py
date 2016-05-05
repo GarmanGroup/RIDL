@@ -1,16 +1,24 @@
-import os
-import struct
-import sys
+from MAPMASKjob import MAPMASKjob
 from PDBCURjob import PDBCURjob
 from SFALLjob import SFALLjob
-from FFTjob import FFTjob
-from ENDjob import ENDjob
-from MAPMASKjob import MAPMASKjob
 from mapTools import mapTools
 from logFile import logFile
+from FFTjob import FFTjob
+from ENDjob import ENDjob
 import shutil
+import struct
+import sys
+import os
 
 class pipeline():
+
+	# class to run SFALL job to generate atom-tagged map, and FFT to 
+	# generate a corresponding density map (typically a Fobs(n)-Fobs(1)
+	# Fourier difference map). The maps are then both restricted to the 
+	# crystal asymmetric unit, with identical grid sampling properties 
+	# (i.e. they are 'compatible'). This subroutine runs after the 
+	# CAD-SCALEIT subroutine (see processFiles.py for how these are called).
+
 
 	def __init__(self,
 				 outputDir = '',
@@ -31,6 +39,8 @@ class pipeline():
 			self.runLog = log
 
 	def runPipeline(self):
+
+		# run the current subroutine within this class
 
 		# read input file first
 		success = self.readInputFile()
@@ -180,7 +190,8 @@ class pipeline():
 			return 0
 
 	def readInputFile(self):
-		# read in input file for pipeline
+
+		# read in input file for this subroutine
 
 		# if Input.txt not found, flag error
 		if os.path.isfile(self.inputFile) is False:
@@ -209,8 +220,10 @@ class pipeline():
 		return True
 
 	def renumberPDBFile(self):
+
 		# reorder atoms in pdb file since some may be 
 		# missing now after pdbcur has been run
+
 		self.runLog.writeToLog(str='Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
 		self.reorderedPDBFile = (self.PDBCURoutputFile).split('_pdbcur.pdb')[0]+'_reordered.pdb'
 
@@ -232,6 +245,9 @@ class pipeline():
 		self.runLog.writeToLog(str='Output pdb file: {}'.format(self.reorderedPDBFile))
 
 	def getSpaceGroup(self):
+
+		# parse the space group from the input pdb file
+
 		pdbin = open(self.reorderedPDBFile,'r')
 		for line in pdbin.readlines():
 			if line.split()[0] == 'CRYST1':
@@ -249,8 +265,9 @@ class pipeline():
 							  mapType = 'DIFF',
 							  densMap = '',
 							  atmMap  = ''):
+
 		# crop the density map to exact same dimensions
-		#  as SFALL atom-tagged map
+		# as SFALL atom-tagged map
 		
 		# run MAPMASK job to crop fft density map to asym unit
 		mapmask2 = MAPMASKjob(mapFile1  = densMap,
@@ -275,9 +292,12 @@ class pipeline():
 			return mapmask3.outputMapFile
 
 	def mapConsistencyCheck(self,sfallMap,fftMap):
-		# this function determines whether the atom map and density map calculated using SFALL and FFT
-		# are compatible - meaning the grid dimensions/filtering are the same and the ordering of the
-		# fast, medium, and slow axes are identical.
+
+		# this function determines whether the atom map and density 
+		# map calculated using SFALL and FFT are compatible - meaning 
+		# the grid dimensions/filtering are the same and the ordering
+		# of the fast, medium, and slow axes are identical.
+
 		self.runLog.writeToLog(str='Checking that atom map (SFALL) and density map (FFT) are compatible...')
 
 		if (sfallMap.gridsamp1 != fftMap.gridsamp1 or
@@ -308,6 +328,7 @@ class pipeline():
 	def cleanUpDir(self):
 
 		# give option to clean up working directory 
+
 		print 'Cleaning up working directory...\n'
 
 		# move txt files to subdir
@@ -319,11 +340,16 @@ class pipeline():
 				shutil.move('{}{}'.format(*args),'{}txtFiles/{}'.format(*args))
 
 	def findFilesInDir(self):
+
 		# find files initially in working directory
+
 		self.filesInDir = os.listdir(self.outputDir)
 
-	def makeOutputDir(self,dirName='./'):
+	def makeOutputDir(self,
+					  dirName = './'):
+
 		# if the above sub directory does not exist, make it
+
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
 			print 'New sub directory "{}" created to contain output files'.format(dirName)
