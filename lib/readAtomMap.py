@@ -14,6 +14,12 @@ import sys
 import time
 import math
 
+import matplotlib.pyplot as plt 
+from checkSeabornPresent import checkSeabornPresent as checkSns
+seabornFound = checkSns()
+if seabornFound is True:
+    import seaborn as sns
+
 class voxel_density():
     # A class for .map file voxel
 
@@ -341,10 +347,7 @@ class maps2DensMetrics():
         # vertical lines indicating the FCalc and normalised-FCalc values attained
         # for the voxel where the most negative density map (not FC map) voxel 
         # within the local region around the atom (this is the voxel corresponding
-        # to the DLoss metric value)./
-
-        import seaborn as sns           # imports here as otherwise not needed    
-        import matplotlib.pyplot as plt 
+        # to the DLoss metric value).
 
         for tag in atomsToPlot:
             if tag in atomOfInterest.getAtomID():

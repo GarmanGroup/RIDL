@@ -3,15 +3,10 @@ from scipy import stats
 import matplotlib.pyplot as plt
 from scipy import stats
 
-print 'Checking whether seaborn plotting library present...'
-try:
-    import seaborn as sns
-    seabornFound = True
-except ImportError:
-    print 'Plotting library seaborn not found..'
-    print 'Will not create any plots for current run.'
-    print 'Use "pip install seaborn" to install for future use'
-    seabornFound = False
+from checkSeabornPresent import checkSeabornPresent as checkSns
+seabornFound = checkSns()
+if seabornFound is True:
+	import seaborn as sns
 
 class specificDamageRank(object):
 

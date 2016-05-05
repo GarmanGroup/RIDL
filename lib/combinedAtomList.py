@@ -12,14 +12,10 @@ import numpy as np
 import operator
 import os
 
-try:
+from checkSeabornPresent import checkSeabornPresent as checkSns
+seabornFound = checkSns()
+if seabornFound is True:
 	import seaborn as sns
-	seabornFound = True
-except ImportError:
-	print 'Plotting library seaborn not found..'
-	print 'Will not create any plots for current run.'
-	print 'Use "pip install seaborn" to install for future use'
-	seabornFound = False
 
 class combinedAtomList(object):
 	# class for list of atom objects defined by combinedAtom class

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from savevariables import retrieve_objectlist,save_objectlist,saveGenericObject,retrieveGenericObject
+from checkSeabornPresent import checkSeabornPresent as checkSns
 from PDBFileManipulation import PDBtoList,writePDBline
 from combinedAtomList import combinedAtomList
 from readAtomMap import maps2DensMetrics
@@ -8,17 +9,8 @@ import numpy as np
 import shutil
 import os
 
-print 'Checking whether seaborn plotting library present...'
-try:
-	import seaborn as sns
-	seabornFound = True
-except ImportError:
-	print 'Plotting library seaborn not found..'
-	print 'Will not create any plots for current run.'
-	print 'Use "pip install seaborn" to install for future use'
-	seabornFound = False
-
 class eTrack(object):
+
 	# A class for retrieving the eTrack input text file information and running 
 	# the eTrack pipeline functions separately or together in full pipeline
 
@@ -46,8 +38,7 @@ class eTrack(object):
 		self.output     = output        # the amount of output to provide (either 'simple' for just Dloss
 										# info or 'full' larger selection of output files)
 		
-		if seabornFound is False:
-			self.plot = False 
+		self.checkSeaborn()
 
 	def runPipeline(self,
 					map_process   = True,
@@ -109,12 +100,16 @@ class eTrack(object):
 
 		if retrieve is True:
 			self.PDBmulti_retrieve()
-		else:
-			print 'PDBmulti retrieval from pkl file not chosen...'
+
 		self.fillerLine(blank=True)
 
+		if self.seabornFound is False:
+			self.printNoSeabornWarning()
+
 	def checkValidInputs(self,map_process,post_process,retrieve):
+
 		# check the runPipeline inputs to make sure that they are valid
+
 		for var in [map_process,post_process,retrieve]:
 			if var not in (True,False):
 				print 'Only Boolian parameters expected here'
@@ -199,13 +194,16 @@ class eTrack(object):
 				return False
 		return True
 
-	def makeOutputDir(self, dirName = './'):
+	def makeOutputDir(self,
+					  dirName   = './',
+					  printText = True):
 
 		# if the above sub directory does not exist, make it
 
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
-			print 'New sub directory "{}" created to contain output files'.format(dirName)
+			if printText is True:
+				print 'New sub directory "{}" created to contain output files'.format(dirName.replace(self.outputDir,''))
 
 	def setOutputDirs(self):
 
@@ -219,6 +217,10 @@ class eTrack(object):
 			self.pklFiles = [self.outputDir+f for f in self.pklFiles]
 
 	def map_processing(self):
+
+		# combine the density map and atom-tagged map for a given dataset,
+		# to calculate per-atom density metrics for each refined atom
+
 		self.titleCaption(title='Map Processing')
 
 		# create additional subdirectories
@@ -263,6 +265,9 @@ class eTrack(object):
 		self.pklFiles = pklFileNames
 
 	def post_processing(self):
+
+		# group the per-atom density metrics for each dataset together
+
 		self.titleCaption(title = 'Post Processing')
 		print 'Input pkl files for post processing chosen from input file:'
 		for file in self.pklFiles: 
@@ -354,6 +359,9 @@ class eTrack(object):
 								'{}csvFiles/{}{}'.format(self.outputDir,loc,file))
 
 	def PDBmulti_retrieve(self):
+
+		# retrieve list of atom objects from .pkl file
+
 		self.fillerLine(blank = True)
 		self.titleCaption(title='Atom List Retrieval')
 		print 'Input pkl file for data retrieval chosen from input file:'
@@ -367,6 +375,9 @@ class eTrack(object):
 					metric   = 'loss',
 					normType = 'Standard'):
 
+		# write a summary output file (either html or plain text)
+
+		print 'Writing {} summary output file for metric: {}, normalisation: {}'.format(fileType,metric,normType)
 		if fileType == 'html':
 			self.summaryHTML(metric        = metric,
 							 normType      = normType,
@@ -378,6 +389,7 @@ class eTrack(object):
 	def summaryTxt(self, 
 				   metric   = 'loss', 
 				   normType = 'Standard'):
+
 		# produce a selection of per-dataset summary statistics
 		# by default set metric as 'loss' for Dloss metric
 
@@ -467,7 +479,9 @@ class eTrack(object):
 		summaryFile.close()
 
 	def metricBarplots(self):
+
 		# plot barplots of damage metric for each susceptible residue type
+
 		numDsets = self.getNumDatasets()
 		for i in range(numDsets):
 			for set in [1,2]:
@@ -659,6 +673,8 @@ class eTrack(object):
 					 errorBars = 'NONE',
 					 atomType  = ''):
 
+		# create a line plot for Dloss density metric vs dataset number
+
 		self.combinedAtoms.graphMetric(atomType  = atomType,
 									   restype   = restype,
 									   errorBars = errorBars,
@@ -671,6 +687,8 @@ class eTrack(object):
 								  width          = '40%',
 								  border         = '1'):
 
+		# convert a plain text table of values into a html format table
+
 		htmlTable = '<table border="{}" style="width:{}">\n'.format(border,width)
 		for i, l in enumerate(plainText.split('\n')):
 			if i < numHeaderLines:
@@ -682,7 +700,9 @@ class eTrack(object):
 		return htmlTable
 
 	def getNumDatasets(self):
+
 		# get number of datasets in damage series
+
 		numDsets = self.combinedAtoms.atomList[0].getNumDatasets()
 		return numDsets
 
@@ -690,6 +710,7 @@ class eTrack(object):
 							metric      = 'loss', 
 							normType    = 'Standard', 
 							numDamSites = 25):
+
 		# write top damage sites to .pdb file for each dataset
 
 		self.damSitesPDB = []
@@ -943,12 +964,17 @@ class eTrack(object):
 													susAtms   = aTypes)
 
 	def getSpaceGroup(self):
+
+		# parse the first dataset pdb file and retrieve the space group
+
 		pdbFile = self.inDir+self.initialPDB
 		pdbin = open(self.inDir+self.initialPDB,'r')
+
 		for line in pdbin.readlines():
 			if line.split()[0] == 'CRYST1':
 				self.spaceGroup = line[55:66].replace(' ','')
 		pdbin.close()
+
 		try: 
 			self.spaceGroup
 		except attributeError:
@@ -956,11 +982,37 @@ class eTrack(object):
 			return False
 		return self.spaceGroup
 
-	def fillerLine(self,blank=False):
+	def fillerLine(self,
+				   blank = False):
+
+		# print a filler line to command line
+
 		if blank is False:
 			print '---------------------------------------------------------------'	
 		else:
 			print '\n'
 
 	def titleCaption(self,title='unspecified title'):
+
+		# print a title caption here to command line
+
 		print '||========================== {} ==========================||'.format(title)
+
+
+	def checkSeaborn(self):
+
+		# force no plotting if seaborn library not found
+
+		self.seabornFound = checkSns(printText = True)
+		if self.seabornFound is False:
+			self.plot = False 
+
+	def printNoSeabornWarning(self):
+
+		# if seaborn library not found, print a warning to command line
+
+		str = '***WARNING***'+\
+			  'Seaborn plotting library not found.'+\
+			  'Some output plots could not be produced.'+\
+			  'Use "pip install seaborn" to install package'
+		print str
