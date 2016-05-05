@@ -1011,8 +1011,8 @@ class eTrack(object):
 
 		# if seaborn library not found, print a warning to command line
 
-		str = '***WARNING***'+\
-			  'Seaborn plotting library not found.'+\
-			  'Some output plots could not be produced.'+\
-			  'Use "pip install seaborn" to install package'
+		str = '***WARNING***\n'+\
+			  'Seaborn plotting library not found.\n'+\
+			  'Some output plots could not be produced.\n'+\
+			  'Use "pip install seaborn" to install package.'
 		print str
