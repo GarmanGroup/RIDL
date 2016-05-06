@@ -46,8 +46,6 @@ class eTrack(object):
 		self.output     = output        # the amount of output to provide (either 'simple' for just Dloss
 										# info or 'full' larger selection of output files)
 		
-		self.checkSeaborn()
-
 	def runPipeline(self,
 					map_process   = True,
 					post_process  = True,
@@ -77,6 +75,9 @@ class eTrack(object):
 		if success is False: 
 			return
 		self.setOutputDirs()
+
+		# check whether seaborn exists
+		self.checkSeaborn()
 
 		if map_process is True:
 			self.map_processing()
@@ -1013,7 +1014,7 @@ class eTrack(object):
 
 		self.seabornFound = checkSns(printText = True)
 		if self.seabornFound is False:
-			self.plot = False 
+			self.plot = False
 
 	def printNoSeabornWarning(self):
 

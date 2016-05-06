@@ -10,10 +10,10 @@ def checkSeabornPresent(printText = False):
 		imp.find_module('seaborn')
 	except ImportError:
 		if printText is True:
-			print 'Plotting library seaborn not found..'+\
-			 	  'Will not create any plots for current run.'+\
-			      'Use "pip install seaborn" to install for future use'
+			print 'Plotting library seaborn not found..\n'+\
+			 	  'Will not create any plots for current run.\n'+\
+			      'Use "pip install seaborn" to install for future use.\n'
 		return False
 	if printText is True:	
-		print '---> success!'
+		print '---> success!\n'
 	return True
