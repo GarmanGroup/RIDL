@@ -22,7 +22,7 @@ Specific radiation damage has been well characterised previously using Fourier d
 
 Whereas previous studies have characterised specific radiation damage in terms of Fourier difference map peak heights (in either units of *sigma-levels* or *electrons per cubic Angstrom*) and their proximity to atoms within a structure, *ETRACK* approaches the problem the other way around. The behaviour of the Fourier difference map in the localised region around each atom is determined, and the maximum density loss value *D<sub>loss</sub>* within this region computed per atom. For atoms in close proximity to negative Fourier difference map peaks, this is equivalent to determining the high of the Fourier difference map peak (in electrons per cubic Angstrom) and assigning this value to that atom, however this procedure now assigns a *D<sub>loss</sub>* density change value to *every* atom within the structure, regardless of the proximity of Fourier difference map peaks.
 
-![DlossMethodPic](DlossMethodPic.png)
+![DlossMethodPic](images/DlossMethodPic.png)
 
 ## Usage
 
@@ -132,7 +132,7 @@ The `MAPINFO` section contains additional run information for ETRACK. It is reco
 
 Below is a screenshot indicate how to choose label names from your .mtz files for each dataset within the damage series.
 
-![howToFillInputFile](howToFillInputFile.png)
+![howToFillInputFile](images/howToFillInputFile.png)
 
 ## The methodology explained with an example from PDB_redo
 
