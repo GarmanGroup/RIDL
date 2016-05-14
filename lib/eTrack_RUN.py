@@ -333,8 +333,9 @@ class eTrack(object):
 
 		if output == 'simple':
 			metrics = [['loss','Standard'],
-					   ['loss','Calpha normalised'],
 					   ['loss','reliability']]
+			if self.CalphaPresent is True:
+				metrics += [['loss','Calpha normalised']]
 		else:
 			metrics = self.combinedAtoms.getDensMetrics()
 
@@ -676,6 +677,10 @@ class eTrack(object):
 		# self.plotLinePlot(restype   = 'CYS',
 		# 	              errorBars = 'NONE',
 		# 	              atomType  = 'SG')
+
+		self.combinedAtoms.densityMetricHeatMap(saveFig  = True,
+												metric   = metric,
+												normType = normType)
 
 	def plotLinePlot(self,
 					 restype   = 'GLU',
