@@ -79,17 +79,19 @@ class pipeline():
 
 		# run FFT job
 		sfallMap 	= mapTools(sfall.outputMapFile)
+		
 		axes 		= [sfallMap.fastaxis,
 					   sfallMap.medaxis,
 					   sfallMap.slowaxis]
+
 		gridSamps 	= [sfallMap.gridsamp1,
 					   sfallMap.gridsamp2,
 					   sfallMap.gridsamp3]
 
 		if self.densMapType in ('DIFF','SIMPLE'):
-			tags = ['FP_','SIGFP_','FOM_','PHIC_']
-			labelsInit 	= [i+self.initPDB for i in tags]
-			labelsLater = [i+self.laterPDB for i in tags]
+			tags = ['FP_','SIGFP_','FOM_']
+			labelsInit 	= [i+self.initPDB for i in tags] + ['PHIC_'+self.phaseDataset]
+			labelsLater = [i+self.laterPDB for i in tags] + ['PHIC_'+self.phaseDataset]
 
 		if self.densMapType == '2FOFC':
 			labelsInit 	= ['','','','']
@@ -132,7 +134,7 @@ class pipeline():
 				       outputDir = self.outputDir,
 				       axes      = axes,
 				       gridSamps = gridSamps,
-				       labels1   = ['FC_{}'.format(self.initPDB),'','','PHIC_'+self.initPDB],
+				       labels1   = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset],
 				       runLog    = self.runLog)
 		success = fft_FC.run()
 
@@ -205,7 +207,8 @@ class pipeline():
 				 'mtzIN'        : 'inputMtzFile',
 				 'foldername'   : 'outputDir',
 				 'initialPDB'   : 'initPDB',
-				 'laterPDB'     :  'laterPDB',
+				 'laterPDB'     : 'laterPDB',
+				 'phaseDataset' : 'phaseDataset',
 				 'densMapType'  : 'densMapType',
 				 'FFTmapWeight' : 'FOMweight'}
 
