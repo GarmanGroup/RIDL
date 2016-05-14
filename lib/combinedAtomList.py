@@ -7,6 +7,7 @@ from CalphaWeight import CalphaWeight
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy import stats
+import pandas as pd
 import scipy.stats
 import numpy as np
 import operator
@@ -18,6 +19,7 @@ if seabornFound is True:
 	import seaborn as sns
 
 class combinedAtomList(object):
+
 	# class for list of atom objects defined by combinedAtom class
 
 	def __init__(self,
@@ -340,7 +342,7 @@ class combinedAtomList(object):
 			atm.getDensMetricInfo(metric,'Standardised',(values-meand)/stdd)
 
 	def writeMetric2File(self,
-						 where   = './',
+						 where    = './',
 						 groupBy  = 'none',
 						 metric   = 'loss',
 						 normType = 'Standard'):
@@ -595,7 +597,8 @@ class combinedAtomList(object):
 		ax = plt.subplot(111)
 
 		total = 0
-		for key in foundPairs.keys(): total += len(foundPairs[key][rType])
+		for key in foundPairs.keys(): 
+			total += len(foundPairs[key][rType])
 		xDataTotal = np.linspace(0,1,total)
 
 		i,j = 0,-1
@@ -614,8 +617,17 @@ class combinedAtomList(object):
 			yData = np.nanmean(foundPairs[key][rType],1)
 			xData = xDataTotal[i:i+len(yData)]
 			i += len(yData)
-			plt.scatter(xData,yData,marker='o',s=100,c=colors[j],edgecolors='#FFFFFF',label=key)
-			DataSave[key] = {'y':yData,'x':xData}
+
+			plt.scatter(xData,
+						yData,
+						marker     = 'o',
+						s          = 100,
+						c          = colors[j],
+						edgecolors = '#FFFFFF',
+						label      = key)
+
+			DataSave[key] = {'y' : yData,
+							 'x' : xData}
 
 		# place legend outside to right of plot
 		box = ax.get_position()
@@ -1014,7 +1026,9 @@ class combinedAtomList(object):
 		# calculate skewness for a distribution of 
 		# metric values for an input list of atoms
 
-		skew = scipy.stats.skew(metricList, axis=0, bias=True)
+		skew = scipy.stats.skew(metricList,
+							    axis = 0,
+							    bias = True)
 		return skew
 
 	def testForNormality(self,
@@ -1100,6 +1114,73 @@ class combinedAtomList(object):
 				return False
 		else:
 			return True
+
+	def densityMetricHeatMap(self,
+							 metric    = 'loss',
+							 normType  = 'Standard',
+							 saveFig   = False,
+							 fileType  = '.svg',
+							 titleFont = 24):
+
+		# plot a heatmap of density metric values per atom per dataset.
+		# depending on the metric and normalisation type chosen, a different
+		# colour scheme is chosen
+
+		data = {'Atom'    : [],
+				'Dataset' : [],
+				'metric'  : []}
+
+		for atom in self.atomList:
+			data['metric']  += atom.densMetric[metric][normType]['values']
+			data['Atom']    += [atom.getAtomID()]*self.getNumDatasets()
+			data['Dataset'] += range(1, self.getNumDatasets() + 1)
+
+		d = pd.DataFrame(data = data)
+		d = d.pivot("Atom",
+					"Dataset",
+					"metric")
+
+		# stretch the plot in the vertical direction, depending 
+		# on how many atoms are present within the structure
+		fontsize_pt = plt.rcParams['ytick.labelsize']
+		dpi = 60
+		matrix_height_pt = fontsize_pt * self.getNumAtoms()
+		matrix_height_in = matrix_height_pt / dpi
+		top_margin    = 0.04    
+		bottom_margin = 0.04
+		figure_height = matrix_height_in / (1 - top_margin - bottom_margin)
+		figure_width = 5*self.getNumDatasets()
+		fig, ax = plt.subplots(figsize     = (figure_width,figure_height), 
+		        			   gridspec_kw = dict(top    = 1 - top_margin,
+		        				 				  bottom = bottom_margin))
+
+		if metric == 'loss' and normType == 'Standard':
+			pal = 'Reds_r'
+		else:
+			pal = sns.diverging_palette(220, 
+										10, 
+										sep     = 80,
+										n       = 7,
+										as_cmap = True)
+		f = sns.heatmap(d,
+						ax     = ax,
+						cmap   = pal,
+						robust = True)
+
+		plt.yticks(rotation = 0) 
+		plt.title('Metric: D{},\nNormalisation: {}\n'.format(metric,normType),
+				  fontsize = titleFont)
+
+		if saveFig is False:
+			plt.show()
+
+		else:
+			saveName = '{}heatmap_metric-{}_normalisation-{}'.format(self.outputDir,
+																	 metric,
+																	 normType)
+			fileName = self.checkUniqueFileName(fileName = saveName,
+									 			fileType = fileType)
+			fig.savefig(fileName)
 
 	def detectSuspiciousAtoms(self,
 							  dataset      = 0,
