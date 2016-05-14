@@ -2,6 +2,7 @@ from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 import os
 
 class CADjob():
+
 	# run CAD job to combine F and SIGF columns from two merged mtz files
 	
 	def __init__(self,
@@ -10,7 +11,8 @@ class CADjob():
 				 inputMtz3       = '',
 				 Mtz1LabelName   = '',
 				 Mtz2LabelName   = '',
-				 Mtz3LabelName   = '',
+				 Mtz3phaseLabel  = '',
+				 Mtz3FcalcLabel  = '',
 				 Mtz1LabelRename = '',
 				 Mtz2LabelRename = '',
 				 Mtz3LabelRename = '',
@@ -22,15 +24,23 @@ class CADjob():
 		self.inputMtz1 	  = inputMtz1 # mtz containing initial dataset Fs
 		self.inputMtz2 	  = inputMtz2 # mtz containing later dataset Fs
 		self.inputMtz3 	  = inputMtz3 # mtz containing phases
-		self.labels 	  = [Mtz1LabelName,Mtz2LabelName,Mtz3LabelName]
-		self.renameLabels = [Mtz1LabelRename,Mtz2LabelRename,Mtz3LabelRename]
+		self.labels 	  = [Mtz1LabelName,
+							 Mtz2LabelName,
+							 Mtz3phaseLabel,
+							 Mtz3FcalcLabel]
+		self.renameLabels = [Mtz1LabelRename,
+							 Mtz2LabelRename,
+							 Mtz3LabelRename]
 		self.outputMtz	  = outputMtz
 		self.outputDir	  = outputDir
 		self.runLog 	  = runLog
 
 		self.runLog.writeToLog('Running CAD job')
 		
-		self.FOMtag = {'in':'','out':'','type':''}
+		self.FOMtag = {'in'   : '',
+					   'out'  : '',
+					   'type' : ''}
+
 		if FOMWeight != 'False':
 			self.FOMtag['out'] = '- \nE3 = FOM_{}'.format(self.renameLabels[0])
 			self.FOMtag['type'] = '- \nE3 = W'
@@ -41,7 +51,10 @@ class CADjob():
 			self.FOMtag['in'] = '- \nE3 = FOM{}'.format(lbl)
 
 	def run(self):
-		inputFiles = [self.inputMtz1,self.inputMtz2,self.inputMtz3]
+		
+		inputFiles = [self.inputMtz1,
+					  self.inputMtz2,
+					  self.inputMtz3]
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
 		self.runCAD()
@@ -55,6 +68,7 @@ class CADjob():
 			return False
 
 	def runCAD(self):
+
 		fillerLine()
 		self.printPurpose()
 		title = 'run of cad'
@@ -89,8 +103,8 @@ class CADjob():
 								'E1 = F - \n'+\
 								'E2 = Q \n'+\
 								'labin file 3 - \n'+\
-								'E1 = PHI{} -\n'.format(self.labels[2])+\
-								'E2 = F{} \n'.format(self.labels[2])+\
+								'E1 = {} -\n'.format(self.labels[2])+\
+								'E2 = {} \n'.format(self.labels[3])+\
 								'labout file 3 - \n'+\
 								'E1 = PHIC_{} - \n'.format(self.renameLabels[2])+\
 								'E2 = FC_{} \n'.format(self.renameLabels[2])+\
@@ -110,8 +124,11 @@ class CADjob():
 
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self,includeDir=False):
+	def provideFeedback(self,
+					    includeDir = False):
+
 		# provide some feedback
+
 		if includeDir is False:
 			fileIn1  = self.inputMtz1.split('/')[-1]
 			fileIn2  = self.inputMtz2.split('/')[-1]
@@ -127,7 +144,12 @@ class CADjob():
 		print 'Input mtz files: {}\n{}{}\n{}{}'.format(fileIn1,' '*17,fileIn2,' '*17,fileIn3)
 		print 'Output mtz file: {}'.format(fileOut)
 
-	def printPurpose(self,include=True):
-		# provide a summary of what this does (within ETRACK) to the command line
-		str = 'Combining relevant columns from multiple input mtz files into 1 single mtz file'
+	def printPurpose(self,
+					 include = True):
+
+		# provide a summary of what this does 
+		# (within ETRACK) to the command line
+
+		str = 'Combining relevant columns from multiple '+\
+			  'input mtz files into 1 single mtz file'
 		print str
