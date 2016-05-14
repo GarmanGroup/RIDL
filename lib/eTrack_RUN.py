@@ -57,7 +57,7 @@ class eTrack(object):
 		# included. For each function input specify True if this part is to be performed
 		# and False otherwise.
 
-		self.titleCaption(title='ETRACK pipeline')
+		self.titleCaption(title = 'ETRACK pipeline')
 		self.inputFileName = inputFileName
 
 		# check whether valid inputs to function
@@ -218,7 +218,7 @@ class eTrack(object):
 
 		# set the locations of the output directories
 
-		self.outputDir 		= '{}ETRACK-output/'.format(self.outDir)
+		self.outputDir 		= '{}metrics/'.format(self.outDir)
 		self.outputPlotDir 	= '{}plots/'.format(self.outputDir)
 
 		# add pkl file names as attribute if specified in input file

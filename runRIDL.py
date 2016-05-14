@@ -1,12 +1,12 @@
 import argparse
-from runProcessFiles import process
+from runRIDL_class import process
 
 # an outer layer for the pipeline scripts. This allows the pipeline
 # to be run from the command line by simply calling:
-# python ETRACK.py -i [inputfilename.txt] -pc
+# python runRIDL.py -i [inputfilename.txt] -pc
 # This is the recommended run mode for the scripts
 
-parser = argparse.ArgumentParser(description = 'Run the ETRACK pipeline from the command line')
+parser = argparse.ArgumentParser(description = 'Run the RIDL pipeline from the command line')
 
 parser.add_argument('-i',
 					type   = str,
@@ -79,10 +79,10 @@ if args.inputFileHelp is True:
 # maps from input pdb and mtz files (in a damage series), as 
 # specified within an input file
 if args.process is True:
-	p = process(inputFile         = args.inputFile,
-				proceedToETRACK   = args.calculate,
-				outputGraphs      = args.noGraphs,
-				cleanUpFinalFiles = args.cleanUpFinalFiles)
+	p = process(inputFile           = args.inputFile,
+				proceedToMetricCalc = args.calculate,
+				outputGraphs        = args.noGraphs,
+				cleanUpFinalFiles   = args.cleanUpFinalFiles)
 
 # do not run code to create atom-tagged and density maps, but 
 # proceed directly to the code to calculate per-atom damage 
@@ -91,6 +91,6 @@ if args.process is True:
 else:
 	if args.calculate is True:
 		p = process(inputFile         = args.inputFile,
-					skipToETRACK      = True,
+					skipToMetricCalc  = True,
 					outputGraphs      = args.noGraphs,
 					cleanUpFinalFiles = args.cleanUpFinalFiles)

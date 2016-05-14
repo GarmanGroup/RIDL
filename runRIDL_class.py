@@ -14,18 +14,18 @@ class process():
 	# per-atom damage metrics) can be performed
 
 	def __init__(self,
-				 inputFile         = 'fullInput.txt',
-				 run               = True,
-				 proceedToETRACK   = False,
-				 skipToETRACK      = False,
-				 outputGraphs      = True,
-				 cleanUpFinalFiles = False):
+				 inputFile           = 'fullInput.txt',
+				 run                 = True,
+				 proceedToMetricCalc = False,
+				 skipToMetricCalc    = False,
+				 outputGraphs        = True,
+				 cleanUpFinalFiles   = False):
 
-		self.inputFile         = inputFile
-		self.proceedToETRACK   = proceedToETRACK
-		self.skipToETRACK      = skipToETRACK
-		self.outputGraphs      = outputGraphs
-		self.cleanUpFinalFiles = cleanUpFinalFiles
+		self.inputFile           = inputFile
+		self.proceedToMetricCalc = proceedToMetricCalc
+		self.skipToMetricCalc    = skipToMetricCalc
+		self.outputGraphs        = outputGraphs
+		self.cleanUpFinalFiles   = cleanUpFinalFiles
 
 		if run is True:
 			self.run()
@@ -61,12 +61,12 @@ class process():
 		self.titleCaption()
 		self.info()
 
-		pro = processFiles(inputFile       = self.inputFile,
-						   proceedToETRACK = self.proceedToETRACK,
-						   skipToETRACK    = self.skipToETRACK,
-						   outputGraphs    = self.outputGraphs,
-						   cleanFinalFiles = self.cleanUpFinalFiles,
-						   logFileObj      = self.logFile)
+		pro = processFiles(inputFile           = self.inputFile,
+						   proceedToMetricCalc = self.proceedToMetricCalc,
+						   skipToMetricCalc    = self.skipToMetricCalc,
+						   outputGraphs        = self.outputGraphs,
+						   cleanFinalFiles     = self.cleanUpFinalFiles,
+						   logFileObj          = self.logFile)
 
 		return pro.jobSuccess
 

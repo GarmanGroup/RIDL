@@ -20,8 +20,8 @@ class cleanUpFinalFiles():
 		self.keepDensityMap = keepDensityMap
 		self.keepPdbs       = keepPdbs
 
-		self.mapProcessDir  = '{}ETRACK-mapProcessing/'.format(self.outputDir)
-		self.calculationDir = '{}ETRACK-output/'.format(self.outputDir)
+		self.mapProcessDir  = '{}maps/'.format(self.outputDir)
+		self.calculationDir = '{}metrics/'.format(self.outputDir)
 
 		if autoRun is True:
 			if self.checkCorrectOutput() is True:

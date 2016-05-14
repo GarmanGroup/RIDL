@@ -8,41 +8,41 @@ import os
 class processFiles():
 
 	def __init__(self,
-				 inputFile       = '',
-				 proceedToETRACK = False,
-				 skipToETRACK	 = False,
-				 outputGraphs    = True,
-				 eTrackInputName = 'e_Track_inputfile.txt',
-				 cleanFinalFiles = False,
-				 logFileObj      = ''):
+				 inputFile           = '',
+				 proceedToMetricCalc = False,
+				 skipToMetricCalc	 = False,
+				 outputGraphs        = True,
+				 metricCalcInputName = 'e_Track_inputfile.txt',
+				 cleanFinalFiles     = False,
+				 logFileObj          = ''):
 
 		# class to read an input file and generate a set of density 
 		# and atom-tagged maps for a damage series. Can handle a single
 		# low & high dose dataset pair, or a low dose dataset and a series
 		# of high dose datasets. Can optionally proceed directly on to
-		# the metric calculation stage of the pipeline with 'proceedToETRACK'
+		# the metric calculation stage of the pipeline with 'proceedToMetricCalc'
 		# or skip directly to it (if the maps have already been created) 
-		# with 'skipToETRACK'.
+		# with 'skipToMetricCalc'.
 
-		self.inputFile 		 = inputFile
-		self.proceedToETRACK = proceedToETRACK
-		self.outputGraphs    = outputGraphs
-		self.eTrackInputName = eTrackInputName
-		self.logFile         = logFileObj
+		self.inputFile 		     = inputFile
+		self.proceedToMetricCalc = proceedToMetricCalc
+		self.outputGraphs        = outputGraphs
+		self.metricCalcInputName = metricCalcInputName
+		self.logFile             = logFileObj
 
-		if skipToETRACK is False:
+		if skipToMetricCalc is False:
 			success = self.runProcessing()
 			self.jobSuccess = success
 		else:
-			success = self.skipToETRACK(inputName = eTrackInputName)
+			success = self.skipToMetricCalc(inputName = metricCalcInputName)
 			self.jobSuccess = success
 
 		if self.jobSuccess is True and cleanFinalFiles is True:
-				if skipToETRACK is True or proceedToETRACK is True:
+				if skipToMetricCalc is True or proceedToMetricCalc is True:
 					cleanUpFinalFiles(outputDir = self.dir)
 
-	def skipToETRACK(self,
-					 inputName = 'input.txt'):
+	def skipToMetricCalc(self,
+					     inputName = 'input.txt'):
 
 		# do not generate maps for job, but proceed 
 		# directly to metric calculations, if correct 
@@ -55,17 +55,17 @@ class processFiles():
 			self.checkOutputDirExists(makeProcessDir = False)
 			self.findFilesInDir(mapProcessDir = False)
 
-			if self.eTrackInputName not in self.filesInDir:
+			if self.metricCalcInputName not in self.filesInDir:
 				err = 'Unable to find input file '+\
-					  '"{}" in "{}"\n'.format(self.eTrackInputName,self.dir)+\
-					  'Ensure "python ETRACK -i <input.txt> '+\
+					  '"{}" in "{}"\n'.format(self.metricCalcInputName,self.dir)+\
+					  'Ensure "python runRIDL.py -i <input.txt> '+\
 					  '-p" has been run prior to -c'
 				self.writeError(text = err)
 				return False
 
-			success = self.writeETRACKInputFile(run          = True,
-							 		            imports      = True,
-							 		            skipToETRACK = True)
+			success = self.runMetricCalcStep(run              = True,
+							 		         imports          = True,
+							 		         skipToMetricCalc = True)
 			return True
 
 	def runProcessing(self):
@@ -118,8 +118,8 @@ class processFiles():
 					return success
 
 		if success is True:
-			if self.proceedToETRACK is True:
-				self.writeETRACKInputFile()
+			if self.proceedToMetricCalc is True:
+				self.runMetricCalcStep()
 
 		return success
 
@@ -537,9 +537,9 @@ class processFiles():
 		ln = 'Working directory set to "{}"'.format(self.dir)
 		self.logFile.writeToLog(str = ln)
 
-		self.mapProcessDir = self.dir + 'ETRACK-mapProcessing/'
+		self.mapProcessDir = self.dir + 'maps/'
 		if makeProcessDir is True:
-			if 'ETRACK-mapProcessing' not in os.listdir(self.dir):
+			if 'maps' not in os.listdir(self.dir):
 				os.makedirs(self.mapProcessDir)
 
 	def getCurrentInputParams(self, 
@@ -798,7 +798,7 @@ class processFiles():
 	def moveInitialPDBfile(self):
 
 		# copy the initial dataset pdb file to the working 
-		# directory useful if further ETRACK jobs to be run)
+		# directory useful if further RIDL jobs to be run)
 
 		if self.multiDatasets == False or self.repeatedFile1InputsUsed == True:
 			shutil.copy2(self.pdb1,
@@ -808,33 +808,35 @@ class processFiles():
 			for pdb in self.pdb1.split(','):
 				shutil.copy2(pdb,'{}{}.pdb'.format(self.mapProcessDir,self.name1))
 
-	def writeETRACKInputFile(self,
-							 write        = True,
-							 run          = True,
-							 imports      = True,
-							 skipToETRACK = False):
+	def runMetricCalcStep(self,
+					      write            = True,
+					 	  run              = True,
+					      imports          = True,
+					      skipToMetricCalc = False):
 
-		# writes an input file for the run of ETRACK after this processing 
-		# pipeline has completed. Allows the user to immediately run the 
-		# rest of the program, IF the user did specify all required datasets 
+		# writes an input file for the run of the metric calculation 
+		# part of RIDL pipeline after the map generation pipeline has 
+		# completed. Allows the user to immediately run the rest of the
+		# program, IF the user did specify all required datasets 
 		# within a damage series. If the user only processed a subset of 
-		# required datasets within a damage series, another ETRACK input 
-		# file will need to be manually created to run the rest of the 
-		# program with ALL datasets within the damage series included.
+		# required datasets within a damage series, another metric 
+		# calculation input file will need to be manually created to 
+		# run the rest of the program with ALL datasets within the
+		# damage series included.
 
 		if imports is True:
-			from runETRACK import run as runETRACK
+			from runRIDL_metricCalc import run as run_metricCalc
 
-		if skipToETRACK is False:
+		if skipToMetricCalc is False:
 			if write is False:
 				return True
 
-			r = runETRACK(runAll = False)
+			r = run_metricCalc(runAll = False)
 			seriesName = self.dir.split('/')[-2]
 
 			if self.multiDatasets is True and self.repeatedFile1InputsUsed is False:
 				err =  'Must have single INITIALDATASET inputs in input '+\
-					   'file to run ETRACK immediately here'
+					   'file to run the metric calculation step immediately here'
 				self.writeError(text = err)
 				return False
 
@@ -856,7 +858,7 @@ class processFiles():
 						'{}/{}'.format(self.dir,r.inputFileName))
 
 		if run is True:
-			r = runETRACK(inputFileLoc = self.dir)
+			r = run_metricCalc(inputFileLoc = self.dir)
 
 		return True
 
