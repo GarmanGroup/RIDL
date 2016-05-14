@@ -36,9 +36,14 @@ class FFTjob():
 		self.PHI1 			= labels1[3]
 		self.PHI2 			= labels2[3]
 		self.runLog 		= runLog
+
+		self.highResCutoff  = 1.4
+		self.lowResCutoff   = 3
+
 		self.runLog.writeToLog('Running FFT job')
 
 	def run(self):
+
 		inputFiles = [self.inputMtzFile]
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
@@ -54,7 +59,9 @@ class FFTjob():
 			return False
 			
 	def runFFT(self):
+
 		# run FFT job using the external ccp4Job class
+
 		fillerLine()
 		self.printPurpose()
 		self.commandInput1 = 'fft '+\
@@ -92,12 +99,22 @@ class FFTjob():
 			phiStr 		= 'PHI={}'.format(self.PHI1)
 			scaleStr 	= 'SCALE F1 1.0 0.0'
 
-		self.commandInput2 = 	'AXIS {} {} {}\n'.format(self.fastAxis,self.medAxis,self.slowAxis)+\
-				 			 	'title FTT DENSITY MAP RUN\n'+\
-				 				'grid {} {} {}\n'.format(self.gridSamp1,self.gridSamp2,self.gridSamp3)+\
-				 				'xyzlim 0 1 0 1 0 1\n'+\
-								'{} {}\n{}\n'.format(labinStr,phiStr,scaleStr)+\
-								'END'
+		# include a resolution cutoff if specified (not used for Fcalc maps)
+		resStr = ''
+		if self.mapType != 'FC':
+			if self.highResCutoff != '':
+				resStr = 'RESOLUTION {}'.format(self.highResCutoff)
+				if self.lowResCutoff != '':
+					resStr += ' {}'.format(self.lowResCutoff)
+				resStr += '\n'
+
+		self.commandInput2 = 'AXIS {} {} {}\n'.format(self.fastAxis,self.medAxis,self.slowAxis)+\
+				 			 'title FTT DENSITY MAP RUN\n'+\
+			 				 'grid {} {} {}\n'.format(self.gridSamp1,self.gridSamp2,self.gridSamp3)+\
+			 				 'xyzlim 0 1 0 1 0 1\n'+\
+			 				 '{}'.format(resStr)+\
+							 '{} {}\n{}\n'.format(labinStr,phiStr,scaleStr)+\
+							 'END'
 
 		self.outputLogfile = 'FFTlogfile.txt'
 
@@ -111,8 +128,11 @@ class FFTjob():
 
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self,includeDir=False):
+	def provideFeedback(self,
+						includeDir = False):
+
 		# provide some feedback
+
 		if includeDir is False:
 			fileIn  = self.inputMtzFile.split('/')[-1]
 			fileOut = self.outputMapFile.split('/')[-1]
@@ -126,8 +146,12 @@ class FFTjob():
 		Map = mapTools(self.outputMapFile)
 		Map.printMapInfo()
 
-	def printPurpose(self,include=True):
-		# provide a summary of what this does (within ETRACK) to the command line
+	def printPurpose(self,
+					 include = True):
+
+		# provide a summary of what this does 
+		# (within ETRACK) to the command line
+
 		if self.mapType == 'DIFF':
 			str = 'Generating Fourier difference map over crystal unit cell,\n'
 		if self.mapType == 'SIMPLE':
