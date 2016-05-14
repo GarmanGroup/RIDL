@@ -40,7 +40,8 @@ class processFiles():
 				if skipToETRACK is True or proceedToETRACK is True:
 					cleanUpFinalFiles(outputDir = self.dir)
 
-	def skipToETRACK(self,inputName = 'input.txt'):
+	def skipToETRACK(self,
+					 inputName = 'input.txt'):
 
 		# do not generate maps for job, but proceed 
 		# directly to metric calculations, if correct 
@@ -68,6 +69,8 @@ class processFiles():
 
 	def runProcessing(self):
 
+		print '\n**** INPUT FILE PROCESSING ****\n'
+
 		success = self.readMainInputFile()
 		if success is False:
 			return
@@ -79,7 +82,7 @@ class processFiles():
 		try:
 			self.multiDatasets
 		except AttributeError:
-			return #don't proceed if error in input file
+			return # don't proceed if error in input file
 
 		success = self.checkCorrectInputFormats()
 		if success is False:
@@ -89,11 +92,18 @@ class processFiles():
 		if success is False:
 			return success
 
+		print '\n\n**** DENSITY MAP GENERATION ****\n'
+
 		if self.multiDatasets is False:
+			print 'Generating suitable electron density maps for run.'
 			self.getCurrentInputParams()
 			success = self.runMapGenerationPipelines()
 		else:
+			print 'Generating suitable electron density maps for each '+\
+				  'higher dose dataset in turn.\n{} higher '.format(self.numDsets)+\
+				  'dose datasets located for this job.'
 			for i in range(self.numDsets):
+				print '\n{}\nHigher dose dataset {} starts here'.format('-'*33,i+1)
 				self.getCurrentInputParams(jobNumber = i)
 				success = self.runMapGenerationPipelines()
 				if success is False:
@@ -469,7 +479,7 @@ class processFiles():
 			error(text = err)
 
 		else:
-			print 'Multiple datasets located in input file to be processed'
+			print 'Multiple higher dose datasets located in input file to be processed'
 			props = ['name1',
 					 'mtz1',
 					 'mtzlabels1',
@@ -643,10 +653,10 @@ class processFiles():
 
 		outcome = self.p1.runPipeline()
 		if outcome == 0:
-			print 'Pipeline ran to completion'
+			print '---> Subroutine ran to completion'
 			return True
 		else:
-			err = 'Pipeline failed to run to completion'
+			err = 'Subroutine failed to run to completion'
 			error(text = err)
 			return False
 
@@ -662,10 +672,10 @@ class processFiles():
 
 		outcome = self.p2.runPipeline()
 		if outcome == 0:
-			print 'Pipeline ran to completion'
+			print '---> Subroutine ran to completion'
 			return True
 		else:
-			print 'Pipeline failed to run to completion'
+			print 'Subroutine failed to run to completion'
 			return False
 
 	def findFilesInDir(self,

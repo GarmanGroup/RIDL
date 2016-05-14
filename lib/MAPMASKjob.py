@@ -17,14 +17,18 @@ class MAPMASKjob():
 		self.runLog.writeToLog('Running MAPMASK job')
 
 	def defineCorrectOutputMap(self,switch):
+
 		# give correct naming scheme to output map file
+
 		if switch is True:
 			self.outputMapFile = self.inputMapFile.split('.map')[0]+'_switchedAxes.map'
 		else:
 			self.outputMapFile 	= self.inputMapFile.split('.map')[0]+'_cropped.map'
 
 	def defineCommandInput(self):
+
 		# write the first part of command line input for mapmask run
+
 		ci1 = 'mapmask MAPIN {} '.format(self.inputMapFile)
 		if self.inputMapFile2 != '': 
 			ci1 += 'MAPLIM {} '.format(self.inputMapFile2)
@@ -32,9 +36,15 @@ class MAPMASKjob():
 			   'SYMINFO syminfo.lib '
 		self.commandInput1 = ci1
 
-	def switchAxisOrder(self,order=[],symGroup="",includeDir=False):
-		# switch the axis order of an input .map file. order = [1,2,3] for example
-		fillerLine()
+	def switchAxisOrder(self,
+					    order      = [],
+					    symGroup   = "",
+					    includeDir = False):
+
+		# switch the axis order of an input .map file. 
+		# order = [1,2,3] for example
+
+		# fillerLine()
 		self.printPurpose(mode='switch axes')
 		self.defineCorrectOutputMap(True)
 		xyz = {'1':'X','2':'Y','3':'Z'}
@@ -66,9 +76,12 @@ class MAPMASKjob():
 		success = self.provideFeedback()
 		return success
 
-	def crop2AsymUnit(self,includeDir=False):
+	def crop2AsymUnit(self,
+					  includeDir = False):
+
 		# Crop map 1 to asymmetric unit
-		fillerLine()
+
+		# fillerLine()
 		self.printPurpose(mode='crop to asym')
 		self.defineCorrectOutputMap(False)
 		inputFiles = [self.inputMapFile]
@@ -97,9 +110,12 @@ class MAPMASKjob():
 		success = self.provideFeedback()
 		return success
 
-	def cropMap2Map(self,includeDir=False):
+	def cropMap2Map(self,
+					includeDir = False):
+
 		# Crop map 1 to map 2
-		fillerLine()
+
+		# fillerLine()
 		self.printPurpose(mode='crop to map')
 		self.defineCorrectOutputMap(False)
 		inputFiles = [self.inputMapFile,self.inputMapFile2]
@@ -127,10 +143,14 @@ class MAPMASKjob():
 		success = self.provideFeedback()
 		return success
 
-	def provideFeedback(self):
+	def provideFeedback(self,
+						includeMapInfo = False):
+
 		# get feedback if successful job
+
 		if self.jobSuccess is True:
-			self.feedback()
+			if includeMapInfo is True:
+				self.feedback()
 			self.runLog.writeToLog('Output files:')	
 			self.runLog.writeToLog('{}'.format(self.outputMapFile))
 			return True
@@ -138,8 +158,11 @@ class MAPMASKjob():
 			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
 			return False
 
-	def feedback(self,includeDir=False):
+	def feedback(self,
+				 includeDir = False):
+
 		# provide some feedback
+
 		if includeDir is False:
 			fileIn1  = self.inputMapFile.split('/')[-1]
 			if self.inputMapFile2 != '':
@@ -159,10 +182,17 @@ class MAPMASKjob():
 		Map = mapTools(self.outputMapFile)
 		Map.printMapInfo()
 
-	def printPurpose(self,include=True,mode='switch axes',includeDir=False):
-		# provide a summary of what this does (within ETRACK) to the command line
+	def printPurpose(self,
+					 include    = True,
+					 mode       = 'switch axes',
+					 includeDir = False):
+
+		# provide a summary of what this does 
+		# (within ETRACK) to the command line
 		
-		maps = [self.inputMapFile,self.inputMapFile2]
+		maps = [self.inputMapFile,
+				self.inputMapFile2]
+
 		if includeDir is False:
 			maps = [m.split('/')[-1] for m in maps]
 

@@ -69,6 +69,7 @@ class pipeline():
 				mtzLbls_in  = self.Mtz1LabelName
 				mtzLbls_out = self.Mtz1LabelName
 
+			self.printStepNumber()
 			sigmaa = SIGMAAjob(inputMtz 	   = self.SIGMAAinputMtz,
 							   MtzLabelNameIn  = mtzLbls_in,
 							   MtzLabelNameOut = mtzLbls_out,
@@ -90,7 +91,8 @@ class pipeline():
 		else:
 			self.CADinputMtz1 = self.SIGMAAinputMtz
 
-		# run CAD job 
+		# run CAD job
+		self.printStepNumber()
 		cad = CADjob(inputMtz1       = self.CADinputMtz1,
 			         inputMtz2       = self.CADinputMtz2,
 			         inputMtz3       = self.CADinputMtz3,
@@ -111,6 +113,7 @@ class pipeline():
 			return 3
 
  		# run SCALEIT job 
+ 		self.printStepNumber()
 		scaleit = SCALEITjob(inputMtz  = self.SCALEITinputMtz,
 							 outputMtz = self.SCALEIToutputMtz,
 							 Mtz1Label = self.Mtz1LabelRename,
@@ -132,10 +135,10 @@ class pipeline():
 
 		# if Input.txt not found, flag error
 		if self.checkFileExists(self.txtInputFile) is False:
-			self.runLog.writeToLog(str='Required input file {} not found..'.format(self.txtInputFile))
+			self.runLog.writeToLog(str = 'Required input file {} not found..'.format(self.txtInputFile))
 			return False
 
-		self.runLog.writeToLog(str='Reading inputs from {}'.format(self.txtInputFile))
+		self.runLog.writeToLog(str = 'Reading inputs from {}'.format(self.txtInputFile))
 
 		# parse input file
 		inputFile = open(self.txtInputFile,'r')
@@ -214,7 +217,7 @@ class pipeline():
 		# give option to clean up working directory 
 
 		# delete non-final mtz files
-		print 'Cleaning up working directory...\n'
+		print '\nCleaning up working directory...'
 		self.deleteNonFinalMtzs()
 
 		# move txt files to subdir
@@ -238,7 +241,20 @@ class pipeline():
 		if os.path.isfile(filename) is False:
 			ErrorString = 'File {} not found'.format(filename)
 			print ErrorString
-			self.runLog.writeToLog(str=ErrorString)
+			self.runLog.writeToLog(str = ErrorString)
 			return False
 		else:
 			return True
+
+	def printStepNumber(self):
+
+		# print a string indicating the current pipeline 
+		# step number directory to the command line
+
+		try:
+			self.stepNumber
+		except AttributeError:
+			self.stepNumber = 1
+		print '\n_______'
+		print 'STEP {})'.format(self.stepNumber)
+		self.stepNumber += 1

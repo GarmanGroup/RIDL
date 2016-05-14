@@ -48,6 +48,7 @@ class pipeline():
 			return 1
 
 		# run pdbcur job 
+		self.printStepNumber()
 		pdbcur = PDBCURjob(inputPDBfile = self.pdbcurPDBinputFile,
 						   outputDir    = self.outputDir,
 						   runLog       = self.runLog)
@@ -67,6 +68,7 @@ class pipeline():
 			return 3
 
 		# run SFALL job
+		self.printStepNumber()
 		sfall = SFALLjob(inputPDBfile   = self.reorderedPDBFile,
 						 outputDir      = self.outputDir,
 						 VDWR           = self.sfall_VDWR,
@@ -98,6 +100,7 @@ class pipeline():
 			labelsLater = ['FWT_{}'.format(self.laterPDB),'','','PHIC']
 		
 		if self.densMapType != 'END':
+			self.printStepNumber()
 			fft = FFTjob(mapType   = self.densMapType,
 						 FOMweight = self.FOMweight,
 						 pdbFile   = self.reorderedPDBFile,
@@ -111,6 +114,7 @@ class pipeline():
 			success = fft.run()
 		else:
 			# run END job if required (may take time to run!!)
+			self.printStepNumber()
 			endInputPDB = self.pdbcurPDBinputFile
 			endInputMTZ = ''.join(endInputPDB.split('.')[:-1]+['.mtz'])
 			endInputEFF = ''.join(endInputPDB.split('.')[:-1]+['.eff'])
@@ -127,6 +131,7 @@ class pipeline():
 			return 5
 
 		# generate FC map using FFT
+		self.printStepNumber()
 		fft_FC = FFTjob(mapType   = 'FC',
 					   FOMweight = self.FOMweight,
 					   pdbFile   = self.reorderedPDBFile,
@@ -142,6 +147,7 @@ class pipeline():
 			return 6
 
 		# crop atom-tagged map to asymmetric unit:
+		self.printStepNumber()
 		mapmask1 = MAPMASKjob(mapFile1  = sfall.outputMapFile,
 							  outputDir = self.outputDir,
 							  runLog    = self.runLog)
@@ -178,6 +184,12 @@ class pipeline():
 		newMap = self.cropDensmapToSFALLmap(mapType = 'FC',
 								   			densMap = fft_FC.outputMapFile,
 								   			atmMap  = mapmask1.outputMapFile)
+
+		# print the map info (grid size, num voxels)
+		print 'All generated maps should now be restricted to asym unit '+\
+			  'with properties: '
+		Map = mapTools(mapmask1.outputMapFile)
+		Map.printMapInfo()
 
 		# perform map consistency check between cropped fft and sfall maps
 		fftMap = mapTools(newMap)
@@ -227,7 +239,7 @@ class pipeline():
 		# reorder atoms in pdb file since some may be 
 		# missing now after pdbcur has been run
 
-		self.runLog.writeToLog(str='Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
+		self.runLog.writeToLog(str = 'Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
 		self.reorderedPDBFile = (self.PDBCURoutputFile).split('_pdbcur.pdb')[0]+'_reordered.pdb'
 
 		pdbin = open(self.PDBCURoutputFile,'r')
@@ -332,7 +344,7 @@ class pipeline():
 
 		# give option to clean up working directory 
 
-		print 'Cleaning up working directory...\n'
+		print '\nCleaning up working directory...'
 
 		# move txt files to subdir
 		self.makeOutputDir(dirName = '{}txtFiles/'.format(self.outputDir))
@@ -356,6 +368,19 @@ class pipeline():
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
 			print 'New sub directory "{}" created to contain output files'.format(dirName)
+
+	def printStepNumber(self):
+
+		# print a string indicating the current pipeline 
+		# step number directory to the command line
+
+		try:
+			self.stepNumber
+		except AttributeError:
+			self.stepNumber = 3
+		print '\n_______'
+		print 'STEP {})'.format(self.stepNumber)
+		self.stepNumber += 1
 
 
 

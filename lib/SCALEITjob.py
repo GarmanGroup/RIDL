@@ -35,7 +35,7 @@ class SCALEITjob():
 
 	def runSCALEIT(self):
 		# run SCALEIT job to scale 2nd dataset Fs against 1st datasets
-		fillerLine()
+		# fillerLine()
 		self.printPurpose()
 		title = 'run of scaleit'
 

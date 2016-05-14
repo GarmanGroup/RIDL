@@ -1,5 +1,6 @@
-import sys,os
+import sys,os,time
 sys.path.insert(0,'./lib')
+from errors import error
 from processFiles import processFiles
 
 class process():
@@ -19,7 +20,8 @@ class process():
 				 outputGraphs      = True,
 				 cleanUpFinalFiles = False):
 
-		self.titleCaption('ETRACK file preparation')
+		self.titleCaption()
+		self.info()
 
 		self.inputFile         = inputFile
 		self.proceedToETRACK   = proceedToETRACK
@@ -42,10 +44,11 @@ class process():
 		# check if input file exists and is readable 
 
 		if os.path.isfile(self.inputFile) and os.access(self.inputFile,os.R_OK):
-			print "Input file exists and is readable"
+			# print "Input file exists and is readable"
 			return True
 		else:
-			print "Either input file is missing or is not readable"
+			err = "Either input file is missing or is not readable"
+			error(text = err)
 			return False
 
 	def run(self):
@@ -200,9 +203,26 @@ MAPINFO
 
 		print '---------------------------------------------------------------'	
 
-	def titleCaption(self,title):
+	def titleCaption(self,
+					 whichString = 'new'):
 
-		# a template title line to print to command line
+		# a title line to print to command line
 
-		print '\n\n||========================== {} ==========================||'.format(title)
+		if whichString == 'old':
+			print '\n||========================== RIDL ==========================||'
+			print '||======== Radiation-Induced Density Loss Analysis =========||\n'
+		else:
+			print '\n----------------------------------------------------\n'+\
+				  ' '*24+'RIDL\n'+\
+				  ' '*4+'(Radiation-Induced Density Loss Analysis)\n'+\
+				  '----------------------------------------------------'
+
+	def info(self):
+
+		# print a small ammount of information to the 
+		# command line (date and email)
+
+		print 'date: '+ time.strftime("%c")
+		print 'email queries to charles.bury@dtc.ox.ac.uk\n'
+
 

@@ -34,7 +34,7 @@ class PDBCURjob():
 		# (for two conformations with 0.5 occupancy, the first - A is chosen and occupancy
 		# set to 1.00). Also remove all anisou info from file - since it is not needed for 
 		# current analysis
-		fillerLine()
+		# fillerLine()
 		self.printPurpose()
 		self.jobName = 'PDBCUR'
 

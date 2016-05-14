@@ -69,7 +69,7 @@ class CADjob():
 
 	def runCAD(self):
 
-		fillerLine()
+		# fillerLine()
 		self.printPurpose()
 		title = 'run of cad'
 										 

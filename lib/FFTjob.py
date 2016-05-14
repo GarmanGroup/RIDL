@@ -62,7 +62,7 @@ class FFTjob():
 
 		# run FFT job using the external ccp4Job class
 
-		fillerLine()
+		# fillerLine()
 		self.printPurpose()
 		self.commandInput1 = 'fft '+\
 				 			 'HKLIN {} '.format(self.inputMtzFile)+\

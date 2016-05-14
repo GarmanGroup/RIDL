@@ -65,13 +65,13 @@ def checkInputsExist(inputFiles,runLog):
 			runLog.writeToLog('{}'.format(fileName))	
 		return True
 
-def fillerLine(long=True,linebreak=True):
-	if long is True:
+def fillerLine(longLine  = True,
+			   linebreak = True):
+	if longLine is True:
 		ln = '--------------------------'*2
 	else:
 		ln = '--------------------------'
 	if linebreak is True:
 		ln = '\n'+ln
 	print ln
-
 

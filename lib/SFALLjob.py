@@ -39,7 +39,7 @@ class SFALLjob():
 
 	def runSFALL(self):
 		# run SFALL job using the external ccp4Job class
-		fillerLine()
+		# fillerLine()
 		self.printPurpose()
 		title = 'run of sfall'
 
