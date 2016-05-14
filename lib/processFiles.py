@@ -2,6 +2,7 @@ from CADSCALEITpiped import pipeline as pipe1
 from SFALLFFTpiped import pipeline as pipe2
 from cleanUpFiles import cleanUpFinalFiles
 from logFile import logFile
+from errors import error
 import shutil
 import os
 
@@ -53,10 +54,11 @@ class processFiles():
 			self.findFilesInDir(mapProcessDir = False)
 
 			if self.eTrackInputName not in self.filesInDir:
-				print 'Unable to find input file '+\
+				err = 'Unable to find input file '+\
 					  '"{}" in "{}"\n'.format(self.eTrackInputName,self.dir)+\
 					  'Ensure "python ETRACK -i <input.txt> '+\
 					  '-p" has been run prior to -c'
+				error(text = err)
 				return False
 
 			success = self.writeETRACKInputFile(run          = True,
@@ -80,6 +82,10 @@ class processFiles():
 			return #don't proceed if error in input file
 
 		success = self.checkCorrectInputFormats()
+		if success is False:
+			return success
+
+		success = self.checkMtzLabelsExist()
 		if success is False:
 			return success
 
@@ -127,8 +133,9 @@ class processFiles():
 
 		# if Input.txt not found, flag error
 		if os.path.isfile(self.inputFile) is False:
-			print 'Required input file {} not found..'.format(self.inputFile)
-			return
+			err = 'Required input file {} not found..'.format(self.inputFile)
+			error(text = err)
+			return False
 
 		fileIn = open(self.inputFile,'r')
 
@@ -161,7 +168,8 @@ class processFiles():
 						 'pdb2',
 						 'name3',
 						 'mtz3',
-						 'mtzlabels3',
+						 'phaseLabel',
+						 'FcalcLabel',
 						 'sfall_VDWR',
 						 'densMapType',
 						 'dir',
@@ -174,8 +182,10 @@ class processFiles():
 			try:
 				getattr(self,prop)
 			except AttributeError:
-				print 'Necessary input not found: {}'.format(prop)
+				err = 'Necessary input not found: {}'.format(prop)
+				error(text = err)
 				return False
+
 		print 'All necessary inputs found in input file'
 		return True
 
@@ -191,7 +201,7 @@ class processFiles():
 
 		for p in props:
 			if self.multiDatasets is False:
-				success = self.checkFileExists(fileName=getattr(self,p))
+				success = self.checkFileExists(fileName = getattr(self,p))
 				if success is False:
 					return False
 			else:
@@ -202,106 +212,220 @@ class processFiles():
 
 		if self.multiDatasets is False:
 			if self.name1 == self.name2:
-				print '"name1" and "name2" inputs must be different '+\
-					  '- CAD will fail otherwise'
+				err = '"name1" and "name2" inputs must be different, '+\
+					  'otherwise CAD will fail. Both currently set '+\
+					  'as "{}".'.format(self.name1)
+				error(text = err)
 				return False
+
 		else:
-			error = False
+			isError = False
 			if self.repeatedFile1InputsUsed is True:
 				for n in self.name2.split(','):
 					if self.name1 == n:
-						error = True
+						isError = True
+						sameName = n
+						break
 			else:
-				if self.name1 == self.name2:
-					error = True
+				for i,(n1, n2) in enumerate(zip(self.name1.split(','), self.name2.split(','))):
+					if n1 == n2:
+						isError = True
+						sameName = n1
+						break
 
-			if error is True:
-				print '"name1" and "name2" inputs must be different for each job in batch'
+			if isError is True:
+				err = '"name1" and "name2" inputs must be different '+\
+					  'for each job in batch, otherwise CAD will fail. '+\
+					  'Currently for one batch, the "initial" and "later" '+\
+					  'datasets are both currently called "{}".'.format(sameName)
+				error(text = err)
 				return False
 
+		# add to name3 to identify it from other datasets
+		self.name3 += '-phases'
+
 		if self.densMapType not in ('DIFF','SIMPLE','2FOFC','END'):
-			print '"densMapType" input of incompatible format, default is DIFF'
+			err = '"densMapType" input of incompatible format, (default is "DIFF"). '+\
+				  'Currently set as "{}" in input file.'.format(self.densMapType)
+			error(text = err)
 			return False
 
 		if self.deleteIntermediateFiles.lower() not in ('true','false'):
-			str = '"deleteIntermediateFiles" input of incompatible '+\
-				  'format (true,false) - case insensitive'
-			print str
+			err = '"deleteIntermediateFiles" input of incompatible '+\
+				  'format ("true","false"), case insensitive. '+\
+				  'Currently set as "{}" in input file'.format(self.deleteIntermediateFiles)
+			error(text = err)
 			return False
 		try:
 			float(self.sfall_VDWR)
 		except ValueError:
-			print '"sfall_VDWR" input must be a float'
+			err = '"sfall_VDWR" input must be a float. '+\
+			      'Currently set as "{}" in input file.'.format(self.sfall_VDWR)
+			error(text = err)
 			return False
 
 		if float(self.sfall_VDWR) <= 0:
-			print '"sfall_VDWR" input must be a positive float'
+			err = '"sfall_VDWR" input must be a positive float. '+\
+				  'Currently set as "{}" in input file.'.format(self.sfall_VDWR)
+
+			error(text = err)
 			return False
 
 		if 'preset' not in self.FFTmapWeight and self.FFTmapWeight not in ('recalculate','False'):
-			str = '"FFTmapWeight" input must take value in ("recalculate", '+\
+			err = '"FFTmapWeight" input must take value in ("recalculate", '+\
 				  '"False","preset,x") where "x" is the FOM weight label '+\
 				  '(of the form FOMx) of a preset FOM column within the '+\
-				  'input .mtz file'
-			print str
+				  'input .mtz file. Currently set as "{}" in input file'.format(self.FFTmapWeight)
+			error(text = err)
 			return False
 
 		if self.FFTmapWeight.startswith('preset') is True:
 			if self.FFTmapWeight.replace('preset','')[0] != ',':
-				str = 'If "FFTmapWeight" input is specified by "preset", '+\
+				err = 'If "FFTmapWeight" input is specified by "preset", '+\
 					  'then this must be followed a comma and then the FOM '+\
 					  'label name within the input .mtz file (i.e. "preset,x" '+\
 					  'for column label "FOMx"). If column label is simply '+\
-					  '"FOM" then use "preset,"'
-				print str
+					  '"FOM" then use "preset,". Currently set as "{}" in input file'.format(self.FFTmapWeight)
+				error(text = err)
 				return False
 
 		doseStr = 'Doses can be calculated using RADDOSE-3D (visit '+\
 				  'www.raddo.se for more details). If no doses have '+\
 				  'been calculated but you still wish to run this program, '+\
-				  'please set dose inputs to NOTCALCULATED within input file'
-
+				  'please set dose inputs to NOTCALCULATED within input file.\n'
 
 		if self.dose1 != 'NOTCALCULATED':
+			err = '"dose1" input must be a positive float. '+\
+				  'Currently set as "{}" in input file.\n{}'.format(self.dose1,doseStr)
 			try:
 				float(self.dose1)
 			except ValueError:
-				print '"dose1" input must be a positive float.'
-				print doseStr
+				error(text = err)
 				return False
 			if float(self.dose1) < 0:
-				print '"dose1" input must be a positive float.'
-				print doseStr
+				error(text = err)
 				return False
 
 		if self.dose2 != 'NOTCALCULATED':
 			if self.multiDatasets is False:
+				err = '"dose2" input must be a positive float. '+\
+				      'Currently set as "{}" in input file.\n{}'.format(self.dose2,doseStr)				
 				try:
 					float(self.dose2)
 				except ValueError:
-					print '"dose2" input must be a positive float.'
-					print doseStr
+					error(text = err)
 					return False
 				if float(self.dose2) < 0:
-					print '"dose2" input must be a positive float.'
-					print doseStr
+					error(text = err)
 					return False
 
 			else:
 				for dose in self.dose2.split(','):
+					err = 'All doses in "dose2" input must be positive floats. '+\
+				          'Currently set as "{}" in input file.\n{}'.format(self.dose2,doseStr)
 					try:
 						float(dose)
 					except ValueError:
-						print 'All doses in "dose2" input must be positive floats.'
-						print doseStr
+						error(text = err)
 						return False
 					if float(dose) < 0:
-						print 'All doses in "dose2" input must be positive floats.'
-						print doseStr
+						error(text = err)
 						return False
 
-		print 'All input file parameters appear to be of suitable format'
+		print 'All input file parameters appear to be of suitable format.'
 		return True
+
+	def checkMtzLabelsExist(self):
+
+		# for each mtz file input, check that the correct labels as 
+		# specified within the txt input file are successfully found
+
+		# initial dataset mtz files checked here
+		if self.repeatedFile1InputsUsed is True:
+			mtzFiles  = [self.mtz1]
+			mtzLabels = [self.mtzlabels1]
+		else:
+			mtzFiles  = self.mtz1.split(',')
+			mtzLabels = self.mtzlabels1.split(',')
+
+		for i,(f, lab) in enumerate(zip(mtzFiles, mtzLabels)):
+			foundLabels = self.getLabelsFromMtz(fileName = f)
+			labels = ['F'+lab,
+					  'SIGF'+lab]
+			for lab in labels:
+				if lab not in foundLabels:
+					self.mtzLabelNotFound(mtzFile = f,
+										  label   = lab)
+					return False
+
+		# later dataset mtz files checked here
+		if self.multiDatasets is False:
+			mtzFiles  = [self.mtz2]
+			mtzLabels = [self.mtzlabels2]
+		else:
+			mtzFiles  = self.mtz2.split(',')
+			mtzLabels = self.mtzlabels2.split(',')
+
+		for i,(f, lab) in enumerate(zip(mtzFiles, mtzLabels)):
+			foundLabels = self.getLabelsFromMtz(fileName = f)
+			labels = ['F'+lab,
+					  'SIGF'+lab]
+			for lab in labels:
+				if lab not in foundLabels:
+					self.mtzLabelNotFound(mtzFile = f,
+										  label   = lab)
+					return False
+
+		# phase information dataset mtz file checked here
+		foundLabels = self.getLabelsFromMtz(fileName = self.mtz3)
+		labels = [self.phaseLabel,
+				  self.FcalcLabel]
+		for lab in labels:
+			if lab not in foundLabels:
+				self.mtzLabelNotFound(mtzFile = f,
+									  label   = lab)
+				return False
+
+		return True
+
+	def mtzLabelNotFound(self,
+						 mtzFile = 'untitled.mtz',
+						 label   = 'unspecified'):
+
+		# if an mtz label has not been found, print an error message
+		err = 'Column "{}" not found in file "{}"'.format(label,mtzFile.split('/')[-1])+\
+			  'Please check the .txt input file used for the current job'+\
+		      'Also check the mtz file to ensure the column name "{}" exists'.format(label)
+		error(text = err)
+
+	def getLabelsFromMtz(self,
+						 fileName = 'untitled.mtz'):
+
+		# get list of column names from an mtz file
+
+		# write commands for mtzdump to run
+		inFile = open('mtzdumpInput.txt','w')
+		inFile.write('header\nend')
+		inFile.close()
+
+		# run mtzdump and parse output to find column labels
+		os.system('mtzdump hklin {} < mtzdumpInput.txt > mtzdump.tmp'.format(fileName))
+		output = open('mtzdump.tmp','r')
+		labelsFound = False
+		for l in output.readlines():
+			if l.replace('\n','') == '':
+				continue
+			if '* Column Types :' in l:
+				break
+			if labelsFound is True:
+				labels = l.split()
+			if '* Column Labels :' in l:
+				labelsFound = True
+				continue
+		output.close()
+		os.remove('mtzdump.tmp')
+
+		return labels
 
 	def checkFileExists(self, 
 					    fileName = ''):
@@ -311,7 +435,8 @@ class processFiles():
 		if os.path.isfile(fileName) and os.access(fileName,os.R_OK):
 			return True
 		else:
-			print 'File "{}" could not be located..'.format(fileName)
+			err = 'File "{}" could not be located..'.format(fileName)
+			error(text = err)
 			return False
 
 	def checkForMultipleDatasets(self):
@@ -339,9 +464,9 @@ class processFiles():
 			print 'Only single dataset located and will be processed'
 			self.multiDatasets = False
 		elif lengths[1:] != lengths[:-1]:
-			errorStr = 'Error! Input file properties ({}) '.format(','.join(props))+\
-				  	   'must have same number of comma-separated inputs'
-			print errorStr
+			err = 'Error! Input file properties ({}) '.format(','.join(props))+\
+				  'must have same number of comma-separated inputs'
+			error(text = err)
 
 		else:
 			print 'Multiple datasets located in input file to be processed'
@@ -356,9 +481,9 @@ class processFiles():
 				lengths.append(len(val.split(',')))
 
 			if lengths not in ([1]*5,[self.numDsets]*5):
-				errorStr ='Error! Input file properties ({})'.format(','.join(props))+\
-					  	  'must all each have either 1 or 5 comma-separated inputs'
-				print errorStr
+				err = 'Error! Input file properties ({})'.format(','.join(props))+\
+					  'must all each have either 1 or 5 comma-separated inputs'
+				error(text = err)
 			else:
 				s = False
 				if lengths == [1]*5:
@@ -445,7 +570,8 @@ class processFiles():
 				 'Mtz2LabelName'   : 'mtzlabels2_current',
 				 'Mtz2LabelRename' : 'name2_current',
 				 'mtzIn3'          : 'mtz3',
-				 'Mtz3LabelName'   : 'mtzlabels3',
+				 'Mtz3phaseLabel'  : 'phaseLabel',
+				 'Mtz3FcalcLabel'  : 'FcalcLabel',
 				 'Mtz3LabelRename' : 'name3',
 				 'inputPDBfile'    : 'pdb2_current',
 				 'densMapType'     : 'densMapType',
@@ -479,13 +605,14 @@ class processFiles():
 		else:
 			self.mtzIn = '{}{}_sigmaa.mtz'.format(self.mapProcessDir,self.name2_current)
 
-		props = {'pdbIN'       : 'pdb2_current',
-				 'initialPDB'  : 'name1_current',
-				 'laterPDB'    : 'name2_current',
-				 'sfall_VDWR'  : 'sfall_VDWR',
-				 'mtzIN'       : 'mtzIn',
-				 'densMapType' : 'densMapType',
-				 'FFTmapWeight': 'FFTmapWeight'}
+		props = {'pdbIN'        : 'pdb2_current',
+				 'initialPDB'   : 'name1_current',
+				 'laterPDB'     : 'name2_current',
+				 'phaseDataset' : 'name3',
+				 'sfall_VDWR'   : 'sfall_VDWR',
+				 'mtzIN'        : 'mtzIn',
+				 'densMapType'  : 'densMapType',
+				 'FFTmapWeight' : 'FFTmapWeight'}
 
 		fileOut2 = open(self.pipe2FileName,'w')
 		inputString = ''
@@ -519,7 +646,8 @@ class processFiles():
 			print 'Pipeline ran to completion'
 			return True
 		else:
-			print 'Pipeline failed to run to completion'
+			err = 'Pipeline failed to run to completion'
+			error(text = err)
 			return False
 
 	def runPipeline2(self,
@@ -638,7 +766,8 @@ class processFiles():
 		self.findFilesInDir()
 		for f in renameFiles:
 			if f.split('/')[-1] not in self.filesInDir:
-				print 'Not all key output files found'
+				err = 'Not all key output files found'
+				error(text = err)
 				return False
 		return True
 
@@ -680,8 +809,9 @@ class processFiles():
 			seriesName = self.dir.split('/')[-2]
 
 			if self.multiDatasets is True and self.repeatedFile1InputsUsed is False:
-				print 'Must have single INITIALDATASET inputs in input '+\
-					  'file to run ETRACK immediately here'
+				err =  'Must have single INITIALDATASET inputs in input '+\
+					   'file to run ETRACK immediately here'
+				error(text = err)
 				return False
 
 			else:
@@ -715,6 +845,7 @@ class processFiles():
 			os.makedirs(dirName)
 			print 'New sub directory "{}"'.format(dirName)+\
 				  'created to contain output files'
+
 
 
 
