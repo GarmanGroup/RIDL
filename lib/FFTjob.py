@@ -37,10 +37,8 @@ class FFTjob():
 		self.PHI2 			= labels2[3]
 		self.runLog 		= runLog
 
-		self.highResCutoff  = 1.4
-		self.lowResCutoff   = 3
-
-		self.runLog.writeToLog('Running FFT job')
+		self.highResCutoff  = ''
+		self.lowResCutoff   = ''
 
 	def run(self):
 
@@ -48,21 +46,22 @@ class FFTjob():
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
 		self.runFFT()
+
 		if self.jobSuccess is True:
 			self.provideFeedback()
 			self.runLog.writeToLog('Output files:')	
 			self.runLog.writeToLog('{}'.format(self.outputMapFile))
 			return True
+
 		else:
-			str = 'Job did not run successfully, see job log file "{}"'.format(self.outputLogfile)
-			self.runLog.writeToLog(str)
+			err = 'Job did not run successfully, see job log file "{}"'.format(self.outputLogfile)
+			self.runLog.writeToLog(err)
 			return False
 			
 	def runFFT(self):
 
 		# run FFT job using the external ccp4Job class
 
-		# fillerLine()
 		self.printPurpose()
 		self.commandInput1 = 'fft '+\
 				 			 'HKLIN {} '.format(self.inputMtzFile)+\
@@ -74,7 +73,7 @@ class FFTjob():
 			FOMstring  = 'W={}'.format(self.FOM2)
 			FOMstring2 = 'W2={}'.format(self.FOM2)
 		else:
-			FOMstring,FOMstring2 = '',''
+			FOMstring, FOMstring2 = '', ''
 
 		# if DIFFERENCE or SIMPLE map types map type chosen
 		if self.mapType in ('DIFF','SIMPLE'):
@@ -140,10 +139,13 @@ class FFTjob():
 			fileIn  = self.inputMtzFile
 			fileOut = self.outputMapFile
 
-		print 'FFT Summary:'
-		print 'Input mtz file: {}'.format(fileIn)
-		print 'Output map file: {}'.format(fileOut)
-		Map = mapTools(self.outputMapFile)
+		txt = 'FFT Summary:\n'+\
+			  'Input mtz file: {}\n'.format(fileIn)+\
+			  'Output map file: {}'.format(fileOut)
+		self.runLog.writeToLog(txt)
+
+		Map = mapTools(mapName = self.outputMapFile,
+					   logFile = self.runLog)
 		Map.printMapInfo()
 
 	def printPurpose(self,
@@ -153,15 +155,13 @@ class FFTjob():
 		# (within ETRACK) to the command line
 
 		if self.mapType == 'DIFF':
-			str = 'Generating Fourier difference map over crystal unit cell,\n'
+			ln = 'Generating Fourier difference map over crystal unit cell,\n'
 		if self.mapType == 'SIMPLE':
-			str = 'Generating Fobs electron density map over crystal unit cell,\n'
+			ln = 'Generating Fobs electron density map over crystal unit cell,\n'
 		if self.mapType == '2FOFC':
-			str = 'Generating 2Fo-Fc electron density map over crystal unit cell,\n'
+			ln = 'Generating 2Fo-Fc electron density map over crystal unit cell,\n'
 		if self.mapType == 'FC':
-			str = 'Generating Fcalc electron density map over crystal unit cell,\n'
-		str += 'with same grid sampling dimensions as SFALL-output atom-tagged .map file'
-		print str
-
-
+			ln = 'Generating Fcalc electron density map over crystal unit cell,\n'
+		ln += 'with same grid sampling dimensions as SFALL-output atom-tagged .map file'
+		self.runLog.writeToLog(ln)
 

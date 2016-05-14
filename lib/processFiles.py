@@ -1,7 +1,6 @@
 from CADSCALEITpiped import pipeline as pipe1
 from SFALLFFTpiped import pipeline as pipe2
 from cleanUpFiles import cleanUpFinalFiles
-from logFile import logFile
 from errors import error
 import shutil
 import os
@@ -14,7 +13,8 @@ class processFiles():
 				 skipToETRACK	 = False,
 				 outputGraphs    = True,
 				 eTrackInputName = 'e_Track_inputfile.txt',
-				 cleanFinalFiles = False):
+				 cleanFinalFiles = False,
+				 logFileObj      = ''):
 
 		# class to read an input file and generate a set of density 
 		# and atom-tagged maps for a damage series. Can handle a single
@@ -28,6 +28,7 @@ class processFiles():
 		self.proceedToETRACK = proceedToETRACK
 		self.outputGraphs    = outputGraphs
 		self.eTrackInputName = eTrackInputName
+		self.logFile         = logFileObj
 
 		if skipToETRACK is False:
 			success = self.runProcessing()
@@ -59,7 +60,7 @@ class processFiles():
 					  '"{}" in "{}"\n'.format(self.eTrackInputName,self.dir)+\
 					  'Ensure "python ETRACK -i <input.txt> '+\
 					  '-p" has been run prior to -c'
-				error(text = err)
+				self.writeError(text = err)
 				return False
 
 			success = self.writeETRACKInputFile(run          = True,
@@ -69,7 +70,8 @@ class processFiles():
 
 	def runProcessing(self):
 
-		print '\n**** INPUT FILE PROCESSING ****\n'
+		ln = '\n**** INPUT FILE PROCESSING ****\n'
+		self.logFile.writeToLog(str = ln)
 
 		success = self.readMainInputFile()
 		if success is False:
@@ -92,18 +94,24 @@ class processFiles():
 		if success is False:
 			return success
 
-		print '\n\n**** DENSITY MAP GENERATION ****\n'
+		ln = '\n\n**** DENSITY MAP GENERATION ****\n'
+		self.logFile.writeToLog(str = ln)
 
 		if self.multiDatasets is False:
-			print 'Generating suitable electron density maps for run.'
+			ln = 'Generating suitable electron density maps for run.'
+			self.logFile.writeToLog(str = ln)
 			self.getCurrentInputParams()
 			success = self.runMapGenerationPipelines()
+
 		else:
-			print 'Generating suitable electron density maps for each '+\
+			txt = 'Generating suitable electron density maps for each '+\
 				  'higher dose dataset in turn.\n{} higher '.format(self.numDsets)+\
 				  'dose datasets located for this job.'
+			self.logFile.writeToLog(str = txt)
+
 			for i in range(self.numDsets):
-				print '\n{}\nHigher dose dataset {} starts here'.format('-'*33,i+1)
+				ln = '\n{}\nHigher dose dataset {} starts here'.format('-'*33,i+1)
+				self.logFile.writeToLog(str = ln)
 				self.getCurrentInputParams(jobNumber = i)
 				success = self.runMapGenerationPipelines()
 				if success is False:
@@ -121,12 +129,11 @@ class processFiles():
 		# for a single dataset
 
 		self.setJobName()
-		self.startLogFile()
 		self.writePipeline1Inputs()
-		success = self.runPipeline1(logFile = self.logFile)
+		success = self.runPipeline1()
 		if success is True:
 			self.writePipeline2Inputs()
-			success = self.runPipeline2(logFile = self.logFile)
+			success = self.runPipeline2()
 			if success is True:
 				if self.deleteIntermediateFiles.lower() == 'true':
 					success = self.cleanUpIntermediateFiles()
@@ -144,8 +151,11 @@ class processFiles():
 		# if Input.txt not found, flag error
 		if os.path.isfile(self.inputFile) is False:
 			err = 'Required input file {} not found..'.format(self.inputFile)
-			error(text = err)
+			self.writeError(text = err)
 			return False
+		else:
+			ln = 'Reading input file "{}"'.format(self.inputFile)
+			self.logFile.writeToLog(str = ln)
 
 		fileIn = open(self.inputFile,'r')
 
@@ -193,10 +203,12 @@ class processFiles():
 				getattr(self,prop)
 			except AttributeError:
 				err = 'Necessary input not found: {}'.format(prop)
-				error(text = err)
+				self.writeError(text = err)
 				return False
 
-		print 'All necessary inputs found in input file'
+		ln = 'All necessary inputs found in input file.'
+		self.logFile.writeToLog(str = ln)
+
 		return True
 
 	def checkCorrectInputFormats(self):
@@ -225,7 +237,7 @@ class processFiles():
 				err = '"name1" and "name2" inputs must be different, '+\
 					  'otherwise CAD will fail. Both currently set '+\
 					  'as "{}".'.format(self.name1)
-				error(text = err)
+				self.writeError(text = err)
 				return False
 
 		else:
@@ -248,7 +260,7 @@ class processFiles():
 					  'for each job in batch, otherwise CAD will fail. '+\
 					  'Currently for one batch, the "initial" and "later" '+\
 					  'datasets are both currently called "{}".'.format(sameName)
-				error(text = err)
+				self.writeError(text = err)
 				return False
 
 		# add to name3 to identify it from other datasets
@@ -257,28 +269,27 @@ class processFiles():
 		if self.densMapType not in ('DIFF','SIMPLE','2FOFC','END'):
 			err = '"densMapType" input of incompatible format, (default is "DIFF"). '+\
 				  'Currently set as "{}" in input file.'.format(self.densMapType)
-			error(text = err)
+			self.writeError(text = err)
 			return False
 
 		if self.deleteIntermediateFiles.lower() not in ('true','false'):
 			err = '"deleteIntermediateFiles" input of incompatible '+\
 				  'format ("true","false"), case insensitive. '+\
 				  'Currently set as "{}" in input file'.format(self.deleteIntermediateFiles)
-			error(text = err)
+			self.writeError(text = err)
 			return False
 		try:
 			float(self.sfall_VDWR)
 		except ValueError:
 			err = '"sfall_VDWR" input must be a float. '+\
 			      'Currently set as "{}" in input file.'.format(self.sfall_VDWR)
-			error(text = err)
+			self.writeError(text = err)
 			return False
 
 		if float(self.sfall_VDWR) <= 0:
 			err = '"sfall_VDWR" input must be a positive float. '+\
 				  'Currently set as "{}" in input file.'.format(self.sfall_VDWR)
-
-			error(text = err)
+			self.writeError(text = err)
 			return False
 
 		if 'preset' not in self.FFTmapWeight and self.FFTmapWeight not in ('recalculate','False'):
@@ -286,7 +297,7 @@ class processFiles():
 				  '"False","preset,x") where "x" is the FOM weight label '+\
 				  '(of the form FOMx) of a preset FOM column within the '+\
 				  'input .mtz file. Currently set as "{}" in input file'.format(self.FFTmapWeight)
-			error(text = err)
+			self.writeError(text = err)
 			return False
 
 		if self.FFTmapWeight.startswith('preset') is True:
@@ -296,7 +307,7 @@ class processFiles():
 					  'label name within the input .mtz file (i.e. "preset,x" '+\
 					  'for column label "FOMx"). If column label is simply '+\
 					  '"FOM" then use "preset,". Currently set as "{}" in input file'.format(self.FFTmapWeight)
-				error(text = err)
+				self.writeError(text = err)
 				return False
 
 		doseStr = 'Doses can be calculated using RADDOSE-3D (visit '+\
@@ -310,10 +321,10 @@ class processFiles():
 			try:
 				float(self.dose1)
 			except ValueError:
-				error(text = err)
+				self.writeError(text = err)
 				return False
 			if float(self.dose1) < 0:
-				error(text = err)
+				self.writeError(text = err)
 				return False
 
 		if self.dose2 != 'NOTCALCULATED':
@@ -323,10 +334,10 @@ class processFiles():
 				try:
 					float(self.dose2)
 				except ValueError:
-					error(text = err)
+					self.writeError(text = err)
 					return False
 				if float(self.dose2) < 0:
-					error(text = err)
+					self.writeError(text = err)
 					return False
 
 			else:
@@ -336,13 +347,15 @@ class processFiles():
 					try:
 						float(dose)
 					except ValueError:
-						error(text = err)
+						self.writeError(text = err)
 						return False
 					if float(dose) < 0:
-						error(text = err)
+						self.writeError(text = err)
 						return False
 
-		print 'All input file parameters appear to be of suitable format.'
+		ln = 'All input file parameters appear to be of suitable format.'
+		self.logFile.writeToLog(str = ln)
+
 		return True
 
 	def checkMtzLabelsExist(self):
@@ -403,10 +416,10 @@ class processFiles():
 						 label   = 'unspecified'):
 
 		# if an mtz label has not been found, print an error message
-		err = 'Column "{}" not found in file "{}"'.format(label,mtzFile.split('/')[-1])+\
-			  'Please check the .txt input file used for the current job'+\
-		      'Also check the mtz file to ensure the column name "{}" exists'.format(label)
-		error(text = err)
+		err = 'Column "{}" not found in file "{}".\n'.format(label,mtzFile.split('/')[-1])+\
+			  'Please check the .txt input file used for the current job.\n'+\
+		      'Also check the mtz file to ensure the column name "{}" exists. '.format(label)
+		self.writeError(text = err)
 
 	def getLabelsFromMtz(self,
 						 fileName = 'untitled.mtz'):
@@ -446,7 +459,7 @@ class processFiles():
 			return True
 		else:
 			err = 'File "{}" could not be located..'.format(fileName)
-			error(text = err)
+			self.writeError(text = err)
 			return False
 
 	def checkForMultipleDatasets(self):
@@ -471,15 +484,19 @@ class processFiles():
 
 		self.numDsets  = lengths[0]
 		if lengths == [1]*4:
-			print 'Only single dataset located and will be processed'
+			ln = 'Only single dataset located and will be processed'
+			self.logFile.writeToLog(str = ln)
+
 			self.multiDatasets = False
 		elif lengths[1:] != lengths[:-1]:
 			err = 'Error! Input file properties ({}) '.format(','.join(props))+\
 				  'must have same number of comma-separated inputs'
-			error(text = err)
+			self.writeError(text = err)
 
 		else:
-			print 'Multiple higher dose datasets located in input file to be processed'
+			ln = 'Multiple higher dose datasets located in input file to be processed.'
+			self.logFile.writeToLog(str = ln)
+
 			props = ['name1',
 					 'mtz1',
 					 'mtzlabels1',
@@ -493,7 +510,7 @@ class processFiles():
 			if lengths not in ([1]*5,[self.numDsets]*5):
 				err = 'Error! Input file properties ({})'.format(','.join(props))+\
 					  'must all each have either 1 or 5 comma-separated inputs'
-				error(text = err)
+				self.writeError(text = err)
 			else:
 				s = False
 				if lengths == [1]*5:
@@ -507,14 +524,18 @@ class processFiles():
 		# check whether output directory exists and make if not
 
 		if self.dir.endswith('/') is False:
-			print 'Working directory specified in input '+\
-				  'file must end in "/" - appending'
+			ln = 'Working directory specified in input '+\
+				  'file must end in "/" - appending.'
+			ln = self.logFile.writeToLog(str = ln)
 			self.dir += '/'
 
 		if not os.path.exists(self.dir):
-			print 'Output directory "{}" not found, making directory'.format(self.dir)
+			ln = 'Output directory "{}" not found, making directory'.format(self.dir)
+			self.logFile.writeToLog(str = ln)
+
 			os.makedirs(self.dir)
-		print 'Working directory set to "{}"'.format(self.dir)
+		ln = 'Working directory set to "{}"'.format(self.dir)
+		self.logFile.writeToLog(str = ln)
 
 		self.mapProcessDir = self.dir + 'ETRACK-mapProcessing/'
 		if makeProcessDir is True:
@@ -632,47 +653,39 @@ class processFiles():
 		fileOut2.write(inputString)
 		fileOut2.close()
 
-	def startLogFile(self):
-
-		# create log file for full map processing pipeline
-
-		fName = '{}{}_run.log'.format(self.mapProcessDir,self.jobName)
-		log = logFile(fileName = fName,
-					  fileDir  = self.mapProcessDir)
-		self.logFile = log
-
-	def runPipeline1(self,
-				     logFile = ''):
+	def runPipeline1(self):
 
 		# run the first subroutine (CAD and SCALEIT run)
 
 		self.p1 = pipe1(outputDir = self.mapProcessDir,
 						inputFile = self.pipe1FileName,
 						jobName   = self.jobName,
-						log       = logFile)
+						log       = self.logFile)
 
 		outcome = self.p1.runPipeline()
 		if outcome == 0:
-			print '---> Subroutine ran to completion'
+			ln = '---> Subroutine ran to completion.'
+			self.logFile.writeToLog(str = ln)
+
 			return True
 		else:
 			err = 'Subroutine failed to run to completion'
-			error(text = err)
+			self.writeError(text = err)
 			return False
 
-	def runPipeline2(self,
-					 logFile = ''):
+	def runPipeline2(self):
 
 		# run the second subroutine (SFALL and FFT etc)
 
 		self.p2 = pipe2(outputDir = self.mapProcessDir,
 						inputFile = self.pipe2FileName,
 						jobName   = self.jobName,
-						log       = logFile)
+						log       = self.logFile)
 
 		outcome = self.p2.runPipeline()
 		if outcome == 0:
-			print '---> Subroutine ran to completion'
+			ln = '---> Subroutine ran to completion.'
+			self.logFile.writeToLog(str = ln)
 			return True
 		else:
 			print 'Subroutine failed to run to completion'
@@ -698,7 +711,8 @@ class processFiles():
 		# part of the pipeline for each SINGLE dataset
 		# clean up working directory
 
-		print '\nCleaning up working directory'
+		ln = '\nCleaning up working directory.'
+		self.logFile.writeToLog(str = ln)
 
 		# distinguish between FFT and END map output formats 
 		# depending on program used (FFT/END shellscript)
@@ -777,7 +791,7 @@ class processFiles():
 		for f in renameFiles:
 			if f.split('/')[-1] not in self.filesInDir:
 				err = 'Not all key output files found'
-				error(text = err)
+				self.writeError(text = err)
 				return False
 		return True
 
@@ -821,7 +835,7 @@ class processFiles():
 			if self.multiDatasets is True and self.repeatedFile1InputsUsed is False:
 				err =  'Must have single INITIALDATASET inputs in input '+\
 					   'file to run ETRACK immediately here'
-				error(text = err)
+				self.writeError(text = err)
 				return False
 
 			else:
@@ -853,8 +867,18 @@ class processFiles():
 
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
-			print 'New sub directory "{}"'.format(dirName)+\
-				  'created to contain output files'
+			ln = 'New sub directory "{}"'.format(dirName)+\
+				 'created to contain output files.'
+			self.logFile.writeToLog(str = ln)
+
+	def writeError(self,
+				   text = ''):
+
+		# write error message to log file
+
+		error(text = text,
+			  log  = self.logFile)
+
 
 
 

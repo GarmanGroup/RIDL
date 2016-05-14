@@ -21,8 +21,6 @@ class SFALLjob():
 		self.mapoutType    = mapoutType # atom-map ATMMOD or solvent-map SOLVMAP
 		self.runLog 	   = runLog
 
-		self.runLog.writeToLog('Running SFALL job')
-
 	def run(self):
 		inputFiles = [self.inputPDBfile]
 		if checkInputsExist(inputFiles,self.runLog) is False:
@@ -30,16 +28,16 @@ class SFALLjob():
 		self.runSFALL()
 		if self.jobSuccess is True:
 			self.provideFeedback()
-			self.runLog.writeToLog('Output files:')	
-			self.runLog.writeToLog('{}'.format(self.outputMapFile))
 			return True
 		else:
-			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
+			ln = 'Job did not run successfully, see job log file "{}"'.format(self.outputLogfile)
+			self.runLog.writeToLog(ln)
 			return False
 
 	def runSFALL(self):
+
 		# run SFALL job using the external ccp4Job class
-		# fillerLine()
+
 		self.printPurpose()
 		title = 'run of sfall'
 
@@ -75,8 +73,11 @@ class SFALLjob():
 
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self,includeDir=False):
+	def provideFeedback(self,
+						includeDir = False):
+
 		# provide some feedback
+
 		if includeDir is False:
 			fileIn  = self.inputPDBfile.split('/')[-1]
 			fileOut = self.outputMapFile.split('/')[-1]
@@ -84,15 +85,22 @@ class SFALLjob():
 			fileIn  = self.inputPDBfile
 			fileOut = self.outputMapFile
 
-		print 'SFALL Summary:'
-		print 'Input pdb file: {}'.format(fileIn)
-		print 'Output map file: {}'.format(fileOut)
-		Map = mapTools(self.outputMapFile)
+		txt = 'SFALL Summary:\n'+\
+			  'Input pdb file: {}\n'.format(fileIn)+\
+			  'Output map file: {}'.format(fileOut)
+		self.runLog.writeToLog(txt)
+
+		Map = mapTools(mapName = self.outputMapFile,
+					   logFile = self.runLog)
 		Map.printMapInfo()
 
-	def printPurpose(self,include=True):
-		# provide a summary of what this does (within ETRACK) to the command line
-		str = 'Creating atom-tagged .map file over unit cell for model "{}"'.format(self.inputPDBfile.split('/')[-1])
-		print str
+	def printPurpose(self,
+					 include = True):
+
+		# provide a summary of what this does 
+		# (within ETRACK) to the command line
+
+		ln = 'Creating atom-tagged .map file over unit cell for model "{}"'.format(self.inputPDBfile.split('/')[-1])
+		self.runLog.writeToLog(ln)
 
 

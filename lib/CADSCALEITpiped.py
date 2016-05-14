@@ -43,7 +43,8 @@ class pipeline():
 
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
-			print 'New sub directory "{}" created to contain output files'.format(dirName)
+			ln = 'New sub directory "{}" created to contain output files'.format(dirName)
+			self.runLog.writeToLog(str = ln)
 
 	def runPipeline(self):
 
@@ -135,10 +136,12 @@ class pipeline():
 
 		# if Input.txt not found, flag error
 		if self.checkFileExists(self.txtInputFile) is False:
-			self.runLog.writeToLog(str = 'Required input file {} not found..'.format(self.txtInputFile))
+			ln = 'Required input file {} not found..'.format(self.txtInputFile)
+			self.runLog.writeToLog(str = ln)
 			return False
 
-		self.runLog.writeToLog(str = 'Reading inputs from {}'.format(self.txtInputFile))
+		ln = 'Reading inputs from {}'.format(self.txtInputFile)
+		self.runLog.writeToLog(str = ln)
 
 		# parse input file
 		inputFile = open(self.txtInputFile,'r')
@@ -174,7 +177,8 @@ class pipeline():
 			try:
 				getattr(self,prop)
 			except AttributeError:
-				print 'Necessary input not found: {}'.format(prop)
+				err = 'Necessary input not found: {}.'.format(prop)
+				self.runLog.writeToLog(str = err)
 				return False
 		return True
 
@@ -217,7 +221,9 @@ class pipeline():
 		# give option to clean up working directory 
 
 		# delete non-final mtz files
-		print '\nCleaning up working directory...'
+		ln = '\nCleaning up working directory...'
+		self.runLog.writeToLog(str = ln)
+
 		self.deleteNonFinalMtzs()
 
 		# move txt files to subdir
@@ -239,9 +245,8 @@ class pipeline():
 		# check if file exists
 
 		if os.path.isfile(filename) is False:
-			ErrorString = 'File {} not found'.format(filename)
-			print ErrorString
-			self.runLog.writeToLog(str = ErrorString)
+			err = 'File {} not found'.format(filename)
+			self.runLog.writeToLog(str = err)
 			return False
 		else:
 			return True
@@ -255,6 +260,8 @@ class pipeline():
 			self.stepNumber
 		except AttributeError:
 			self.stepNumber = 1
-		print '\n_______'
-		print 'STEP {})'.format(self.stepNumber)
+		ln =  '\n_______'+\
+			  '\nSTEP {})'.format(self.stepNumber)
+		self.runLog.writeToLog(str = ln)
+
 		self.stepNumber += 1

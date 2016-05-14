@@ -59,10 +59,7 @@ def checkInputsExist(inputFiles,runLog):
 			str = 'Failed to find required input file "{}"'.format(fileName)
 			runLog.writeToLog(str)
 			return False
-	else:
-		runLog.writeToLog('Input files:')
-		for fileName in inputFiles:
-			runLog.writeToLog('{}'.format(fileName))	
+	else:	
 		return True
 
 def fillerLine(longLine  = True,

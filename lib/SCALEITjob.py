@@ -2,7 +2,9 @@ from ccp4Job import ccp4Job,checkInputsExist,fillerLine
 import os
 
 class SCALEITjob():
+
 	# run SCALEIT job to scale 2nd dataset Fs against 1st datasets	
+
 	def __init__(self,
 				 inputMtz  = '',
 				 outputMtz = 'scaleit.mtz',
@@ -17,25 +19,26 @@ class SCALEITjob():
 		self.Mtz2Label 	= Mtz2Label
 		self.outputDir 	= outputDir
 		self.runLog		= runLog
-		self.runLog.writeToLog('Running SCALEIT job')
 
 	def run(self):
+
 		inputFiles = [self.inputMtz]
+
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
 		self.runSCALEIT()
 		if self.jobSuccess is True:
 			self.provideFeedback()
-			self.runLog.writeToLog('Output files:')	
-			self.runLog.writeToLog('{}'.format(self.outputMtz))
 			return True
 		else:
-			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
+			err = 'Job did not run successfully, see job log file "{}"'.format(self.outputLogfile)
+			self.runLog.writeToLog(err)
 			return False
 
 	def runSCALEIT(self):
+
 		# run SCALEIT job to scale 2nd dataset Fs against 1st datasets
-		# fillerLine()
+
 		self.printPurpose()
 		title = 'run of scaleit'
 
@@ -68,8 +71,11 @@ class SCALEITjob():
 
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self,includeDir=False):
+	def provideFeedback(self,
+					    includeDir = False):
+
 		# provide some feedback
+
 		if includeDir is False:
 			fileIn  = self.inputMtz.split('/')[-1]
 			fileOut = self.outputMtz.split('/')[-1]
@@ -77,13 +83,18 @@ class SCALEITjob():
 			fileIn  = self.inputMtz
 			fileOut = self.outputMtz
 
-		print 'SCALEIT Summary:'
-		print 'Input mtz file: {}'.format(fileIn)
-		print 'Output mtz file: {}'.format(fileOut)
+		txt = 'SCALEIT Summary:\n'+\
+			  'Input mtz file: {}\n'.format(fileIn)+\
+			  'Output mtz file: {}'.format(fileOut)
+		self.runLog.writeToLog(txt)
 
-	def printPurpose(self,include=True):
-		# provide a summary of what this does (within ETRACK) to the command line
-		str = 'Scaling 2nd dataset Fobs column against 1st dataset (low dose) Fobs'
-		print str
+	def printPurpose(self,
+					 include = True):
+
+		# provide a summary of what this does
+		# (within ETRACK) to the command line
+
+		ln = 'Scaling 2nd dataset Fobs column against 1st dataset (low dose) Fobs'
+		self.runLog.writeToLog(ln)
 
 

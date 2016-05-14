@@ -34,8 +34,6 @@ class CADjob():
 		self.outputMtz	  = outputMtz
 		self.outputDir	  = outputDir
 		self.runLog 	  = runLog
-
-		self.runLog.writeToLog('Running CAD job')
 		
 		self.FOMtag = {'in'   : '',
 					   'out'  : '',
@@ -55,16 +53,18 @@ class CADjob():
 		inputFiles = [self.inputMtz1,
 					  self.inputMtz2,
 					  self.inputMtz3]
+
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
+
 		self.runCAD()
 		if self.jobSuccess is True:
 			self.provideFeedback()
-			self.runLog.writeToLog('Output files:')	
-			self.runLog.writeToLog('{}'.format(self.outputMtz))
 			return True
+
 		else:
-			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
+			err = 'Job did not run successfully, see job log file "{}"'.format(self.outputLogfile)
+			self.runLog.writeToLog(err)
 			return False
 
 	def runCAD(self):
@@ -140,9 +140,11 @@ class CADjob():
 			fileIn3  = self.inputMtz3
 			fileOut = self.outputMtz
 
-		print 'CAD Summary:'
-		print 'Input mtz files: {}\n{}{}\n{}{}'.format(fileIn1,' '*17,fileIn2,' '*17,fileIn3)
-		print 'Output mtz file: {}'.format(fileOut)
+		txt = 'CAD Summary:\n'+\
+			  'Input mtz files: {}\n{}{}\n{}{}\n'.format(fileIn1,' '*17,fileIn2,' '*17,fileIn3)+\
+			  'Output mtz file: {}'.format(fileOut)
+		self.runLog.writeToLog(txt)
+
 
 	def printPurpose(self,
 					 include = True):
@@ -150,6 +152,6 @@ class CADjob():
 		# provide a summary of what this does 
 		# (within ETRACK) to the command line
 
-		str = 'Combining relevant columns from multiple '+\
+		txt = 'Combining relevant columns from multiple '+\
 			  'input mtz files into 1 single mtz file'
-		print str
+		self.runLog.writeToLog(txt)

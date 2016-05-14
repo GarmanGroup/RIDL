@@ -13,28 +13,28 @@ class PDBCURjob():
 		self.outputDir 	   = outputDir
 		self.runLog 	   = runLog
 
-		self.runLog.writeToLog('Running PDBCUR job')
-
 	def run(self):
+
 		inputFiles = [self.inputPDBfile]
+
 		if checkInputsExist(inputFiles,self.runLog) is False:
 			return False
 		self.runPDBCUR()
 		if self.jobSuccess is True:
 			self.provideFeedback()
-			self.runLog.writeToLog('Output files:')	
-			self.runLog.writeToLog('{}'.format(self.outputPDBfile))
 			return True
 		else:
-			self.runLog.writeToLog('Job did not run successfully, see job log file "{}"'.format(self.outputLogfile))
+			err = 'Job did not run successfully, see job log file "{}"'.format(self.outputLogfile)
+			self.runLog.writeToLog(err)
 			return False
 
 	def runPDBCUR(self):
+
 		# PDBcur job to specify to remove hydrogen atoms and pick on the most probably conformation
 		# (for two conformations with 0.5 occupancy, the first - A is chosen and occupancy
 		# set to 1.00). Also remove all anisou info from file - since it is not needed for 
 		# current analysis
-		# fillerLine()
+
 		self.printPurpose()
 		self.jobName = 'PDBCUR'
 
@@ -61,18 +61,22 @@ class PDBCURjob():
 
 		self.jobSuccess = job.checkJobSuccess()
 
-	def provideFeedback(self,includeDir=False):
+	def provideFeedback(self,
+						includeDir = False):
+
 		# provide some feedback
 
-		print 'PDBCUR Summary:'
+		txt = 'PDBCUR Summary:\n'
+
 		files = {'Input':self.inputPDBfile,
 				 'Output':self.outputPDBfile}
+
 		for k in files.keys():
 			if includeDir is False:
 				f = files[k].split('/')[-1]
 			else:
 				f = files[k]
-			print '{} pdb file: {}'.format(k,f)
+			txt += '{} pdb file: {}\n'.format(k,f)
 
 			# determine initial number of atoms in pdb file
 			pdbin = open(files[k],'r')
@@ -81,9 +85,16 @@ class PDBCURjob():
 				if 'ATOM' in line[0:5]:
 					counter += 1
 			pdbin.close()
-			print '\t# atoms in file: {}'.format(counter)
+			txt += '\t# atoms in file: {}\n'.format(counter)
 
-	def printPurpose(self,include=True):
-		# provide a summary of what this does (within ETRACK) to the command line
-		str = 'Stripping hydrogens, removing secondary conformations, and removing anisotropic B-factors'
-		print str
+		self.runLog.writeToLog(txt)
+
+	def printPurpose(self,
+					 include = True):
+
+		# provide a summary of what this does
+		# (within ETRACK) to the command line
+
+		ln = 'Stripping hydrogens, removing secondary conformations, '+\
+			 'and removing anisotropic B-factors'
+		self.runLog.writeToLog(ln)

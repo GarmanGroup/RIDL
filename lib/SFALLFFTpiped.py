@@ -80,23 +80,24 @@ class pipeline():
 			return 4
 
 		# run FFT job
-		sfallMap 	= mapTools(sfall.outputMapFile)
-		
-		axes 		= [sfallMap.fastaxis,
-					   sfallMap.medaxis,
-					   sfallMap.slowaxis]
+		sfallMap  = mapTools(mapName = sfall.outputMapFile)
+		axes 	  = [sfallMap.fastaxis,
+					 sfallMap.medaxis,
+					 sfallMap.slowaxis]
 
-		gridSamps 	= [sfallMap.gridsamp1,
-					   sfallMap.gridsamp2,
-					   sfallMap.gridsamp3]
+		gridSamps = [sfallMap.gridsamp1,
+					 sfallMap.gridsamp2,
+					 sfallMap.gridsamp3]
 
 		if self.densMapType in ('DIFF','SIMPLE'):
-			tags = ['FP_','SIGFP_','FOM_']
+			tags = ['FP_',
+					'SIGFP_',
+					'FOM_']
 			labelsInit 	= [i+self.initPDB for i in tags] + ['PHIC_'+self.phaseDataset]
 			labelsLater = [i+self.laterPDB for i in tags] + ['PHIC_'+self.phaseDataset]
 
 		if self.densMapType == '2FOFC':
-			labelsInit 	= ['','','','']
+			labelsInit 	= ['']*4
 			labelsLater = ['FWT_{}'.format(self.laterPDB),'','','PHIC']
 		
 		if self.densMapType != 'END':
@@ -133,14 +134,14 @@ class pipeline():
 		# generate FC map using FFT
 		self.printStepNumber()
 		fft_FC = FFTjob(mapType   = 'FC',
-					   FOMweight = self.FOMweight,
-					   pdbFile   = self.reorderedPDBFile,
-					   mtzFile   = self.inputMtzFile,
-				       outputDir = self.outputDir,
-				       axes      = axes,
-				       gridSamps = gridSamps,
-				       labels1   = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset],
-				       runLog    = self.runLog)
+					    FOMweight = self.FOMweight,
+					    pdbFile   = self.reorderedPDBFile,
+					    mtzFile   = self.inputMtzFile,
+				        outputDir = self.outputDir,
+				        axes      = axes,
+				        gridSamps = gridSamps,
+				        labels1   = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset],
+				        runLog    = self.runLog)
 		success = fft_FC.run()
 
 		if success is False: 
@@ -186,9 +187,11 @@ class pipeline():
 								   			atmMap  = mapmask1.outputMapFile)
 
 		# print the map info (grid size, num voxels)
-		print 'All generated maps should now be restricted to asym unit '+\
+		ln =  'All generated maps should now be restricted to asym unit '+\
 			  'with properties: '
-		Map = mapTools(mapmask1.outputMapFile)
+		self.runLog.writeToLog(str = ln)
+		Map = mapTools(mapName = mapmask1.outputMapFile,
+					   logFile = self.runLog)
 		Map.printMapInfo()
 
 		# perform map consistency check between cropped fft and sfall maps
@@ -209,7 +212,8 @@ class pipeline():
 
 		# if Input.txt not found, flag error
 		if os.path.isfile(self.inputFile) is False:
-			print 'Required input file {} not found..'.format(self.inputFile)
+			err = 'Required input file {} not found..'.format(self.inputFile)
+			self.runLog.writeToLog(str = err)
 			return False
 
 		inputFile = open(self.inputFile,'r')
@@ -239,7 +243,9 @@ class pipeline():
 		# reorder atoms in pdb file since some may be 
 		# missing now after pdbcur has been run
 
-		self.runLog.writeToLog(str = 'Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
+		ln = 'Renumbering input pdb file: {}'.format(self.PDBCURoutputFile)
+		self.runLog.writeToLog(str = ln)
+
 		self.reorderedPDBFile = (self.PDBCURoutputFile).split('_pdbcur.pdb')[0]+'_reordered.pdb'
 
 		pdbin = open(self.PDBCURoutputFile,'r')
@@ -257,7 +263,7 @@ class pipeline():
 				pdbout.write(line[11:80]+'\n')
 		pdbin.close()
 		pdbout.close()
-		self.runLog.writeToLog(str='Output pdb file: {}'.format(self.reorderedPDBFile))
+		self.runLog.writeToLog(str = 'Output pdb file: {}'.format(self.reorderedPDBFile))
 
 	def getSpaceGroup(self):
 
@@ -267,12 +273,16 @@ class pipeline():
 		for line in pdbin.readlines():
 			if line.split()[0] == 'CRYST1':
 				self.spaceGroup = line[55:66].replace(' ','')
-				self.runLog.writeToLog(str='Retrieving space group from file: {}'.format(self.PDBCURoutputFile))
-				self.runLog.writeToLog(str='Space group determined to be {}'.format(self.spaceGroup))
+				ln = 'Retrieving space group from file: {}.\n'.format(self.PDBCURoutputFile)+\
+					 'Space group determined to be {}'.format(self.spaceGroup)
+				self.runLog.writeToLog(str = ln)
+
 		try:
 			self.spaceGroup
 		except attributeError:
-			self.runLog.writeToLog(str='Unable to find space group from file: {}'.format(self.PDBCURoutputFile))
+			err = 'Unable to find space group from file: {}'.format(self.PDBCURoutputFile)
+			self.runLog.writeToLog(str = err)
+
 			return False
 		return True
 
@@ -313,38 +323,45 @@ class pipeline():
 		# the grid dimensions/filtering are the same and the ordering
 		# of the fast, medium, and slow axes are identical.
 
-		self.runLog.writeToLog(str='Checking that atom map (SFALL) and density map (FFT) are compatible...')
+		err = 'Checking that atom map (SFALL) and density map (FFT) are compatible...'
+		self.runLog.writeToLog(str = err)
 
 		if (sfallMap.gridsamp1 != fftMap.gridsamp1 or
 			sfallMap.gridsamp2 != fftMap.gridsamp2 or
 			sfallMap.gridsamp3 != fftMap.gridsamp3):
-			self.runLog.writeToLog(str='Incompatible grid sampling found...')
+			err = 'Incompatible grid sampling found...'
+			self.runLog.writeToLog(str = err)
+
 			return False
 
 		if (sfallMap.fastaxis != fftMap.fastaxis or
 			sfallMap.medaxis != fftMap.medaxis or
 			sfallMap.slowaxis != fftMap.slowaxis):
-			self.runLog.writeToLog(str='Incompatible fast,med,slow axes ordering found...')
+			err = 'Incompatible fast,med,slow axes ordering found...'
+			self.runLog.writeToLog(str = err)
 			return False
 
 		if (sfallMap.numCols != fftMap.numCols or
 			sfallMap.numRows != fftMap.numRows or
 			sfallMap.numSecs != fftMap.numSecs):
-			self.runLog.writeToLog(str='Incompatible number of rows, columns and sections...')
+			err = 'Incompatible number of rows, columns and sections...'
+			self.runLog.writeToLog(str = err)
 			return False
 
 		if sfallMap.getMapSize() != fftMap.getMapSize():
-			self.runLog.writeToLog(str='Incompatible map file sizes')
+			err = 'Incompatible map file sizes'
+			self.runLog.writeToLog(str = err)
 			return False
 
-		self.runLog.writeToLog(str='---> success!')
+		self.runLog.writeToLog(str = '---> success!')
 		return True
 
 	def cleanUpDir(self):
 
 		# give option to clean up working directory 
 
-		print '\nCleaning up working directory...'
+		ln = '\nCleaning up working directory...'
+		self.runLog.writeToLog(str = ln)
 
 		# move txt files to subdir
 		self.makeOutputDir(dirName = '{}txtFiles/'.format(self.outputDir))
@@ -367,7 +384,8 @@ class pipeline():
 
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
-			print 'New sub directory "{}" created to contain output files'.format(dirName)
+			ln = 'New sub directory "{}" created to contain output files.'.format(dirName)
+			self.runLog.writeToLog(str = ln)
 
 	def printStepNumber(self):
 
@@ -378,8 +396,10 @@ class pipeline():
 			self.stepNumber
 		except AttributeError:
 			self.stepNumber = 3
-		print '\n_______'
-		print 'STEP {})'.format(self.stepNumber)
+		txt = '\n_______'+\
+			  '\nSTEP {})'.format(self.stepNumber)
+		self.runLog.writeToLog(str = txt)
+
 		self.stepNumber += 1
 
 

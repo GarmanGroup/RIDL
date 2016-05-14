@@ -2,6 +2,7 @@ import sys,os,time
 sys.path.insert(0,'./lib')
 from errors import error
 from processFiles import processFiles
+from logFile import logFile
 
 class process():
 
@@ -19,9 +20,6 @@ class process():
 				 skipToETRACK      = False,
 				 outputGraphs      = True,
 				 cleanUpFinalFiles = False):
-
-		self.titleCaption()
-		self.info()
 
 		self.inputFile         = inputFile
 		self.proceedToETRACK   = proceedToETRACK
@@ -58,11 +56,18 @@ class process():
 		success = self.checkInputFileExists()
 		if success is False: 
 			return success
+
+		self.startLogFile()
+		self.titleCaption()
+		self.info()
+
 		pro = processFiles(inputFile       = self.inputFile,
 						   proceedToETRACK = self.proceedToETRACK,
 						   skipToETRACK    = self.skipToETRACK,
 						   outputGraphs    = self.outputGraphs,
-						   cleanFinalFiles = self.cleanUpFinalFiles)
+						   cleanFinalFiles = self.cleanUpFinalFiles,
+						   logFileObj      = self.logFile)
+
 		return pro.jobSuccess
 
 	def printInputFile(self):
@@ -75,7 +80,8 @@ class process():
 				print line.strip()
 		fileIn.close()
 
-	def writeTemplateInputFile(self,numHigherDoseDatasets = 1):
+	def writeTemplateInputFile(self,
+							   numHigherDoseDatasets = 1):
 
 		# write a template input file to current directory to be completed
 
@@ -201,7 +207,9 @@ MAPINFO
 
 		# a simple filler line to print to command line
 
-		print '---------------------------------------------------------------'	
+		ln = '---------------------------------------------------------------'	
+		self.logFile.writeToLog(str = ln)
+
 
 	def titleCaption(self,
 					 whichString = 'new'):
@@ -209,20 +217,49 @@ MAPINFO
 		# a title line to print to command line
 
 		if whichString == 'old':
-			print '\n||========================== RIDL ==========================||'
-			print '||======== Radiation-Induced Density Loss Analysis =========||\n'
+			txt = '\n||========================== RIDL ==========================||'+\
+			      '||======== Radiation-Induced Density Loss Analysis =========||\n'
 		else:
-			print '\n----------------------------------------------------\n'+\
+			txt = '\n----------------------------------------------------\n'+\
 				  ' '*24+'RIDL\n'+\
 				  ' '*4+'(Radiation-Induced Density Loss Analysis)\n'+\
 				  '----------------------------------------------------'
+
+		self.logFile.writeToLog(str = txt)
 
 	def info(self):
 
 		# print a small ammount of information to the 
 		# command line (date and email)
 
-		print 'date: '+ time.strftime("%c")
-		print 'email queries to charles.bury@dtc.ox.ac.uk\n'
+		txt = 'date: {}\n'.format(time.strftime("%c"))+\
+			  'email queries to charles.bury@dtc.ox.ac.uk\n'
+		self.logFile.writeToLog(str = txt)
+
+	def quickParseInputFile(self):
+
+		# parse input file to retrieve directory name for output
+
+		f = open(self.inputFile,'r')
+		for l in f.readlines():
+			if len(l) == 0:
+				continue
+			if 'dir' == l.split()[0]:
+				self.outputDir = l.split()[1]
+				if self.outputDir[-1] not in ('/'):
+					self.outputDir  += '/'
+				return
+
+	def startLogFile(self):
+
+		# create log file for the current job
+
+		self.quickParseInputFile()
+
+		fName = '{}RIDLjob.log'.format(self.outputDir)
+		log = logFile(fileName = fName,
+					  fileDir  = self.outputDir)
+		self.logFile = log
+
 
 
