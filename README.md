@@ -1,5 +1,5 @@
-# RIDL (Radiation-Induced Density Loss)
-#### Previously ETRACK
+# RIDL: Radiation-Induced Density Loss
+#### (Previously known as ETRACK)
 
 A collection of scripts to calculate per-atom density change metrics within a specific damage MX investigation.
 Suitable for any MX experiment in which datasets are collected on the **same crystal** over **multiple doses**.
@@ -9,7 +9,7 @@ Suitable for any MX experiment in which datasets are collected on the **same cry
 
 - Write an input file for the job (e.g. input.txt)
 
-- Run on command line ```python ETRACK.py -i input.txt -pc```
+- Run on command line ```python runRIDL.py -i input.txt -pc```
 
 ## A brief background
 
@@ -47,7 +47,7 @@ Assume here we have a damage series collected on a single crystal, comprising of
 
 The simplest way to run the RIDL pipeline is run it directly from the command line. 
 
-```python ETRACK.py -i inputFile.txt -p -c```
+```python runRIDL.py -i inputFile.txt -p -c```
 
 An input file *inputFile.txt* is required to specify input *.pdb* coordinate files and *.mtz* merged structure factor files per dataset. The input file provides the information to generate Fourier differences for each high dose dataset successively within the series. See the section "*Writing the RIDL input file*" for details on how to write this input file.
 
@@ -63,11 +63,11 @@ Several command line flags are required to run the program:
 
 For the general case the RIDL input file must be written manually, specifying correct .mtz column label information as required. To aid this, the command:
 
-```python ETRACK.py -j```
+```python runRIDL.py -j```
 
 can be run to output to the command line some useful information on how to successfully write the input file. Additionally the command:
 
-```python ETRACK.py -t n```
+```python runRIDL.py -t n```
 
 where `n` is an integer parameter to specified (corresponding to the number of higher dose datasets), will generate a template input file *templateInputFile.txt* for the user to complete.
 
@@ -173,7 +173,7 @@ For each high dose dataset (*1qie* or *1qif*, n = 2,3 respectively here):
 
 For this damage series, an example input file has been supplied called *exampleInputFile.txt*. RIDL can now be run by running:
 
-```python ETRACK.py -i exampleInputFile.txt -pc```
+```python runRIDL.py -i exampleInputFile.txt -pc```
 
 from the directory containing the *exampleInputFile.txt* file.
 
