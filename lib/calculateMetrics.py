@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from savevariables import retrieve_objectlist,save_objectlist,saveGenericObject,retrieveGenericObject
 from checkSeabornPresent import checkSeabornPresent as checkSns
 from PDBFileManipulation import PDBtoList,writePDBline
@@ -9,15 +8,15 @@ import numpy as np
 import shutil
 import os
 
-class eTrack(object):
+class calculateMetrics(object):
 
-	# a class for retrieving the eTrack input text file information and running 
-	# the eTrack pipeline to calculate per-atom damage metrics for a specified 
+	# a class for retrieving the RIDL input text file information and running 
+	# the RIDL pipeline to calculate per-atom damage metrics for a specified 
 	# damage series. This code requires previously generated atom-tagged and
 	# density maps (typically Fobs(n) - Fobs(1) Fourier difference maps) to 
 	# have been generated for the current damage series (as specified within 
-	# the input .txt file parsed below). If run as part of the full ETRACK 
-	# pipeline (by running 'python ETRACK.py -i [inputfile.txt] -pc') then 
+	# the input .txt file parsed below). If run as part of the full RIDL 
+	# pipeline (by running 'python runRIDL.py -i [inputfile.txt] -pc') then 
 	# this will automatically run directly after the suitable map files have
 	# been generated, with no need to explicitly write a new input file for
 	# this class to work.
@@ -32,7 +31,8 @@ class eTrack(object):
 				 pklSeries  = "",
 				 doses      = [],
 				 plot       = False,
-				 output     = 'simple'):
+				 output     = 'simple',
+				 logFile    = ''):
 
 		self.inDir 		= inDir 		# the input file directory
 		self.outDir  	= outDir 		# the output file directory
@@ -45,6 +45,7 @@ class eTrack(object):
 		self.plot       = plot 			# (bool) decide to plot per-residue summary plots per dataset
 		self.output     = output        # the amount of output to provide (either 'simple' for just Dloss
 										# info or 'full' larger selection of output files)
+		self.logFile    = logFile
 		
 	def runPipeline(self,
 					map_process   = True,
@@ -57,7 +58,6 @@ class eTrack(object):
 		# included. For each function input specify True if this part is to be performed
 		# and False otherwise.
 
-		self.titleCaption(title = 'ETRACK pipeline')
 		self.inputFileName = inputFileName
 
 		# check whether valid inputs to function
@@ -67,7 +67,9 @@ class eTrack(object):
 
 		# first need to run function above to read in input file containing info
 		# on where input files are and where output files should be written
-		print 'Reading input file: {}'.format(self.inputFileName)
+		ln = 'Reading input file: {}'.format(self.inputFileName)
+		self.logFile.writeToLog(str = ln)
+
 		success = self.readInputFile()
 		if success is False: 
 			return
@@ -82,7 +84,8 @@ class eTrack(object):
 		if map_process is True:
 			self.map_processing()
 		else:
-			print 'Map processing task not chosen...'
+			ln = 'Map processing task not chosen...'
+			self.logFile.writeToLog(str = ln)
 		self.fillerLine()
 
 		if post_process is True:
@@ -100,17 +103,18 @@ class eTrack(object):
 			self.summaryFile(normType = 'Standard') 
 
 			if self.CalphaPresent is True:
-				self.summaryFile(normType='Calpha normalised') 
+				self.summaryFile(normType = 'Calpha normalised') 
 			
 			self.writeDamSitesToFile()
 
 		else: 
-			print 'Post processing job not chosen...'
+			ln = 'Post processing job not chosen...'
+			self.logFile.writeToLog(str = ln)
 
 		if retrieve is True:
 			self.PDBmulti_retrieve()
 
-		self.fillerLine(blank=True)
+		self.fillerLine(blank = True)
 
 		if self.seabornFound is False:
 			self.printNoSeabornWarning()
@@ -127,11 +131,13 @@ class eTrack(object):
 			f = open(self.inputFileName,'r')
 			f.close()
 		except IOError:
-			print 'ETRACK input file "{}" not found'.format(self.inputFileName)
+			err = 'metric calculation input file "{}" not found'.format(self.inputFileName)
+			self.logFile.writeToLog(str = err)
 			return False
 		return True
 
-	def readInputFile(self, printText = True):
+	def readInputFile(self,
+					  printText = True):
 
 		# read input file e_Track_input.txt to specify location 
 		# of input files and where to write output files
@@ -185,40 +191,38 @@ class eTrack(object):
 			return True
 		else:
 			if printText is True:
-				print 'Error! Unable to extract list of dataset names from input file'
+				err = 'Error! Unable to extract list of dataset names from input file'
+				self.logFile.writeToLog(str = err)
 			return False
 
-	def checkInOutDirExist(self,
-						   printText = True):
+	def checkInOutDirExist(self):
 
 		# check that an input/output directories have been 
 		# found and make subdirectories if present
 
 		for dir in ([[self.inDir,'Input'],[self.outDir,'Output']]):
 			if os.path.isdir(dir[0]) == False:
-				str = '{} file location: {} does not exist. '.format(dir[1],dir[0])+\
+				err = '{} file location: {} does not exist. '.format(dir[1],dir[0])+\
 					  'Please select an appropriate directory'
-				if printText is True:
-					print str
+				self.logFile.writeToLog(str = err)
 				return False
 		return True
 
 	def makeOutputDir(self,
-					  dirName   = './',
-					  printText = True):
+					  dirName   = './'):
 
 		# if the above sub directory does not exist, make it
 
 		if not os.path.exists(dirName):
 			os.makedirs(dirName)
-			if printText is True:
-				print 'New sub directory "{}" created to contain output files'.format(dirName.replace(self.outputDir,''))
+			ln = 'New sub directory "{}" created to contain output files'.format(dirName.replace(self.outputDir,''))
+			self.logFile.writeToLog(str = ln)
 
 	def setOutputDirs(self):
 
 		# set the locations of the output directories
 
-		self.outputDir 		= '{}metrics/'.format(self.outDir)
+		self.outputDir 		= '{}RIDL-metrics/'.format(self.outDir)
 		self.outputPlotDir 	= '{}plots/'.format(self.outputDir)
 
 		# add pkl file names as attribute if specified in input file
@@ -230,7 +234,14 @@ class eTrack(object):
 		# combine the density map and atom-tagged map for a given dataset,
 		# to calculate per-atom density metrics for each refined atom
 
-		self.titleCaption(title='Map Processing')
+		txt = 'Combining density maps and atom-tagged maps to calculate '+\
+			  'per-atom density metrics for each refined atom in structure.\n'
+		self.logFile.writeToLog(str = txt)
+
+		txt = 'input directory:  {}\n'.format(self.inDir)+\
+			  'output directory: {}'.format(self.outputDir)
+		self.logFile.writeToLog(str   = txt,
+								strip = False)
 
 		# create additional subdirectories
 		for oDir in (self.outputDir,self.outputPlotDir):
@@ -240,22 +251,30 @@ class eTrack(object):
 		pklFileDir = 'pklFiles-perDataset/'
 		self.makeOutputDir(dirName = '{}{}'.format(self.outputDir,pklFileDir))
 
+		txt = '{} higher dose datasets located within input file.'.format(len(self.pdbNames))+\
+			  'Calculating per-atom density metrics for each dataset individually.\n'
+
 		pklFileNames = []
-		for dataset in self.pdbNames:
+		for i,dataset in enumerate(self.pdbNames):
 			# derive per-atom density metrics from maps
 			mapName1 = '{}_atoms.map'.format(dataset)
 			mapName2 = '{}_density.map'.format(dataset)
 			mapName3 = '{}_FC.map'.format(self.initialPDB.replace('.pdb',''))
 
-			maps2DensMets 	= maps2DensMetrics(filesIn    = self.inDir,
-											   filesOut   = self.outputDir,
-											   pdbName    = dataset,
-											   atomTagMap = mapName1,
-											   densityMap = mapName2,
-											   FCmap 	  = mapName3,
-											   plotScatter = False,
-											   plotHist   = self.plot,
-											   plotBar    = False)
+			txt = '\n---------------------------------\n'+\
+				  'Higher dose dataset {} starts here'.format(i+1)
+			self.logFile.writeToLog(str = txt)
+
+			maps2DensMets = maps2DensMetrics(filesIn    = self.inDir,
+										     filesOut   = self.outputDir,
+										     pdbName    = dataset,
+										     atomTagMap = mapName1,
+										     densityMap = mapName2,
+										     FCmap 	  = mapName3,
+										     plotScatter = False,
+										     plotHist   = self.plot,
+										     plotBar    = False,
+										     logFile    = self.logFile)
 
    			maps2DensMets.maps2atmdensity()
 
@@ -277,21 +296,26 @@ class eTrack(object):
 
 		# group the per-atom density metrics for each dataset together
 
-		self.titleCaption(title = 'Post Processing')
-		print 'Input pkl files for post processing chosen from input file:'
+		txt = 'Combining density metric information for each dataset '+\
+			  'together within the damage series'
+		self.logFile.writeToLog(str = txt)
+
+		txt = 'Input pkl files for post processing chosen from input file:'
 		for file in self.pklFiles: 
-			print '\t{}'.format(file.replace(self.outDir,""))
+			txt += '\n\t{}'.format(file.replace(self.outDir,""))
+		self.logFile.writeToLog(str = txt)
 
 		# next read in the pdb structure file as list of atom objects
-		print 'Reading in initial pdb file...'
 		initialPDBlist = PDBtoList(pdbFileName = self.inDir+self.initialPDB)
 
 		# retrieve object lists of atoms for each damage set
-		self.fillerLine()
-		print 'Reading in damaged pkl files...'
+		ln = 'Reading in damaged pkl files...'
+		self.logFile.writeToLog(str = ln)
+
 		dList = [] # dataset list
 		for pkl_filename in self.pklFiles:
-			print 'Damage file number: {}'.format(len(dList)+1)
+			ln = 'Damage file number: {}'.format(len(dList)+1)
+			self.logFile.writeToLog(str = ln)
 			PDB_ret = retrieve_objectlist(pkl_filename)
 
 			# add new retrieved damage set list to dList
@@ -299,7 +323,8 @@ class eTrack(object):
 
 		# create a list of atom objects with attributes as lists varying over 
 		# dose range, only including atoms present in ALL damage datasets
-		print 'New list of atoms over full dose range calculated...'
+		ln = 'New list of atoms over full dose range calculated...'
+		self.logFile.writeToLog(str = ln)
 		combinedAtoms = combinedAtomList(datasetList    = dList,
 										 numLigRegDsets = len(dList),
 										 doseList       = self.doses,
@@ -310,13 +335,13 @@ class eTrack(object):
 		combinedAtoms.getMultiDoseAtomList()
 
 		# calculate 'average' variant Dloss metrics
-		combinedAtoms.calcAdditionalMetrics(newMetric='average')
+		combinedAtoms.calcAdditionalMetrics(newMetric = 'average')
 
 		# calculate Calpha normalised metrics, if Calpha atoms exist
 		self.CalphaPresent = combinedAtoms.checkCalphaAtomsExist()
 		if self.CalphaPresent is True:
 			for m in ('loss','mean','gain','Bfactor'):
-				combinedAtoms.calcAdditionalMetrics(metric=m)
+				combinedAtoms.calcAdditionalMetrics(metric = m)
 		
 		self.combinedAtoms = combinedAtoms
 		self.writeCsvFiles(output = self.output)
@@ -329,18 +354,22 @@ class eTrack(object):
 		# csv files,one for each density metric separately
 
 		self.fillerLine()
-		print 'Writing .csv file for per-atom density metric:'
+		ln = 'Writing .csv file for per-atom density metric:'
+		self.logFile.writeToLog(str = ln)
 
 		if output == 'simple':
+
 			metrics = [['loss','Standard'],
 					   ['loss','reliability']]
+
 			if self.CalphaPresent is True:
 				metrics += [['loss','Calpha normalised']]
 		else:
 			metrics = self.combinedAtoms.getDensMetrics()
 
 		for densMet in metrics:
-			print '\tmetric: {}, normalisation: {}'.format(*densMet)
+			ln = '\tmetric: {}, normalisation: {}'.format(*densMet)
+			self.logFile.writeToLog(str = ln)
 			self.combinedAtoms.writeMetric2File(where    = self.outputDir,
 										        metric   = densMet[0],
 										        normType = densMet[1])
@@ -373,9 +402,14 @@ class eTrack(object):
 		# retrieve list of atom objects from .pkl file
 
 		self.fillerLine(blank = True)
-		self.titleCaption(title='Atom List Retrieval')
-		print 'Input pkl file for data retrieval chosen from input file:'
-		print '\t{}'.format(self.pklSeries)
+
+		txt = 'Retrieving per-atom damage metric information from '+\
+			  ' .pkl file for each dataset within damage series.'
+		self.logFile.writeToLog(str = txt)
+
+		txt = 'Input pkl file for data retrieval chosen from input file:\n'+\
+			  '\t{}'.format(self.pklSeries)
+		self.logFile.writeToLog(str = txt)
 
 		# retrieve the combinedAtoms object from the pkl file
 		self.combinedAtoms = retrieveGenericObject(fileName = self.outputDir+self.pklSeries)
@@ -387,7 +421,9 @@ class eTrack(object):
 
 		# write a summary output file (either html or plain text)
 
-		print 'Writing {} summary output file for metric: {}, normalisation: {}'.format(fileType,metric,normType)
+		ln = 'Writing {} summary output file for metric: {}, normalisation: {}'.format(fileType,metric,normType)
+		self.logFile.writeToLog(str = ln)
+
 		if fileType == 'html':
 			self.summaryHTML(metric        = metric,
 							 normType      = normType,
@@ -405,7 +441,7 @@ class eTrack(object):
 
 		numDsets = self.getNumDatasets()
 		summaryFile = open('{}summaryFile-D{}-{}.txt'.format(self.outputDir,metric,normType.replace(' ','-')),'w')
-		summaryFile.write('D{} ({}) eTrack summary file\n'.format(metric,normType))
+		summaryFile.write('D{} ({}) RIDL summary file\n'.format(metric,normType))
 		summaryFile.write('Created: {}\n'.format(strftime("%Y-%m-%d %H:%M:%S", gmtime())))
 		summaryFile.write('Summary information derived from {}\n'.format(self.pklSeries))
 		summaryFile.write('Email charles.bury@dtc.ox.ac.uk for queries\n')
@@ -509,12 +545,12 @@ class eTrack(object):
 		summaryFile = open('{}summaryFile-D{}-{}.html'.format(self.outputDir,metric,normType.replace(' ','-')),'w')
 		summaryFile.write('<!DOCTYPE html>\n<html>\n<head>\n')
 
-		headString = '<html>\n<head>\n<title>eTrack summary file</title>\n'+\
+		headString = '<html>\n<head>\n<title>RIDL summary file</title>\n'+\
 					 '<style>\ntable, th, td {\nborder: 1px solid black;\nborder-collapse: collapse;\n}\n'+\
 					 'th, td {\npadding: 5px;\ntext-align: center;\n}\n</style>\n</head>\n'
 		summaryFile.write(headString)
 
-		bodyString = '<body>\n<h1>D{} ({}) eTrack summary file</h1>\n'.format(metric,normType)+\
+		bodyString = '<body>\n<h1>D{} ({}) RIDL summary file</h1>\n'.format(metric,normType)+\
 					 'Created: {}<br>\n'.format(strftime("%Y-%m-%d %H:%M:%S", gmtime()))+\
 					 'Summary information derived from {}<br>\n'.format(self.pklSeries)+\
 					 'Email charles.bury@dtc.ox.ac.uk for queries<br>\n'+\
@@ -992,7 +1028,8 @@ class eTrack(object):
 		try: 
 			self.spaceGroup
 		except attributeError:
-			print 'Unable to find space group from file: {}'.format(pdbFile)
+			err = 'Unable to find space group from file: {}'.format(pdbFile)
+			self.logFile.writeToLog(str = err)
 			return False
 		return self.spaceGroup
 
@@ -1002,16 +1039,10 @@ class eTrack(object):
 		# print a filler line to command line
 
 		if blank is False:
-			print '---------------------------------------------------------------'	
+			ln = '\n---------------------------------------------------------------'	
 		else:
-			print '\n'
-
-	def titleCaption(self,title='unspecified title'):
-
-		# print a title caption here to command line
-
-		print '||========================== {} ==========================||'.format(title)
-
+			ln = '\n'
+		self.logFile.writeToLog(str = ln)
 
 	def checkSeaborn(self):
 
@@ -1025,8 +1056,8 @@ class eTrack(object):
 
 		# if seaborn library not found, print a warning to command line
 
-		str = '***WARNING***\n'+\
+		txt = '*** WARNING ***\n'+\
 			  'Seaborn plotting library not found.\n'+\
 			  'Some output plots could not be produced.\n'+\
 			  'Use "pip install seaborn" to install package.'
-		print str
+		self.logFile.writeToLog(str = txt)

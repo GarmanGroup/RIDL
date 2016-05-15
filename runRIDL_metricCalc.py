@@ -1,34 +1,39 @@
 import sys
 sys.path.insert(0,'./lib')
-from eTrack_RUN import eTrack
+from calculateMetrics import calculateMetrics
 import os
 
 class run():
 
-	# run the main ETRACK scripts to calculate per-atom density 
-	# metrics for a series of increasing doses
+	# run the metric calculation step of the RIDL pipeline
+	#  to calculate per-atom density metrics for a series 
+	# of increasing doses
 
 	def __init__(self,
 				 runAll       = True,
-				 inputFileLoc = ''):
+				 inputFileLoc = '',
+				 logFile      = ''):
 
-		self.inputFileName = inputFileLoc+'e_Track_inputfile.txt'
+		self.inputFileName = inputFileLoc+'metricCalc_inputfile.txt'
+		self.logFile       = logFile
 		
 		if runAll is True:
-			self.runETRACK()
+			self.runCalculateMetrics()
 
-	def runETRACK(self,
-				  mapProcess  = True,
-				  postProcess = True,
-				  retrieve    = False):
+	def runCalculateMetrics(self,
+				            mapProcess  = True,
+				  			postProcess = True,
+				  			retrieve    = False):
 
-		# run the ETRACK processing for the currently defined input file
+		# run the metric calculation scripts for the currently 
+		# defined input file
+		ln = '\n\n**** METRIC CALCULATIONS ****\n'
+		self.logFile.writeToLog(str = ln)
 
-		print 'Running main ETRACK script...'
 		exists = self.checkInputFileExists()
 		if exists is False:
 			return
-		eT = eTrack()
+		eT = calculateMetrics(logFile = self.logFile)
 		eT.runPipeline(map_process   = mapProcess,
 					   post_process  = postProcess,
 					   retrieve      = retrieve,
@@ -60,7 +65,7 @@ class run():
 				'damageset_num <dataset numbers, e.g. 1,2 for TRAP. Can be letters corresponding to pdb series>',
 				'initialPDB <initial dataset pdb file e.g. TRAP1.pdb>',
 				'doses <list of doses, length must match length of damageset_num above>',
-				'PKLMULTIFILE <if already processed in ETRACK, can specify single output .pkl for series>']
+				'PKLMULTIFILE <if already processed in RIDL, can specify single output .pkl for series>']
 		inputString = self.writeInputFile(*args)	
 
 	def writeInputFile(self,
@@ -94,8 +99,10 @@ class run():
 
 	def checkInputFileExists(self):
 
+		# check whether input file present for the metric 
+		# calculation step of the RIDL pipeline
+
 		if os.path.isfile(self.inputFileName) and os.access(self.inputFileName,os.R_OK):
-			print "Input file exists and is readable"
 			return True
 		else:
 			print "Either input file is missing or is not readable"

@@ -15,7 +15,7 @@ def plotVxlsPerAtm(pdbName     = 'untitled',
                    vxlsPerAtom = {},
                    plotType    = 'histogram',
                    saveFig     = True,
-                   printText   = True):
+                   printText   = False):
 
     # histogram/kde plot of number of voxels per atom
     # plotType in ('histogram','kde','both')

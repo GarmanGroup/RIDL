@@ -40,10 +40,10 @@ class logFile():
 		# write string to current log file
 
 		# strip away the common directory name 
+		logstring = str
 		if strip is True:
-			logstring = str.replace(self.fileDir,'')
-		else:
-			logstring = str
+			if 'Working directory set to' not in str:
+				logstring = str.replace(self.fileDir,'')
 
 		if timeStamp is True:
 			logstring = '{}\t{}'.format(self.getTime(),logstring)

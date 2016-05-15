@@ -20,8 +20,8 @@ class cleanUpFinalFiles():
 		self.keepDensityMap = keepDensityMap
 		self.keepPdbs       = keepPdbs
 
-		self.mapProcessDir  = '{}maps/'.format(self.outputDir)
-		self.calculationDir = '{}metrics/'.format(self.outputDir)
+		self.mapProcessDir  = '{}RIDL-maps/'.format(self.outputDir)
+		self.calculationDir = '{}RIDL-metrics/'.format(self.outputDir)
 
 		if autoRun is True:
 			if self.checkCorrectOutput() is True:

@@ -4,6 +4,7 @@ import sys
 import numpy as np
 
 class residue:
+
     # A class for residue information
 
     def __init__(self,
@@ -23,6 +24,7 @@ class residue:
 
 
 class StructurePDB(object):
+
     # A class for coordinate PDB file atom
 
     def __init__(self,
@@ -54,16 +56,37 @@ class StructurePDB(object):
         self.vdw_rad            = vdw_rad
         self.atomOrHetatm       = atomOrHetatm
 
-        self.nucAcidTypes     = ['DA','DC','DG','DT',
-                                 'A','C','G','U']
-        self.mainchainProtein = ['N','CA','C','O']
-        self.mainchainNucAcid = ["P","OP1","O5'","C5'",
-                                 "C4'","C3'","O3'","C2'",
-                                 "C1'","O4'","OP2"]
+        self.nucAcidTypes     = ['DA',
+                                 'DC',
+                                 'DG',
+                                 'DT',
+                                 'A',
+                                 'C',
+                                 'G',
+                                 'U']
 
-    # To determine whether the current atom is a constituent
-    #  of protein or nucleic acid    
+        self.mainchainProtein = ['N',
+                                 'CA',
+                                 'C',
+                                 'O']
+
+        self.mainchainNucAcid = ["P",
+                                 "OP1",
+                                 "O5'",
+                                 "C5'",
+                                 "C4'",
+                                 "C3'",
+                                 "O3'",
+                                 "C2'",
+                                 "C1'",
+                                 "O4'",
+                                 "OP2"]
+   
     def protein_or_nucleicacid(self):
+
+        # determine whether the current atom is 
+        # a constituent of protein or nucleic acid 
+
         if self.basetype in self.nucAcidTypes:
             component_type = 'nucleic acid'
         else:
@@ -71,6 +94,10 @@ class StructurePDB(object):
         return component_type
         
     def side_or_main(self):
+
+        # determine whether current atom is 
+        # part of main or side chain
+
         if self.basetype in self.nucAcidTypes:
             if self.atomtype not in self.mainchainNucAcid:
                 sideormain = 'sidechain'
@@ -84,7 +111,9 @@ class StructurePDB(object):
         return sideormain
             
     def VDW_get(self):
+
         # determine VDW radius for atom type
+
         filename = 'VDVradiusfile.txt'
         vdw      = 'notyetdefined'
 
@@ -118,15 +147,22 @@ class StructurePDB(object):
         self.vdw_rad = vdw
 
     def getAtomID(self):
-        # get a unique identifier for atom within structure, not 
-        # dependent on atom number which may differ between different 
-        # datasets of same structure
 
-        ID = '{}-{}-{}-{}'.format(self.chaintype,self.residuenum,self.basetype,self.atomtype)
+        # get a unique identifier for atom within structure, 
+        # not dependent on atom number which may differ 
+        # between different datasets of same structure
+
+        ID = '{}-{}-{}-{}'.format(self.chaintype,
+                                  self.residuenum,
+                                  self.basetype,
+                                  self.atomtype)
         return ID
 
-    def getProtonNumber(self,printText=True):
-        # hard coded proton numbers for specific atom types (not all, may need to add to this)
+    def getProtonNumber(self,
+                        printText = True):
+
+        # hard coded proton numbers for specific atom 
+        # types (not all, may need to add to this)
 
         protonDic = {'H':1,
                      'C':6,
@@ -154,6 +190,7 @@ class StructurePDB(object):
         return protonNum
   
 class singlePDB(StructurePDB):
+
     # StructurePDB subclass for a single pdb file structure
 
     def __init__(self,
@@ -186,12 +223,19 @@ class singlePDB(StructurePDB):
                  min95tile          = 0,
                  max95tile          = 0):
                     
-        super(singlePDB, self).__init__(atomnum, residuenum, atomtype,
-                                        basetype, chaintype, X_coord,
-                                        Y_coord, Z_coord, atomID,
+        super(singlePDB, self).__init__(atomnum, 
+                                        residuenum, 
+                                        atomtype,
+                                        basetype, 
+                                        chaintype, 
+                                        X_coord,
+                                        Y_coord, 
+                                        Z_coord, 
+                                        atomID,
                                         numsurroundatoms,
                                         numsurroundprotons,
-                                        vdw_rad, atomOrHetatm)
+                                        vdw_rad, 
+                                        atomOrHetatm)
             
         self.Bfactor        = Bfactor 
         self.Occupancy      = Occupancy
@@ -210,16 +254,24 @@ class singlePDB(StructurePDB):
         self.max95tile      = max95tile
     
     def vdw_bfac(self):
+
+        # determine a B-factor weighted VDW radius around atom
+
         return 4*(math.sqrt(float(self.Bfactor) + 25))/(2 * math.pi)
 
     def getAdditionalMetrics(self):
+
+        # calculate some additional per atom density metrics 
+
         self.rsddensity     = float(self.stddensity)/self.meandensity
         self.rangedensity   = np.linalg.norm(self.maxdensity - self.mindensity)
       
   
-# A subclass for a collection of multiple different dose pdb file structures
 class multiPDB(StructurePDB):
     
+    # A subclass for a collection of multiple 
+    # different dose pdb file structures
+
     def __init__(self,
                  atomnum            = 0,
                  residuenum         = 0,
@@ -254,9 +306,15 @@ class multiPDB(StructurePDB):
                  rsddensity         = [],
                  rangedensity       = []):
             
-        super(multiPDB, self).__init__(atomnum, residuenum, atomtype,
-                                       basetype, chaintype, X_coord,
-                                       Y_coord, Z_coord, atomID,
+        super(multiPDB, self).__init__(atomnum,
+                                       residuenum,
+                                       atomtype,
+                                       basetype,
+                                       chaintype, 
+                                       X_coord,
+                                       Y_coord, 
+                                       Z_coord, 
+                                       atomID,
                                        numsurroundatoms,
                                        numsurroundprotons)   
             
@@ -284,6 +342,7 @@ class multiPDB(StructurePDB):
 
 
 class MapInfo:
+
     # A class for .map file header info
     
     def __init__(self, 
@@ -336,47 +395,96 @@ class MapInfo:
         self.vxls_val   = vxls_val
 
     def getnxyzString(self):
-        return self.getParamString('Num. Col, Row, Sec',
-                                   ['nx','ny','nz'],self.nxyz)
+
+        # get string of num columns, rows and sections 
+
+        return self.getParamString(title   = 'Num. Col, Row, Sec',
+                                   keys    = ['nx','ny','nz'],
+                                   mapAttr = self.nxyz)
 
     def getStartString(self):
-        return self.getParamString('Start positions',
-                                   ['1','2','3'],self.start)
+       
+        # get string of grid sampling start positions
+
+        return self.getParamString(title   = 'Start positions',
+                                   keys    = ['1','2','3'],
+                                   mapAttr = self.start)
 
     def getGridsampString(self):
-        return self.getParamString('Grid sampling',
-                                   ['1','2','3'],self.gridsamp)
 
-    def getCelldimsString(self):
+        # get string of grid sampling dimensions 
+
+        return self.getParamString(title   = 'Grid sampling',
+                                   keys    = ['1','2','3'],
+                                   mapAttr = self.gridsamp)
+
+    def getCelldimsString(self,
+                          tab = False):
+
+        # get string of unit cell dimensions 
+
+        if tab is True:
+            n = 1
+        else:
+            n = 0
+
         title = 'Cell dimensions'
-        s = self.getParamString(title,['a','b','c'],self.celldims) +'\n'
-        s += self.getParamString(' '*len(title),['alpha','beta','gamma'],self.celldims)
+        s = self.getParamString(title   = title,
+                                keys    = ['a','b','c'],
+                                mapAttr = self.celldims)
+        s += '\n'+'\t'*n+self.getParamString(title   = ' '*len(title),
+                                      keys    = ['alpha','beta','gamma'],
+                                      mapAttr = self.celldims)
         return s
 
     def getAxisString(self):
-        return self.getParamString('Fast,med,slow axes',
-                                   ['fast','med','slow'],self.axis)
+
+        # get string of grid sampling fast, medium and slow directions
+
+        return self.getParamString(title   = 'Fast,med,slow axes',
+                                   keys    = ['fast','med','slow'],
+                                   mapAttr = self.axis)
 
     def getDensityString(self):
-        return self.getParamString('Values (min, max, mean)',
-                                   ['min','max','mean'],self.density)
 
-    def getParamString(self,title,orderedKeys,mapAttr):
+        # get string of max, mean and min density values in a map
+        # as reported within the map header
+
+        return self.getParamString(title   = 'Values (min, max, mean)',
+                                   keys    = ['min','max','mean'],
+                                   mapAttr = self.density)
+
+    def getParamString(self,
+                       title   = '',
+                       keys    = [],
+                       mapAttr = ''):
+
+        # formate the density header information into
+        # a nice output format to print to command line
+
         s = title +(40-len(title))*'.'
-        for val in orderedKeys:
+        for val in keys:
             if isinstance(mapAttr[val],int):
                 s += str(mapAttr[val])+' '
             else:
                 s += str(round(mapAttr[val],3))+' '
         return s
 
-    def getHeaderInfo(self):
-        s =  self.getnxyzString() +'\n'
-        s += self.getStartString() +'\n'
-        s += self.getGridsampString() +'\n'
-        s += self.getCelldimsString() +'\n'
-        s += self.getAxisString() +'\n'
-        s += self.getDensityString()
+    def getHeaderInfo(self,
+                      tab = False):
+
+        # create a string containing map header information
+
+        if tab is False:
+            n = 0
+        else:
+            n = 1
+        s =  '\t'*n+self.getnxyzString() +'\n'+\
+             '\t'*n+self.getStartString() +'\n'+\
+             '\t'*n+self.getGridsampString() +'\n'+\
+             '\t'*n+self.getCelldimsString(tab = True) +'\n'+\
+             '\t'*n+self.getAxisString() +'\n'+\
+             '\t'*n+self.getDensityString()
         return s
 
 

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import sys
 from classHolder import StructurePDB,singlePDB,multiPDB
 import numpy as np
@@ -7,13 +5,17 @@ from operator import sub,truediv
 from random import randint
 from progbar import progress
 
-def PDBtoList(pdbFileName=''):
-    # this function inputs a pdb file name and returns an list of pdb objects, 
-    # organised following the StructurePDB class
+def PDBtoList(pdbFileName = '',
+              printText   = False):
+
+    # this function inputs a pdb file name and returns an list 
+    # of pdb objects, organised following the StructurePDB class
+
     PDBarray = []
     pdbin = open(pdbFileName, "r")
     lines = pdbin.readlines()
-    print 'Reading PDB file and converting to list of objects'
+    if printText is True:
+        print 'Reading PDB file and converting to list of objects'
     for line in lines:
         if ('ATOM' in str(line[0:6])) or ('HETATM' in str(line[0:6])):
             y               = singlePDB(StructurePDB)

@@ -537,9 +537,9 @@ class processFiles():
 		ln = 'Working directory set to "{}"'.format(self.dir)
 		self.logFile.writeToLog(str = ln)
 
-		self.mapProcessDir = self.dir + 'maps/'
+		self.mapProcessDir = self.dir + 'RIDL-maps/'
 		if makeProcessDir is True:
-			if 'maps' not in os.listdir(self.dir):
+			if 'RIDL-maps' not in os.listdir(self.dir):
 				os.makedirs(self.mapProcessDir)
 
 	def getCurrentInputParams(self, 
@@ -858,7 +858,8 @@ class processFiles():
 						'{}/{}'.format(self.dir,r.inputFileName))
 
 		if run is True:
-			r = run_metricCalc(inputFileLoc = self.dir)
+			r = run_metricCalc(inputFileLoc = self.dir,
+							   logFile      = self.logFile)
 
 		return True
 

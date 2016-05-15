@@ -20,7 +20,8 @@ def readMap(dirIn    = './',
 
     mapName = dirIn + mapName
     filesize = os.path.getsize(mapName)
-    print 'Map file of size {} bytes to be read'.format(filesize)
+    ln = 'Map file of size {} bytes to be read'.format(filesize)
+    log.writeToLog(str = ln)
 
     # open electron density .map file here (bmf for binary map file)
     if os.name != 'nt': # if not windows 
@@ -52,7 +53,7 @@ def readMap(dirIn    = './',
     for d in ('min','max','mean'): 
         rho.density[d] = unpack('f',bmf.read(4))[0] 
 
-    s = rho.getHeaderInfo()
+    s = rho.getHeaderInfo(tab = True)
 
     # write to log file if specified 
     if log != '':
@@ -72,8 +73,9 @@ def readMap(dirIn    = './',
     # if electron density written in shorts (I don't think it will be 
     # but best to have this case)
     if rho.type is 1:  
-        print 'Untested .map type --> 1 (type 2 expected). Values read' 
-        + 'as int16 ("i2?") - consult .map header in MAPDUMP(CCP4) to check'
+        err = 'Untested .map type --> 1 (type 2 expected). Values read'+\
+              'as int16 ("i2?") - consult .map header in MAPDUMP(CCP4) to check'
+        log.writeToLog(str = err)
   
         struct_fmt = '=i2'
         struct_len = calcsize(struct_fmt)
@@ -107,7 +109,8 @@ def readMap(dirIn    = './',
                 else:    
                     appenddens(s)
                     appendindex(counter)
-            print '# voxels in total : {}'.format(counter+1)
+            ln = '# voxels in total : {}'.format(counter+1)
+            log.writeToLog(str = ln)
 
         # efficient way to read through density map file using indices of atoms
         # from atom map file above
@@ -124,10 +127,14 @@ def readMap(dirIn    = './',
 
             # check that resulting list of same length as atomInds
             if len(density) != len(atomInds):
-                print 'Error in processing of density map using atom-tagged map'
+                err = 'Error in processing of density map using atom-tagged map'
+                log.writeToLog(str = err)
+
                 sys.exit()           
         else:
-            print 'Unknown map type --> terminating script'
+            err = 'Unknown map type --> terminating script'
+            log.writeToLog(str = err)
+
             sys.exit()
     bmf.close()
     
@@ -142,10 +149,12 @@ def readMap(dirIn    = './',
     # thus removed
     if mapType in ('atom_map'):      
         if max(density) == rho.density['max']:
-            print 'calculated max voxel value match value stated in file header'
+            ln = 'calculated max voxel value match value stated in file header'
+            log.writeToLog(str = ln)
         else:
-            print 'calculated max voxel value:{} does NOT '.format(max(density))+\
+            err = 'calculated max voxel value:{} does NOT '.format(max(density))+\
                   'match value stated in file header:{}'.format(rho.density['max'])
+            log.writeToLog(str = err)
             sys.exit()
     
     # if each voxel value is an atom number, then want to convert to integer
@@ -154,7 +163,8 @@ def readMap(dirIn    = './',
     elif mapType in ('density_map'):
         density_final = density
     else:
-        print 'Unknown map type --> terminating script'
+        err = 'Unknown map type --> terminating script'
+        log.writeToLog(str = err)
         sys.exit()
 
     rho.vxls_val = density_final

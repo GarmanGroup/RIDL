@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Jan  3 22:33:08 2015
-
-@author: charlie
-"""
 import cPickle as pickle
 import sys
 from progbar import progress
@@ -21,16 +15,31 @@ def save_objectlist(PDBlist,pdbName):
             
     return filename
 
-def retrieve_objectlist(fileName,loadBar=False):
-    # this function retrieves a list of objects from a file, given name
-    # of form filename = str(len(PDBlist))+'_'+str(pdbName)+'_data.pkl'
-    print 'Retrieving dataset from .pkl file...'
+def retrieve_objectlist(fileName,
+                        loadBar = False,
+                        logFile = ''):
+
+    # this function retrieves a list of objects 
+    # from a file, given name of form filename = 
+    # str(len(PDBlist))+'_'+str(pdbName)+'_data.pkl'
+
+    ln = 'Retrieving dataset from .pkl file...'
+    if logFile != '':
+        logFile.writeToLog(str = ln)
+    else:
+        print ln
+
     checkFileFormat(fileName)
     
     #to determine number of atoms saved to file from file name:
     num_atoms = (fileName.split('/')[-1]).split('_')[0]
-    print 'Number of atoms in file: ' + str(num_atoms)
+    ln = 'Number of atoms in file: ' + str(num_atoms)
         
+    if logFile != '':
+        logFile.writeToLog(str = ln)
+    else:
+        print ln
+
     #to retrieve list from file to new list:
     PDBretrieved = []    
     with open(str(fileName), 'rb') as input:
@@ -44,8 +53,7 @@ def retrieve_objectlist(fileName,loadBar=False):
                 progress(i+1, num_atoms, suffix='')
        
     # return the list of atom objects  
-    PDBretrieved.sort(key=lambda x: x.atomnum)
-    print '\n---> success!'
+    PDBretrieved.sort(key = lambda x: x.atomnum)
     
     return PDBretrieved
 
@@ -68,6 +76,5 @@ def retrieveGenericObject(fileName='untitled.pkl'):
     checkFileFormat(fileName)
     with open(str(fileName), 'rb') as input:
         obj = pickle.load(input)
-    print '\n---> success!'
     return obj
 
