@@ -12,7 +12,7 @@ class processFiles():
 				 proceedToMetricCalc = False,
 				 skipToMetricCalc	 = False,
 				 outputGraphs        = True,
-				 metricCalcInputName = 'e_Track_inputfile.txt',
+				 metricCalcInputName = 'metricCalc_inputfile.txt',
 				 cleanFinalFiles     = False,
 				 logFileObj          = ''):
 

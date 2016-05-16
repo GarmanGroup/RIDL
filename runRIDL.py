@@ -54,9 +54,9 @@ parser.add_argument('-g',
 parser.add_argument('-r',
 					dest    = 'cleanUpFinalFiles',
 					action  = 'store_const',
-					default = False,
-					const   = True,
-                    help    = 'Clean up output directory at end of full run. '+\
+					default = True,
+					const   = False,
+                    help    = 'Do not clean up output directory at end of full run. '+\
                     		  'If not included, intermediate map files (e.g. '+\
                     		  'atom-tagged maps) will be included for each '+\
 							  'dataset within damage series')

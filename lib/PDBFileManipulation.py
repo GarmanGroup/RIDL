@@ -37,7 +37,11 @@ def PDBtoList(pdbFileName = '',
     pdbin.close()
     return PDBarray
 
-def writePDBline_DamSite(atom,damValue,index):
+def writePDBline_DamSite(atom     = '',
+                         damValue = 0,
+                         index    = 0,
+                         chain    = 'A'):
+
     # script to convert atom information (in class format) to 'ATOM' line format for
     # pdb output files. Here the line is written in pdb format as a 'DAM' atom, 
     # with same xyz coordinates as the original atom input into the function.
@@ -51,7 +55,7 @@ def writePDBline_DamSite(atom,damValue,index):
     FIELD4 = " " #has length 1
     FIELD5 = str('DAM').rjust(3) #has length 3
     BREAK2 = " " # has length 1
-    FIELD6 = str('A')
+    FIELD6 = str(chain)
     FIELD7 = " "*(4-len(str(index))) + str(index) #has length 4
     FIELD8 = " " #has length 1
     BREAK3 = " "*3 #has length 3

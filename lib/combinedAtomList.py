@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy import stats
 import pandas as pd
+import string
 import scipy.stats
 import numpy as np
 import operator
@@ -717,22 +718,41 @@ class combinedAtomList(object):
 		pdbIn = open(pdbFile,'r')
 		pdbOutName = '{}top{}-{}D{}sites-dset{}.pdb'.format(self.outputDir,n,normType,metric,dataset)
 		pdbOut = open(pdbOutName,'w')
+
+		headerInfo = 'REMARK Top {} damage sites as indicated by the {} D{} metric.\n'.format(n,normType,metric)
+		if dataset == 'all':
+			headerInfo += 'REMARK All datasets within damage series are present (increasing chain index).\n'
+		else:
+			headerInfo += 'REMARK File contains information for dataset {}.\n'.format(dataset)
+		pdbOut.write(headerInfo)
+
 		for l in pdbIn.readlines():
 			if l.split()[0] in ('CRYST1','SCALE1','SCALE2','SCALE3'):
 				pdbOut.write(l)
 
-		# next get top n metric sites and write to file
-		topAtms = self.getTopNAtoms(metric   = metric,
-									normType = normType,
-									dataset  = dataset,
-									n        = n)
-		count = 0
-		for atm in topAtms:
-			count += 1
-			# generate pdb line - note: absolute value of metric 
-			# taken since Bfactor>0 (for displaying in pymol etc.)
-			l = writePDBline_DamSite(atm,np.abs(atm.densMetric[metric][normType]['values'][dataset]),count)
-			pdbOut.write(l+'\n')
+		if dataset == 'all':
+			datasets = range(self.getNumDatasets())
+		else:
+			datasets = [dataset]
+
+		chains = string.ascii_uppercase
+		for d in datasets:
+			# next get top n metric sites and write to file
+			topAtms = self.getTopNAtoms(metric   = metric,
+										normType = normType,
+										dataset  = d,
+										n        = n)
+			count = 0
+			for atm in topAtms:
+				count += 1
+				# generate pdb line - note: absolute value of metric 
+				# taken since Bfactor>0 (for displaying in pymol etc.)
+				l = writePDBline_DamSite(atom     = atm,
+										 damValue = np.abs(atm.densMetric[metric][normType]['values'][d]),
+										 index    = count,
+										 chain    = chains[d])
+				pdbOut.write(l+'\n')
+
 		pdbOut.write('END')
 		pdbIn.close()
 		pdbOut.close()
@@ -1229,7 +1249,8 @@ class combinedAtomList(object):
 						 outputDir = './',
 						 printText = True,
 						 axesFont  = 18,
-						 titleFont = 20):
+						 titleFont = 20,
+						 plotTitle = ''):
 
 		# histogram/kde plot of density metric per atom.
 		# plotType is 'histogram' or 'kde'.
@@ -1246,7 +1267,7 @@ class combinedAtomList(object):
 		if resiType != 'all':
 			count = 0
 			for res in resiType:
-				atms = self.getAtom(restype=res)
+				atms = self.getAtom(restype = res)
 				if atms is False: 
 					count += 1
 			if count > 0:
@@ -1261,12 +1282,12 @@ class combinedAtomList(object):
 			return 'Unknown plotting type selected.. cannot plot..'
 
 		if normType == 'Calpha normalised':
-			self.calcAdditionalMetrics(metric=metric)
-		if self.checkMetricPresent(metric=metric,normType=normType) is False: 
+			self.calcAdditionalMetrics(metric = metric)
+		if self.checkMetricPresent(metric = metric,normType = normType) is False: 
 			return # check metric valid
 
 		sns.set_style("whitegrid")
-		sns.set_context(rc={"figure.figsize": (10, 6)})
+		sns.set_context(rc = {"figure.figsize": (10, 6)})
 		fig = plt.figure()
 		ax = plt.subplot(111)
 
@@ -1336,16 +1357,21 @@ class combinedAtomList(object):
 		plt.legend()
 		plt.xlabel('{} D{} per atom'.format(normType,metric), fontsize = axesFont)
 		plt.ylabel('Normed-frequency', fontsize = axesFont)
-		plt.title('{} D{} per atom, residues: {}'.format(normType,metric,resiType),fontsize = titleFont)
+
+		if plotTitle == '':
+			t = '{} D{} per atom, residues: {}'.format(normType,metric,resiType)
+		else:
+			t = plotTitle
+		plt.title(t,fontsize = titleFont)
 
 		if not save: 
 			plt.show()
 		else:
 			saveName = '{}DistnPlot_Residues-{}_Metric-D{}_Normalisation-{}'.format(outputDir,
-												 ''.join(resiType),
-												 metric,
-												 normType.replace(" ",""),
-												 plotType)
+																					''.join(resiType),
+																					metric,
+																					normType.replace(" ",""),
+																					plotType)
 			if valType != 'all':
 				if valType == 'average':
 					saveName += '_{}'.format(valType)
@@ -1447,7 +1473,7 @@ class combinedAtomList(object):
 			yDict 		= {}
 			for atom in foundAtoms:
 
-				if self.checkMetricPresent(atom=atom,metric=densMet,normType=normType) is False: 
+				if self.checkMetricPresent(atom = atom,metric = densMet,normType = normType) is False: 
 					return # check metric valid
 
 				vals = atom.densMetric[densMet][normType]['values']
@@ -1572,6 +1598,60 @@ class combinedAtomList(object):
 			fileName = self.checkUniqueFileName(fileName = figName,
 								 				fileType = fileType)
 			fig.savefig(fileName)
+
+	def plotNumAtomsWithMetricAboveStructureWideMean(self,
+													 startThreshold = 0.5,
+													 thresholdDiv   = 0.05,
+													 metric         = 'loss',
+													 normType       = 'Standard',
+													 dataset        = 0,
+													 axesFont       = 18,
+													 saveFig        = True,
+													 fileType       = '.png',
+													 outputLoc      = './',
+													 titleFont      = 18):
+
+		# plot the number of atoms present within the structure
+		# with metric value of n standard deviations above the
+		# the structure wide mean (for increasing n until no 
+		# atoms remain)
+
+		n = self.numAtmsWithMetricAboveLevel(dataset   = dataset,
+											 metric    = metric,
+											 normType  = normType,
+											 threshold = startThreshold)
+		numAtomsFound = [n]
+		numStds       = [startThreshold]
+		t = startThreshold
+		while n != 0:
+			t += thresholdDiv
+			n = self.numAtmsWithMetricAboveLevel(dataset   = dataset,
+										         metric    = metric,
+										         normType  = normType,
+										         threshold = t)
+			numAtomsFound.append(n)
+			numStds.append(t)
+
+		sns.set_context(rc={"figure.figsize":(10, 10)})
+		f = plt.figure()
+		plt.plot(numStds,numAtomsFound)
+
+		plt.xlabel('# standard deviations from structure mean', fontsize = axesFont)
+		plt.ylabel('Number of atoms located', fontsize = axesFont)
+		f.suptitle('# atoms with metric value of n standard deviations from structure-wide mean',fontsize = titleFont)
+		if saveFig is False:
+			plt.show()
+		else:
+			figName = '{}NumAtomsVsStdsFromStructureMean_metric-{}_norm-{}_dataset-{}'.format(outputLoc,
+																 						      metric,
+																 							  normType,
+																 							  dataset)
+
+			fileName = self.checkUniqueFileName(fileName = figName,
+								 				fileType = fileType)
+			f.savefig(fileName)
+
+		return figName+fileType
 
 	def checkMetricPresent(self,
 						   atom     = '',
