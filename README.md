@@ -5,6 +5,14 @@ A collection of scripts to calculate per-atom density change metrics within a sp
 Suitable for any MX experiment in which datasets are collected on the **same crystal** over **multiple doses**.
 **NOTE: These scripts are currently under development and updated regularly..**
 
+- [In short: how to run](#in-short)
+- [A brief background](#brief-background)
+- [Usage](#Usage)
+	- [Requirements](#Requirements)
+	- [Running RIDL from command line](#Running-RIDL-from-command-line)
+	- [Writing the RIDL input file](#Writing-the-RIDL-input-file)
+- [The methodology explained with an example from PDB_redo](#pdbredo-example)
+
 ## In short: how to run
 
 - Write an input file for the job (e.g. input.txt)
@@ -96,7 +104,8 @@ dose2 3.1, 5.6
 PHASEDATASET
 name3 insulin1
 mtz3 ../insDamSer/insu1.mtz
-mtzlabels3 C
+phaseLabel PHIC
+FcalcLabel FC
 
 MAPINFO
 sfall_VDWR 1
@@ -125,7 +134,7 @@ The `INITIALDATASET` section contains information about the first dataset within
 
 The `LATERDATASET` section contains the information about the later (higher dose) dataset within the damage series. See the `INITIALDATASET` section above for details of the inputs to be specified. The main noticable difference for `LATERDATASET` is that multiple higher dose datasets can be processed successively within the same input file, by including comma-separated inputs within this section (see the input file example above). This is the recommended way to process a damage series comprising multiple higher dose datasets.
 
-The `PHASEDATASET` contains information of .mtz file from which the phases will be taken. These are required for generating Fourier difference maps at run time. The `mtzlabels3` parameter specifies the Fcalc and PHIcalc column labels within the input .mtz file. For columns labelled *FC* and *PHIC*, the `mtzlabels3` input is simply `C`.
+The `PHASEDATASET` contains information of .mtz file from which the phases will be taken. These are required for generating Fourier difference maps at run time. The `FcalcLabel` and `phaseLabel` parameters specify the `calculated structure factor` and `model phase` column labels within the input .mtz file respectively.
 
 In the above example, the first dataset .mtz is again chosen, and this is the recommended dataset to take. In this case, set `name3` to be the same as `name1`.
 
@@ -176,4 +185,6 @@ For this damage series, an example input file has been supplied called *exampleI
 ```python runRIDL.py -i exampleInputFile.txt -pc```
 
 from the directory containing the *exampleInputFile.txt* file.
+
+
 

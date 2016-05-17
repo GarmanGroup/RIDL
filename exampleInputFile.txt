@@ -1,7 +1,7 @@
-dir ./testOutput/ETRACK/
+dir ./testOutput/RIDL-example/
 
 INITIALDATASET
-name1 1qidinit
+name1 1qid
 mtz1 ./testOutput/1qid/1qid.mtz
 mtzlabels1 P_1qid
 pdb1 ./testOutput/1qid/1qid.pdb
@@ -16,9 +16,10 @@ pdb2 ./testOutput/1qie/1qie.pdb,./testOutput/1qif/1qif.pdb
 dose2 2,3
 
 PHASEDATASET
-name3 1qidinit
+name3 1qid
 mtz3 ./testOutput/1qid/1qid.mtz
-mtzlabels3 C
+phaseLabel PHIC
+FcalcLabel FC
 
 MAPINFO
 sfall_VDWR 1
