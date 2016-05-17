@@ -6,42 +6,42 @@ from runRIDL_class import process
 # python runRIDL.py -i [inputfilename.txt] -pc
 # This is the recommended run mode for the scripts
 
-parser = argparse.ArgumentParser(description = 'Run the RIDL pipeline from the command line')
+parser = argparse.ArgumentParser(description = 'Run the RIDL pipeline from the command line.')
 
 parser.add_argument('-i',
 					type   = str,
 					dest   = 'inputFile',
 					action = 'store',
                     help   = 'An input file containing pdb and mtz file names, '+\
-                    		 'as well as relevant mtz column labels')
+                    		 'as well as relevant mtz column labels.')
 
 parser.add_argument('-p',
 					dest    = 'process',
 					action  = 'store_const',
 					default = False,
 					const   = True,
-                    help    = 'Generate electron density difference maps')
+                    help    = 'Generate electron density difference maps.')
 
 parser.add_argument('-c',
 					dest    = 'calculate',
 					action  = 'store_const',
 					default = False,
 					const   = True,
-                    help    = 'Calculate damage metrics per atom')
+                    help    = 'Calculate damage metrics per atom.')
 
 parser.add_argument('-t',
 					type    = int,
 					dest    = 'integer',
 					action  = 'store',
 					default = 0,
-                    help    = 'Create a template input file to be completed by the user')
+                    help    = 'Create a template input file to be completed by the user.')
 
 parser.add_argument('-j',
 					dest    = 'inputFileHelp',
 					action  = 'store_const',
 					default = False,
 					const   = True,
-                    help    = 'Provide information to help user complete input file')
+                    help    = 'Provide information to help user complete input file.')
 
 parser.add_argument('-g',
 					dest    = 'noGraphs',
@@ -49,7 +49,7 @@ parser.add_argument('-g',
 					default = True,
 					const   = False,
                     help    = 'Include if no graphs should be output (for case where '+\
-                    		  'seaborn plotting library not accessible, for example)')
+                    		  'seaborn plotting library not accessible, for example).')
 
 parser.add_argument('-r',
 					dest    = 'cleanUpFinalFiles',
@@ -59,10 +59,17 @@ parser.add_argument('-r',
                     help    = 'Do not clean up output directory at end of full run. '+\
                     		  'If not included, intermediate map files (e.g. '+\
                     		  'atom-tagged maps) will be included for each '+\
-							  'dataset within damage series')
+							  'dataset within damage series.')
+
+parser.add_argument('-s',
+					dest    = 'suppressOutput',
+					action  = 'store_const',
+					default = True,
+					const   = False,
+                    help    = 'Suppress all output to command line. All output text '+\
+                    		  'will be printed directly to log file and not command line.')
 
 args = parser.parse_args()
-
 
 # create a template input file to be filled in manually by the user
 if args.integer != 0:
@@ -82,7 +89,8 @@ if args.process is True:
 	p = process(inputFile           = args.inputFile,
 				proceedToMetricCalc = args.calculate,
 				outputGraphs        = args.noGraphs,
-				cleanUpFinalFiles   = args.cleanUpFinalFiles)
+				cleanUpFinalFiles   = args.cleanUpFinalFiles,
+				printOutput         = args.suppressOutput)
 
 # do not run code to create atom-tagged and density maps, but 
 # proceed directly to the code to calculate per-atom damage 
@@ -93,4 +101,5 @@ else:
 		p = process(inputFile         = args.inputFile,
 					skipToMetricCalc  = True,
 					outputGraphs      = args.noGraphs,
-					cleanUpFinalFiles = args.cleanUpFinalFiles)
+					cleanUpFinalFiles = args.cleanUpFinalFiles,
+					printOutput       = args.suppressOutput)
