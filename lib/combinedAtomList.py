@@ -45,8 +45,31 @@ class combinedAtomList(object):
 		if self.numLigRegDatasets == 0:
 			self.numLigRegDatasets = len(self.datasetList[0].mindensity)
 
+		# hard coded list of amino acids here
+		self.aminoAcids = ['ALA',
+					  	   'ARG',
+					  	   'ASN',
+					  	   'ASP',
+					  	   'CYS',
+					 	   'GLN',
+					 	   'GLU',
+					 	   'GLY',
+					 	   'HIS',
+					 	   'ILE',
+					  	   'LEU',
+					  	   'LYS',
+					  	   'MET',
+					  	   'PHE',
+					  	   'PRO',
+					  	   'SER',
+					  	   'THR',
+					  	   'TRP',
+					  	   'TYR',
+					  	   'VAL']
 
-	def getMultiDoseAtomList(self,printText = True):
+	def getMultiDoseAtomList(self,
+							 printText = True,
+							 logFile   = ''):
 
 		# this function inputs a list of lists of PDB atom objects 
 		# (see StructurePDB class) and formats as an object of the 
@@ -59,22 +82,28 @@ class combinedAtomList(object):
 		# first check that each PDBarray contains the same number of atoms (consistency check)
 		if len(self.datasetList) > 1:
 			if printText is True:
-				print 'Multiple datasets detected...'
+				ln = 'Multiple datasets detected...'
+				self.printOrWriteToLog(logFile = logFile, txt = ln)
 			for dataset in self.datasetList:
 				if len(dataset) != len(self.datasetList[0]):
 					if printText is True:
-						print 'Not all PDB structures have same number of atoms!\n'+\
+						txt = 'Not all PDB structures have same number of atoms!\n'+\
 							  'Will only include atoms common to ALL structures...'
+						self.printOrWriteToLog(logFile = logFile, txt = txt)
+
 					break
 		elif len(self.datasetList) == 1:
 			if printText is True:
-				print 'Single dataset detected...'
+				ln = 'Single dataset detected...'
+				self.printOrWriteToLog(logFile = logFile, txt=ln)
 
 		PDBdoses = []
 		numNotFoundAtoms = 0
 
 		if printText is True:
-			print 'Locating common atoms to ALL datasets...:'
+			ln = 'Locating common atoms to ALL datasets...:'
+			self.printOrWriteToLog(logFile = logFile, txt = ln)
+
 		singDimAttrs = ('atomnum',
 						'residuenum',
 						'atomtype',
@@ -132,8 +161,9 @@ class combinedAtomList(object):
 
 			if atm_counter != len(self.datasetList) and self.partialDatasets is False:
 				if printText is True:
-					print 'Atom "{}" not found in all datasets'.format(atomIndentifier)
-					print '---> not including atom in atom list...'
+					txt = 'Atom "{}" not found in all datasets\n'.format(atomIndentifier)+\
+					      '---> not including atom in atom list...'
+					self.printOrWriteToLog(logFile = logFile, txt = txt)
 				numNotFoundAtoms += 1
 				continue
 
@@ -152,20 +182,37 @@ class combinedAtomList(object):
 
 				if atm_counter != len(self.datasetList):
 					if printText is True:
-						print 'Atom "{}" not found in all datasets'.format(atomIndentifier)
-						print '---> including partial information in atom list...'
+						txt = 'Atom "{}" not found in all datasets\n'.format(atomIndentifier)+\
+							  '---> including partial information in atom list...'
+						self.printOrWriteToLog(logFile = logFile, txt = txt)
 					numNotFoundAtoms += 1
 				PDBdoses.append(newatom)
 
 		if self.partialDatasets is True:
 			if printText is True:
-				print '# atoms not in all datasets: {}'.format(numNotFoundAtoms)
+				ln = '# atoms not in all datasets: {}'.format(numNotFoundAtoms)
+				self.printOrWriteToLog(logFile = logFile, txt = ln)
 		else:
 			if printText is True:
-				print '# atoms removed since not in all datasets: {}'.format(numNotFoundAtoms)
+				ln = '# atoms removed since not in all datasets: {}'.format(numNotFoundAtoms)
+				self.printOrWriteToLog(logFile = logFile, txt = ln)
+
 		if printText is True:
-			print '---> Finished!'
+			ln = '---> Finished!'
+			self.printOrWriteToLog(logFile = logFile, txt = ln)
+
 		self.atomList = PDBdoses
+
+	def printOrWriteToLog(self,
+						  logFile = '',
+					      txt     = ''):
+
+		# print to command line or write to log file
+
+		if logFile == '':
+			print txt
+		else:
+			logFile.writeToLog(str = txt)
 
 	def findMetricName(self,metricName):
 
@@ -449,7 +496,7 @@ class combinedAtomList(object):
 								   errorBars  = True,
 								   pairs      = [],
 								   title      = '',
-								   fileType   = '.png',
+								   fileType   = '.svg',
 								   axesFont   = 18,
 								   legendFont = 18,
 								   titleFont  = 24):
@@ -504,12 +551,14 @@ class combinedAtomList(object):
 
 		plt.xlabel('Dataset #', fontsize = axesFont)
 		plt.ylabel('D{} {}'.format(metric,rType), fontsize = axesFont)
+
 		# place legend outside to right of plot
 		box = ax.get_position()
 		ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 		ax.legend(loc            = 'center left',
 				  bbox_to_anchor = (1, 0.5),
 				  fontsize       = legendFont)
+
 		fig.suptitle('{} D{} {}'.format(normType,metric,rType),fontsize = titleFont)
 
 		figName = '{}{}-D{}-{}-{}_{}'.format(self.outputDir,normType,metric,rType,title)
@@ -566,7 +615,7 @@ class combinedAtomList(object):
 											   rType      = 'ratio',
 											   pairs      = [['GLU','CD','CG'],['GLU','CD','OE1']],
 											   title      = '',
-											   fileType   = '.png',
+											   fileType   = '.svg',
 											   axesFont   = 18,
 											   legendFont = 18,
 											   titleFont  = 24):
@@ -650,7 +699,7 @@ class combinedAtomList(object):
 
 	def checkUniqueFileName(self,
 							fileName = '',
-							fileType = '.png'):
+							fileType = '.svg'):
 
 		# check that a given file name for a figure is unique before 
 		# it is saved and append index if not
@@ -816,7 +865,7 @@ class combinedAtomList(object):
 		keys.sort()
 		for key in keys:
 			outputString += '\n{}\t\t{}/{}'.format(key,countDic[key],totalDic[key])
-		return headerString,outputString
+		return headerString,outputString,countDic
 
 	def getNumAtomsOfType(self,
 						  atts = ['chaintype','restype'],
@@ -831,6 +880,106 @@ class combinedAtomList(object):
 			if vals == [getattr(atom,att) for att in atts]: i += 1
 		return i
 
+	def getTopAtomsStackedBarplot(self,
+								  metric     = 'loss',
+								  normType   = 'Standard',
+								  n          = 40,
+								  palette    = 'hls',
+								  barWidth   = 0.5,
+								  axesFont   = 18,
+								  titleFont  = 18,
+								  legendFont = 18,
+								  saveFig    = True,
+								  outputDir  = './',
+								  fileType   = '.svg',
+								  plotTitle  = ''):
+
+		# get top n atoms per dataset and sort by residue/nucleotide 
+		# type. Then create a stacked barplot per dataset to distinguish
+		# the breakdown of damage with increasing dose
+
+		plotDic = {}
+		numDsets = self.getNumDatasets()
+
+		for d in range(numDsets):
+			stats = self.breakdownTopNatomsBy(metric    = metric,
+								 	          normType  = normType,
+								 			  dataset   = d,
+								 			  n         = n,
+								 			  sortby    = ['basetype'])
+
+			breakdown = stats[2]
+
+			for key in breakdown.keys():
+				if key not in plotDic.keys():
+					plotDic[key] = [0]*d + [breakdown[key]]
+				else:
+					plotDic[key] += [breakdown[key]]
+			for key in plotDic.keys():
+				if len(plotDic[key]) < d+1:
+					plotDic[key] += [0]
+
+		sns.set_style("whitegrid")
+		sns.set_context(rc = {"figure.figsize": (10, 6)})
+		fig = plt.figure()
+		ax = plt.subplot(111)
+
+		accumulatedVals = np.array([n]*numDsets)
+
+		numResis = len(plotDic.keys())
+		for i,(k, color) in enumerate( zip( plotDic.keys(), sns.color_palette(palette, n_colors = numResis,desat = 0.9) ) ):
+
+			# plt.barplot(range(numDsets),
+			# 		accumulatedVals,
+			# 		label = k,
+			# 		color = color,
+			# 		width = barWidth)
+
+			fd = pd.DataFrame()
+			fd['dataset']   = np.array(range(numDsets))+1
+			fd['frequency'] = accumulatedVals
+			sns.barplot(x     = 'dataset',
+						y     = 'frequency',
+						data  = fd,
+						label = k,
+						color = color)
+
+			accumulatedVals -= np.array(plotDic[k])
+
+		# place legend outside to right of plot
+		box = ax.get_position()
+		ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+		ax.legend(loc            = 'center left',
+				  bbox_to_anchor = (1, 0.5),
+				  fontsize       = legendFont)
+
+		sns.despine()
+
+		# plt.xticks(np.array(range(numDsets)) + barWidth/2.,['{}'.format(i+1) for i in range(numDsets)])
+
+		plt.xlabel('Dataset Number', fontsize = axesFont)
+		plt.ylabel('Frequency', fontsize = axesFont)
+
+		if plotTitle == '':
+			t = 'Top damage sites by residue/nucleotide type'
+		else:
+			t = plotTitle
+		plt.title(t, fontsize = titleFont)
+
+		if not saveFig: 
+			plt.show()
+		else:
+			saveName = '{}Top{}DamSiteByRestype_Metric-D{}_Normalisation-{}'.format(outputDir,
+																				    n,
+																					metric,
+																					normType.replace(" ",""))
+
+			fileName = self.checkUniqueFileName(fileName = saveName,
+									 			fileType = fileType)
+			fig.savefig(fileName)
+
+		return fileName
+
 	def getPerAtmtypeStats(self,
 						   metric   = 'loss',
 						   normType = 'Standard',
@@ -841,7 +990,7 @@ class combinedAtomList(object):
 		# for a given metric type, determine per-atom-type 
 		# statistics on the distribution of damage
 
-		atmtypeDict = self.groupByAtmType(dataset=dataset) # group atoms by atom type
+		atmtypeDict = self.groupByAtmType(dataset = dataset) # group atoms by atom type
 
 		statsDic 	= self.getStats(metric   = metric,
 									normType = normType,
@@ -1117,18 +1266,14 @@ class combinedAtomList(object):
 		# check that Calpha backbone protein atoms 
 		# actually exist within structure
 
-		aminoAcids = ['ALA','ARG','ASN','ASP','CYS',
-					  'GLN','GLU','GLY','HIS','ILE',
-					  'LEU','LYS','MET','PHE','PRO',
-					  'SER','THR','TRP','TYR','VAL']
 		count = 0
-		for res in aminoAcids:
+		for res in self.aminoAcids:
 			atom = self.getAtom(restype     = res,
 								atomtype    = 'CA',
 								printOutput = False)
 			if atom is False:
 				count += 1
-		if count == len(aminoAcids):
+		if count == len(self.aminoAcids):
 			if printText is True:
 				print 'Warning: no Calpha backbone atoms found in structure!'
 				return False
@@ -1245,7 +1390,7 @@ class combinedAtomList(object):
 						 plotType  = 'both',
 						 resiType  = 'all',
 						 save      = True,
-						 fileType  = '.png',
+						 fileType  = '.svg',
 						 outputDir = './',
 						 printText = True,
 						 axesFont  = 18,
@@ -1357,7 +1502,7 @@ class combinedAtomList(object):
 		plt.legend()
 		plt.xlabel('{} D{} per atom'.format(normType,metric), fontsize = axesFont)
 		plt.ylabel('Normed-frequency', fontsize = axesFont)
-
+		sns.despine()
 		if plotTitle == '':
 			t = '{} D{} per atom, residues: {}'.format(normType,metric,resiType)
 		else:
@@ -1370,8 +1515,7 @@ class combinedAtomList(object):
 			saveName = '{}DistnPlot_Residues-{}_Metric-D{}_Normalisation-{}'.format(outputDir,
 																					''.join(resiType),
 																					metric,
-																					normType.replace(" ",""),
-																					plotType)
+																					normType.replace(" ",""))
 			if valType != 'all':
 				if valType == 'average':
 					saveName += '_{}'.format(valType)
@@ -1418,7 +1562,7 @@ class combinedAtomList(object):
 					errorBars = 'NONE',
 					saveFig   = False,
 					outputDir = './',
-					fileType  = '.png',
+					fileType  = '.svg',
 					axesFont  = 18,
 					titleFont = 24,
 					palette   = 'hls'):
@@ -1524,7 +1668,7 @@ class combinedAtomList(object):
 							 errorbars = True,
 							 saveFig   = False,
 							 susAtms   = [],
-							 fileType  = '.png',
+							 fileType  = '.svg',
 							 axesFont  = 18,
 							 titleFont = 24):
 
@@ -1607,7 +1751,7 @@ class combinedAtomList(object):
 													 dataset        = 0,
 													 axesFont       = 18,
 													 saveFig        = True,
-													 fileType       = '.png',
+													 fileType       = '.svg',
 													 outputLoc      = './',
 													 titleFont      = 18):
 
@@ -1713,7 +1857,7 @@ class combinedAtomList(object):
 								shift    = True,
 								offset   = True,
 								n        = 1,
-								fileType = '.png'):
+								fileType = '.svg'):
 
 		# call the above calcHalfDose method for instances 
 		# of restype and atomtype
@@ -1771,7 +1915,7 @@ class combinedAtomList(object):
 						     densMet   = 'loss',
 						     normType  = 'Standard',
 						     n         = 1,
-						     fileType  = '.png'):
+						     fileType  = '.svg'):
 
 		# after above method calcHalfDoseForAtomtype is run for 
 		# two atom types atomtype1 and atomtype2 can compare 
@@ -1943,7 +2087,7 @@ class combinedAtomList(object):
 					   normType1 = 'Standard',
 					   normType2 = 'Standard',
 					   dSet      = 0,
-					   fileType  = '.png'):
+					   fileType  = '.svg'):
 
 		# for all atoms of type restype and atomtype plot scatter plot 
 		# comparing metric1 and 2 for chosen dataset dSet set restype = '' 
@@ -1973,7 +2117,7 @@ class combinedAtomList(object):
 						ylabel       = '',
 						figtitle     = '',
 						saveTitle    = 'untitled',
-						fileType     = '.png',
+						fileType     = '.svg',
 						lineBestFit  = False,
 						yequalsxLine = False,
 						colors       = '#50527A',
@@ -2039,7 +2183,7 @@ class combinedAtomList(object):
 						dataset  = 0,
 						densMet  = 'loss',
 						normType = 'Standard',
-						fileType = '.png'):
+						fileType = '.svg'):
 
 		# for atom of type1 determine a correlation between the closest 
 		# distance to atom type2 and the damage to atom type1.
@@ -2110,7 +2254,7 @@ class combinedAtomList(object):
 								  crystConts    = True,
 								  pdbName       = '',
 								  symmetrygroup = '',
-								  fileType      = '.png'):
+								  fileType      = '.svg'):
 
 		# determine whether there is a correlation between density metric 
 		# and types of surrounding atoms if 'crystConts' is True then crystal
@@ -2227,7 +2371,7 @@ class combinedAtomList(object):
 									dataset  = 0,
 									set      = 1,
 									box      = 'Box',
-									fileType = '.png',
+									fileType = '.svg',
 									axesFont = 18):
 
 		# produce a barplot to compare the damage metric of 
@@ -2237,13 +2381,32 @@ class combinedAtomList(object):
 			return
 
 		if set == 1:
-			keyAtomTypes = [['GLU','CD'],['ASP','CG'],['TYR','OH'],['CYS','SG'],['MET','SD'],
-							['LYS','NZ'],['ARG','NE'],['ASN','OD1'],['GLN','OE1'],['ALA','CB']]
+			keyAtomTypes = [['GLU','CD'],
+							['ASP','CG'],
+							['TYR','OH'],
+							['CYS','SG'],
+							['MET','SD'],
+							['LYS','NZ'],
+							['ARG','NE'],
+							['ASN','OD1'],
+							['GLN','OE1'],
+							['ALA','CB']]
 		if set == 2:
-			keyAtomTypes = [['GLU','OE1'],['GLU','OE2'],['ASP','OD1'],['ASP','OD2'],['TYR','OH'],
-							['ASN','OD1'],['GLN','OE1'],['SER','OG'],['THR','OG1'],['','O']]
+			keyAtomTypes = [['GLU','OE1'],
+							['GLU','OE2'],
+							['ASP','OD1'],
+							['ASP','OD2'],
+							['TYR','OH'],
+							['ASN','OD1'],
+							['GLN','OE1'],
+							['SER','OG'],
+							['THR','OG1'],
+							['','O']]
 	
-		plotData = {'x':[],'y':[],'y-error':[]}
+		plotData = {'x'       : [],
+					'y'       : [],
+					'y-error' : []}
+
 		for atm in keyAtomTypes:
 			foundAtms = self.getAtom(restype  = atm[0],
 									 atomtype = atm[1])
@@ -2257,9 +2420,13 @@ class combinedAtomList(object):
 		fig = plt.figure()
 		sns.set_style("whitegrid")
 		if box == 'Box':
-			ax = sns.boxplot(x="x", y="y", data=plotData)
+			ax = sns.boxplot(x    = "x",
+							 y    = "y",
+							 data = plotData)
 		elif box == 'Bar':
-			ax = sns.barplot(x="x", y="y", data=plotData)
+			ax = sns.barplot(x    = "x",
+							 y    = "y",
+							 data = plotData)
 		else:
 			print 'Unknown graph type - specify "Box" or "Bar"'
 			return
@@ -2285,7 +2452,7 @@ class combinedAtomList(object):
 													specialAtoms  = '',
 													densMet       = 'loss',
 													normType      = 'Standard',
-													fileType      = '.png'):
+													fileType      = '.svg'):
 
 		# determine the change in solvent accessibility for 'resType'-'atomType' 
 		# atoms before & after Glu/Asp decarboxylation events 'specialAtoms' 
@@ -2382,7 +2549,7 @@ class combinedAtomList(object):
 							densMet  = 'loss',
 							normType = 'Standard',
 							weighted = False,
-							fileType = '.png'):
+							fileType = '.svg'):
 
 		# for a given residue, calculate the average density metric 
 		# (for a specified metric) within a given region of space 
@@ -2523,7 +2690,7 @@ class combinedAtomList(object):
 								atomType    = '',
 								densMet     = 'loss',
 								normType    = 'Standard',
-								fileType    = '.png'):
+								fileType    = '.svg'):
 
 		# compare calculated density metric values to 
 		# calculated Bdamage values
@@ -2542,7 +2709,9 @@ class combinedAtomList(object):
 										resType     = resType)
 
 		# get density metric values and Bdamage values
-		plotData = {'x':[],'y':[]}
+		plotData = {'x':[],
+					'y':[]}
+
 		for atm in atms:
 			Bdam = BdamDic[atm.getAtomID()]
 			dens = atm.densMetric[densMet][normType]['average']

@@ -332,7 +332,8 @@ class calculateMetrics(object):
 		for pkl_filename in self.pklFiles:
 			ln = 'Damage file number: {}'.format(len(dList)+1)
 			self.logFile.writeToLog(str = ln)
-			PDB_ret = retrieve_objectlist(pkl_filename)
+			PDB_ret = retrieve_objectlist(fileName = pkl_filename,
+										  logFile  = self.logFile)
 
 			# add new retrieved damage set list to dList
 			dList.append(PDB_ret)
@@ -593,11 +594,14 @@ class calculateMetrics(object):
 					 'If not enough atoms are present to perform this test, "n/a" is given</li>\n</ul>'
 		summaryFile.write(bodyString)
 
+		# create plot of top n damage sites per dataset by residue type
+		figName = self.combinedAtoms.getTopAtomsStackedBarplot(outputDir = self.outputPlotDir, n = 25)
+
 		# provide some links to useful output files
 		bodyString = '<h3>Links to useful output files</h3>\n'+\
 					 '<ul><li><a href = "{}csvFiles/{}/{}-{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(self.outputDir,normType.replace(' ','-'),metric,normType.replace(' ',''),normType,metric)+\
-					 '<li><a href = "{}heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heatmap</a></li></ul>'.format(self.outputDir,metric,normType.replace(' ',''),normType,metric)
-
+					 '<li><a href = "{}heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li>'.format(self.outputDir,metric,normType.replace(' ',''),normType,metric)+\
+					 '<li><a href = "{}">Top 25 damage sites per residue/nucleotide type</a></li></ul>'.format(figName)
 		summaryFile.write(bodyString)
 
 		# get structure-wide metric average & std dev
@@ -607,17 +611,20 @@ class calculateMetrics(object):
 			summaryFile.write('<hr>')
 
 			# start block of collapsible panels here
-			summaryFile.write('<div class="panel-group" id="datasetinfo">')
+			summaryFile.write('<div class = "panel-group" id = "datasetinfo{}">'.format(i))
 			summaryFile.write('<h2>Dataset {}</h2>\n'.format(i+1))
 
 			t = 'Dataset info'
-			c = 'Number in series: {}<br>\n'.format(i+1)+\
-				'Dose (MGy)      : {}<br>\n'.format(self.doses[i])
+			c = 'Number in series : {}<br>\n'.format(i+1)+\
+				'Dose (MGy)       : {}<br>\n'.format(self.doses[i])+\
+				'Fourier diff map : <a href ="{}RIDL-maps/{}_density.map">Download</a><br>\n'.format(self.outDir,
+																						             self.pdbNames[i])
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
-										           content = c)	
+										           content = c,
+										           dataset = i)	
 			summaryFile.write(panelStr)
 
-			t = 'Structure-wide D{} summary'.format(metric)
+			t = 'Structure-wide D<sub>{}</sub> summary'.format(metric)
 			c = 'Average D<sub>{}</sub>   : {}<br>\n'.format(metric,round(av[i],3))+\
 				'Std dev in D<sub>{}</sub>: {}<br>\n'.format(metric,round(std[i],3))
 					 				
@@ -625,7 +632,8 @@ class calculateMetrics(object):
 				CAweights = self.combinedAtoms.retrieveCalphaWeight(metric = metric)
 				c += 'Calpha weight for current dataset: {}<br>\n'.format(round(CAweights.weight[metric][i],3))
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
-										           content = c)	
+										           content = c,
+										           dataset = i)	
 			summaryFile.write(panelStr)
 
 			if includeGraphs is True:
@@ -633,33 +641,11 @@ class calculateMetrics(object):
 											      normType = normType,
 											      plotSet  = 4)
 				t = 'Distribution of D<sub>{}</sub> for all refined atoms within structure'.format(metric)
-				c = '<img class="img-responsive" src="plots/DistnPlot_Residues-all_Metric-D{}_Normalisation-{}_Dataset-{}.png" width="{}">'.format(metric,normType.replace(' ',''),i,imWidth)
+				c = '<img class="img-responsive" src="plots/DistnPlot_Residues-all_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}">'.format(metric,normType.replace(' ',''),i,imWidth)
 				panelStr = self.writeHtmlDropDownPanel(title   = t,
-											           content = c)
+											           content = c,
+										               dataset = i)
 				summaryFile.write(panelStr)
-
-			# n = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = i,
-			# 												   metric    = metric,
-			# 												   normType  = normType,
-			# 												   threshold = 0.5)
-			# tableString = '<table border="1" style="width:10%">\n'+\
-			# 			  '<tr><th>N</th><th>#atoms</th></tr>\n'+\
-			# 			  '<tr><td>{}</td><td>{}</td></tr>\n'.format(0.5,n)
-			# t = 0
-			# while n != 0:
-			# 	t += 1
-			# 	n = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = i,
-			# 												       metric    = metric,
-			# 												       normType  = normType,
-			# 												       threshold = t)
-			# 	tableString += '<tr><td>{}</td><td>{}</td></tr>\n'.format(t,n)
-			# tableString += '</table>\n'
-			# t = '# atoms with {} D<sub>{}</sub> metric above N std dev of structure-wide mean'.format(normType,metric)
-			# c = tableString
-
-			# panelStr = self.writeHtmlDropDownPanel(title   = t,
-			# 							           content = c)	
-			# summaryFile.write(panelStr)
 
 			figName = self.combinedAtoms.plotNumAtomsWithMetricAboveStructureWideMean(metric   = metric,
 																					  normType = normType,
@@ -669,7 +655,8 @@ class calculateMetrics(object):
 			t = '# atoms with {} D<sub>{}</sub> metric above N std dev of structure-wide mean'.format(normType,metric)
 			c = '<img class="img-responsive" src="{}" width="{}">'.format(figName,imWidth)
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
-										           content = c)	
+										           content = c,
+										           dataset = i)	
 			summaryFile.write(panelStr)
 
 			statsOut = self.combinedAtoms.getTopNAtomsString(metric,normType,i,25)
@@ -680,9 +667,10 @@ class calculateMetrics(object):
 			    'to 1) is a measure of the closeness of the voxel exhibiting the '+\
 			    'maximum density loss D<sub>loss</sub> value from the specified atom (higher '+\
 			    'values indicate smaller distances):<br><br>\n'
-			c += self.convertPlainTxtTable2html(statsOut,width='50%')
+			c += self.convertPlainTxtTable2html(statsOut, width = '50%')
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
-										           content = c)
+										           content = c,
+										           dataset = i)
 			summaryFile.write(panelStr)
 
 			statsOut = self.combinedAtoms.getPerAtmtypeStats(metric   = metric,
@@ -692,7 +680,8 @@ class calculateMetrics(object):
 			c = 'D<sub>{}</sub> metric ranked by mean value:<br><br>\n'.format(metric)
 			c += self.convertPlainTxtTable2html(statsOut[0],width='60%')
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
-										           content = c)
+										           content = c,
+										           dataset = i)
 			summaryFile.write(panelStr)
 
 			n = self.combinedAtoms.getNumAtoms()*0.05 # take top 5% of atoms here
@@ -704,7 +693,8 @@ class calculateMetrics(object):
 			c = '{}<br><br>\n'.format(statsOut[0])
 			c += self.convertPlainTxtTable2html(statsOut[1])
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
-										           content = c)
+										           content = c,
+										           dataset = i)
 			summaryFile.write(panelStr)
 
 			statsOut = self.combinedAtoms.getPerResidueStats(metric   = metric,
@@ -714,7 +704,8 @@ class calculateMetrics(object):
 			c = 'D<sub>{}</sub> metric ranked by mean value:<br><br>\n'.format(metric)
 			c += self.convertPlainTxtTable2html(statsOut[0],width='60%')
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
-										           content = c)
+										           content = c,
+										           dataset = i)
 			summaryFile.write(panelStr)
 
 			statsOut = self.combinedAtoms.getPerChainStats(metric   = metric,
@@ -725,7 +716,8 @@ class calculateMetrics(object):
 			c = 'D<sub>{}</sub> metric ranked by mean value:<br><br>\n'.format(metric)
 			c += self.convertPlainTxtTable2html(statsOut[0],width='60%')
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
-										           content = c)
+										           content = c,
+										           dataset = i)
 			summaryFile.write(panelStr)
 
 			if includeGraphs is True:
@@ -734,9 +726,10 @@ class calculateMetrics(object):
 											      plotSet  = 1)
 				if i not in failedPlots['GLUASPCYSMETTYR']:
 					t = 'Distribution of D<sub>{}</sub> for known susceptible residue types\n'.format(metric)
-					c = '<img class="img-responsive" src="plots/DistnPlot_Residues-GLUASPCYSMETTYR_Metric-D{}_Normalisation-{}_Dataset-{}.png" width="{}"><br>'.format(metric,normType.replace(' ',''),i,imWidth)
+					c = '<img class="img-responsive" src="plots/DistnPlot_Residues-GLUASPCYSMETTYR_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}"><br>'.format(metric,normType.replace(' ',''),i,imWidth)
 					panelStr = self.writeHtmlDropDownPanel(title   = t,
-												           content = c)
+												           content = c,
+										                   dataset = i)
 					summaryFile.write(panelStr)
 
 
@@ -746,9 +739,10 @@ class calculateMetrics(object):
 												  plotSet  = 3)
 				if i not in failedPlots['DADCDGDT']:
 					t = 'Distribution of D<sub>{}</sub> for known susceptible nucleotide types\n'.format(metric)
-					c = '<img class="img-responsive" src="plots/DistnPlot_Residues-DADCDGDT_Metric-D{}_Normalisation-{}_Dataset-{}.png" width="{}"><br>'.format(metric,normType.replace(' ',''),i,imWidth)
+					c = '<img class="img-responsive" src="plots/DistnPlot_Residues-DADCDGDT_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}"><br>'.format(metric,normType.replace(' ',''),i,imWidth)
 					panelStr = self.writeHtmlDropDownPanel(title   = t,
-												           content = c)
+												           content = c,
+										                   dataset = i)
 					summaryFile.write(panelStr)
 
 			infoString = ''
@@ -777,7 +771,8 @@ class calculateMetrics(object):
 			t = 'Suspicious Atoms'
 			c = infoString
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
-										           content = c)
+										           content = c,
+										           dataset = i)
 			summaryFile.write(panelStr)
 
 			# end block of collapsible panels here
@@ -795,7 +790,8 @@ class calculateMetrics(object):
 							   title      = 'untitled',
 							   header     = 'h3',
 							   content    = 'no content',
-							   panelColor = 'default'):
+							   panelColor = 'default',
+							   dataset    = 0):
 
 		# write the info for a html collapsible panel
 
@@ -808,11 +804,11 @@ class calculateMetrics(object):
 			expanded = 'in'
 		else:
 			expanded = ''
-
+		i   = dataset
 		txt = '<div class="panel panel-{}">\n'.format(panelColor)+\
 			  '<div class="panel-heading">\n'+\
 			  '<{} class="panel-title">\n'.format(header)+\
-			  '<a data-toggle="collapse" data-parent="#datasetinfo" href="#collapse{}">{}</a>\n'.format(self.panelIndex,title)+\
+			  '<a data-toggle="collapse" data-parent="#datasetinfo{}" href="#collapse{}">{}</a>\n'.format(i,self.panelIndex,title)+\
 			  '</{}></div>\n'.format(header)+\
 			  '<div id="collapse{}" class="panel-collapse collapse {}">'.format(self.panelIndex,expanded)+\
 			  '<div class="panel-body">{}'.format(content)+\
@@ -1155,7 +1151,8 @@ class calculateMetrics(object):
 
 		# force no plotting if seaborn library not found
 
-		self.seabornFound = checkSns(printText = True)
+		self.seabornFound = checkSns(printText = False,
+									 logFile   = self.logFile)
 		if self.seabornFound is False:
 			self.plot = False
 
