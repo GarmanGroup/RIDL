@@ -1,8 +1,8 @@
+from progbar import progress
 import cPickle as pickle
 import sys
-from progbar import progress
 
-# short functions to save PDB list of atom objects containing info on 
+# small functions to save PDB list of atom objects containing info on 
 # each dose level to save running time consuming scripts calculating 
 # electron density values to each atom in structure
 
@@ -15,9 +15,9 @@ def save_objectlist(PDBlist,pdbName):
             
     return filename
 
-def retrieve_objectlist(fileName,
-                        loadBar = False,
-                        logFile = ''):
+def retrieve_objectlist(fileName = 'untitled.pkl',
+                        loadBar  = False,
+                        logFile  = ''):
 
     # this function retrieves a list of objects 
     # from a file, given name of form filename = 
@@ -71,8 +71,12 @@ def checkFileFormat(fileName):
     if fileName.split('_')[-1] != 'data.pkl':
         sys.exit('.pkl file of wrong format to retrieve. File {} supplied'.format(fileName))
 
-def retrieveGenericObject(fileName='untitled.pkl'):
-    # retrieve a generic object from file name '{fileName}_data.pkl'
+def retrieveGenericObject(
+                          fileName = 'untitled.pkl'):
+
+    # retrieve a generic object from 
+    # file name '{fileName}_data.pkl'
+
     checkFileFormat(fileName)
     with open(str(fileName), 'rb') as input:
         obj = pickle.load(input)
