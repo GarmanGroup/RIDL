@@ -257,12 +257,30 @@ MAPINFO
 		# create log file for the current job
 
 		self.quickParseInputFile()
+		self.checkOutputDirExists(printToScreen = self.printOutput)
 
 		fName = '{}RIDLjob.log'.format(self.outputDir)
 		log = logFile(fileName      = fName,
 					  fileDir       = self.outputDir,
 					  printToScreen = self.printOutput)
 		self.logFile = log
+
+	def checkOutputDirExists(self,
+							 printToScreen = True):
+
+		# check whether output directory exists and make if not
+
+		if self.outputDir.endswith('/') is False:
+			if printToScreen is True:
+				print 'Working directory specified in input '+\
+					  'file must end in "/" - appending.'
+			self.outputDir += '/'
+
+		if not os.path.exists(self.outputDir):
+			if printToScreen is True:
+				print 'Output directory "{}" not found, making directory'.format(self.outputDir)
+			os.makedirs(self.outputDir)
+
 
 
 

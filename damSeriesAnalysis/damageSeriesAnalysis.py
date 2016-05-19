@@ -45,11 +45,22 @@ class damageSeriesAnalysis():
 		self.ETRACK.runETRACK(process,postprocess,retrieve)
 
 	def getDensSeries(self):
-		dSeries = [['DELAMORA','DIFF'],['JUERS100',''],['JUERS160',''],
- 					['BURY','initial'],['WEIK','initial'],['DIXON','DIFF'],
- 					['FIOR',''],['BURM','final'],['TRAP','DIFF'],['SUTTON',''],
- 					['PETROVA','DIFF'],['NANAO','Elastase'],['NANAO','Thaumatin'],
- 					['NANAO','Trypsin'],['NANAO','Lysozyme'],['NANAO','Insulin'],
+		dSeries = [['DELAMORA','DIFF'],
+				   ['JUERS100',''],
+				   ['JUERS160',''],
+ 					['BURY','initial'],
+ 					['WEIK','initial'],
+ 					['DIXON','DIFF'],
+ 					['FIOR',''],
+ 					['BURM','final'],
+ 					['TRAP','DIFF'],
+ 					['SUTTON',''],
+ 					['PETROVA','DIFF'],
+ 					['NANAO','Elastase'],
+ 					['NANAO','Thaumatin'],
+ 					['NANAO','Trypsin'],
+ 					['NANAO','Lysozyme'],
+ 					['NANAO','Insulin'],
  					['NANAO','RibonucleaseA']]
  		return dSeries
 
