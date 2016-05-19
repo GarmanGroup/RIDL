@@ -52,7 +52,7 @@ class processFiles():
 			if success is False:
 				return False
 
-			self.checkOutputDirExists(makeProcessDir = False)
+			self.checkOutputDirsExists(makeProcessDir = False)
 			self.findFilesInDir(mapProcessDir = False)
 
 			if self.metricCalcInputName not in self.filesInDir:
@@ -77,7 +77,7 @@ class processFiles():
 		if success is False:
 			return
 
-		self.checkOutputDirExists()
+		self.checkOutputDirsExists()
 		self.findFilesInDir()
 		self.checkForMultipleDatasets()
 
@@ -220,15 +220,31 @@ class processFiles():
 				 'mtz2',
 				 'pdb2',
 				 'mtz3']
+		fType = ['.mtz','.pdb']*2+['.mtz']
 
-		for p in props:
+		for p,t in zip(props,fType):
 			if self.multiDatasets is False:
-				success = self.checkFileExists(fileName = getattr(self,p))
+
+				name = getattr(self,p)
+				success = self.checkCorrectFileExtension(fileName = name,
+											  	 		 fileType = t,
+											  	 		 property = p)
+				if success is False:
+					return False
+
+				success = self.checkFileExists(fileName = name)
 				if success is False:
 					return False
 			else:
 				for f in getattr(self,p).split(','):
-					success = self.checkFileExists(fileName=f)
+
+					success = self.checkCorrectFileExtension(fileName = f,
+												  	 		 fileType = t,
+												  	 		 property = p)
+					if success is False:
+						return False
+
+					success = self.checkFileExists(fileName = f)
 					if success is False:
 						return False
 
@@ -240,20 +256,43 @@ class processFiles():
 				self.writeError(text = err)
 				return False
 
+			for n in ('name1','name2'):
+				success = self.checkNameLength(name      = getattr(self,n),
+									 		   property  = n)
+				if success is False:
+					return False
 		else:
 			isError = False
 			if self.repeatedFile1InputsUsed is True:
+				success = self.checkNameLength(name      = self.name1,
+									 		   property  = 'name1')
+				if success is False:
+					return False
+
+
 				for n in self.name2.split(','):
 					if self.name1 == n:
 						isError = True
 						sameName = n
 						break
+
+					success = self.checkNameLength(name      = n,
+										 		   property  = 'name2')
+					if success is False:
+						return False
+
 			else:
-				for i,(n1, n2) in enumerate(zip(self.name1.split(','), self.name2.split(','))):
+				for n1, n2 in zip(self.name1.split(','), self.name2.split(',')):
 					if n1 == n2:
 						isError = True
 						sameName = n1
 						break
+
+					for n,m in zip([n1,n2],['name1','name2']):
+						success = self.checkNameLength(name      = n,
+											 		   property  = m)
+						if success is False:
+							return False
 
 			if isError is True:
 				err = '"name1" and "name2" inputs must be different '+\
@@ -263,8 +302,14 @@ class processFiles():
 				self.writeError(text = err)
 				return False
 
+		success = self.checkNameLength(name      = self.name3,
+							 		   property  = 'name3',
+							 		   maxLength = 22)
+		if success is False:
+			return False
+
 		# add to name3 to identify it from other datasets
-		self.name3 += '-phases'
+		self.name3 += '-ph'
 
 		if self.densMapType not in ('DIFF','SIMPLE','2FOFC','END'):
 			err = '"densMapType" input of incompatible format, (default is "DIFF"). '+\
@@ -358,15 +403,34 @@ class processFiles():
 
 		return True
 
+	def checkNameLength(self,
+						maxLength = 24,
+						name      = '',
+						property  = 'name1'):
+
+		# check the length of an input name within input file
+
+		if len(name) > maxLength:
+			err = 'Each "{}" input must be less than {} characters long. '.format(property,maxLength)+\
+				  'Currently {} characters long..'.format(len(name))
+			self.writeError(text = err)
+			return False
+
+		return True
+
 	def checkMtzLabelsExist(self):
 
 		# for each mtz file input, check that the correct labels as 
 		# specified within the txt input file are successfully found
 
 		# initial dataset mtz files checked here
-		if self.repeatedFile1InputsUsed is True:
-			mtzFiles  = [self.mtz1]
-			mtzLabels = [self.mtzlabels1]
+		if self.multiDatasets is True:
+			if self.repeatedFile1InputsUsed is True:
+				mtzFiles  = [self.mtz1]
+				mtzLabels = [self.mtzlabels1]
+			else:
+				mtzFiles  = self.mtz1.split(',')
+				mtzLabels = self.mtzlabels1.split(',')
 		else:
 			mtzFiles  = self.mtz1.split(',')
 			mtzLabels = self.mtzlabels1.split(',')
@@ -405,7 +469,7 @@ class processFiles():
 				  self.FcalcLabel]
 		for lab in labels:
 			if lab not in foundLabels:
-				self.mtzLabelNotFound(mtzFile = f,
+				self.mtzLabelNotFound(mtzFile = self.mtz3,
 									  label   = lab)
 				return False
 
@@ -461,6 +525,20 @@ class processFiles():
 			err = 'File "{}" could not be located..'.format(fileName)
 			self.writeError(text = err)
 			return False
+
+	def checkCorrectFileExtension(self,
+								  fileName = '',
+								  fileType = '.pdb',
+								  property = 'pdb1'):
+
+		# check that a file has the required file extension
+
+		if fileName.endswith(fileType) is False:
+			err = '"{}" input file input must end with extension"{}". '.format(property,fileType)+\
+				  'Currently file is set as "{}".'.format(fileName)
+			self.writeError(text = err)
+			return False
+		return True
 
 	def checkForMultipleDatasets(self):
 
@@ -518,15 +596,15 @@ class processFiles():
 				self.repeatedFile1InputsUsed = s
 				self.multiDatasets = True
 
-	def checkOutputDirExists(self,
-							 makeProcessDir = True):
+	def checkOutputDirsExists(self,
+							  makeProcessDir = True):
 
 		# check whether output directory exists and make if not
 
 		if self.dir.endswith('/') is False:
 			ln = 'Working directory specified in input '+\
 				  'file must end in "/" - appending.'
-			ln = self.logFile.writeToLog(str = ln)
+			self.logFile.writeToLog(str = ln)
 			self.dir += '/'
 
 		if not os.path.exists(self.dir):
