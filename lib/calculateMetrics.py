@@ -599,9 +599,9 @@ class calculateMetrics(object):
 
 		# provide some links to useful output files
 		bodyString = '<h3>Links to useful output files</h3>\n'+\
-					 '<ul><li><a href = "{}csvFiles/{}/{}-{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(self.outputDir,normType.replace(' ','-'),metric,normType.replace(' ',''),normType,metric)+\
-					 '<li><a href = "{}heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li>'.format(self.outputDir,metric,normType.replace(' ',''),normType,metric)+\
-					 '<li><a href = "{}">Top 25 damage sites per residue/nucleotide type</a></li></ul>'.format(figName)
+					 '<ul><li><a href = "csvFiles/{}/{}-{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(normType.replace(' ','-'),metric,normType.replace(' ',''),normType,metric)+\
+					 '<li><a href = "heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li>'.format(self.outputDir,metric,normType.replace(' ',''),normType,metric)+\
+					 '<li><a href = "plots/{}">Top 25 damage sites per residue/nucleotide type</a></li></ul>'.format(figName.split('/')[-1])
 		summaryFile.write(bodyString)
 
 		# get structure-wide metric average & std dev
@@ -617,8 +617,7 @@ class calculateMetrics(object):
 			t = 'Dataset info'
 			c = 'Number in series : {}<br>\n'.format(i+1)+\
 				'Dose (MGy)       : {}<br>\n'.format(self.doses[i])+\
-				'Fourier diff map : <a href ="{}RIDL-maps/{}_density.map">Download</a><br>\n'.format(self.outDir,
-																						             self.pdbNames[i])
+				'Fourier diff map : <a href ="../RIDL-maps/{}_density.map">Download</a><br>\n'.format(self.pdbNames[i])
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
 										           content = c,
 										           dataset = i)	
@@ -719,6 +718,12 @@ class calculateMetrics(object):
 										           content = c,
 										           dataset = i)
 			summaryFile.write(panelStr)
+
+
+			# TEST - NEED TO FIND PROPER PLACE FOR THIS
+			self.makeDistnPlots(densMet  = metric,
+								normType = normType,
+							    plotSet  = 2)
 
 			if includeGraphs is True:
 				failedPlots = self.makeDistnPlots(densMet  = metric,
@@ -995,15 +1000,7 @@ class calculateMetrics(object):
 					   ['ASP','ASN'],
 					   ['ILE','LEU'],
 					   ['TYR','PHE'],
-				   	   ['GLU','GLY'],
-				   	   ['ASP','GLY'],
-				   	   ['TYR','GLY'],
-				   	   ['PHE','GLY'],
-				   	   ['CYS','GLY'],
-				   	   ['MET','GLY'],
-				   	   ['TYR','ASP','GLU'],
-				   	   ['TYR','PHE','GLY'],
-				   	   ['GLU','ASP','CYS','MET','TYR']]
+				   	   ['TYR','PHE','GLY']]
 		elif plotSet == 3:
 			resList = [['DA','DC','DG','DT']]
 
