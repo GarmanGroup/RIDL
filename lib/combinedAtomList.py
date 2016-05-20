@@ -5,7 +5,7 @@ from halfDoseCalc import halfDoseApprox
 from combinedAtom import combinedAtom
 from CalphaWeight import CalphaWeight
 import matplotlib.pyplot as plt
-from matplotlib import cm
+from matplotlib import cm,gridspec 
 from scipy import stats
 import pandas as pd
 import string
@@ -393,10 +393,13 @@ class combinedAtomList(object):
 						 where    = './',
 						 groupBy  = 'none',
 						 metric   = 'loss',
-						 normType = 'Standard'):
+						 normType = 'Standard',
+						 numDP    = 2):
 
 		# write all metric values to a .csv file to location 'where'
-		# 'groupBy' takes values 'none','residue','atomtype'
+		# 'groupBy' takes values 'none','residue','atomtype'. numDP 
+		# is number of decimal points the values in csv should be
+		# rounded to (default of 2dp)
 
 		csvName = '{}{}-{}.csv'.format(where,metric,normType.replace(" ",""))
 		if groupBy in ('residue','atomtype'):
@@ -447,7 +450,8 @@ class combinedAtomList(object):
 			self.atomList.sort(key=lambda x: x.atomnum) # sort atom list by atom number
 			for atom in self.atomList:
 				csvfile.write('{},{},'.format(atom.atomnum,atom.getAtomID()))
-				csvfile.write(','.join(map(str,atom.densMetric[metric][normType]['values'])))
+				roundedVals = [round(v,numDP) for v in atom.densMetric[metric][normType]['values']]
+				csvfile.write(','.join(map(str,roundedVals)))
 				csvfile.write('\n')
 		csvfile.close()
 
@@ -738,20 +742,25 @@ class combinedAtomList(object):
 		# for a given metric type, determine top 
 		# n damage sites. 'n' is integer or 'all'.
 
-		atomList = self.getAtomListWithoutPartialAtoms(dataset=dataset) # remove atoms not in present dataset
-		atomList.sort(key=lambda x: x.densMetric[metric][normType]['values'][dataset])
+		if dataset != 'all':
+			atomList = self.getAtomListWithoutPartialAtoms(dataset = dataset) # remove atoms not in present dataset
+			atomList.sort(key=lambda x: x.densMetric[metric][normType]['values'][dataset])
 
-		# for difference maps, more negative metrics indicate 
-		# more damage, however if Calpha normalisation used, 
-		# then the highest positive metric values are the most 
-		# damaged, this must be accounted for here:
-		if normType == 'Calpha normalised':
-			atomList.reverse()
+			# for difference maps, more negative metrics indicate 
+			# more damage, however if Calpha normalisation used, 
+			# then the highest positive metric values are the most 
+			# damaged, this must be accounted for here:
+			if normType == 'Calpha normalised':
+				atomList.reverse()
 
-		if n != 'all': 
-			return atomList[:int(n)]
-		else: 
-			return atomList
+			if n != 'all': 
+				return atomList[:int(n)]
+			else: 
+				return atomList
+
+		else:
+			# TODO: rank with respect to all datasets
+			return 
 
 	def getTopNAtomsPDBfile(self,
 							metric   = 'loss',
@@ -1281,43 +1290,64 @@ class combinedAtomList(object):
 			return True
 
 	def densityMetricHeatMap(self,
-							 metric    = 'loss',
-							 normType  = 'Standard',
-							 saveFig   = False,
-							 fileType  = '.svg',
-							 titleFont = 24):
+							 metric       = 'loss',
+							 normType     = 'Standard',
+							 saveFig      = False,
+							 fileType     = '.svg',
+							 titleFont    = 24,
+							 outputDir    = './',
+							 forceSquares = True):
 
 		# plot a heatmap of density metric values per atom per dataset.
 		# depending on the metric and normalisation type chosen, a different
 		# colour scheme is chosen
+		chains = self.getChains()
+		data = {c : {'Atom'    : [],
+					 'Dataset' : [],
+					 'metric'  : []} for c in chains}
 
-		data = {'Atom'    : [],
-				'Dataset' : [],
-				'metric'  : []}
+		# data = {'Atom'    : [],
+		# 		'Dataset' : [],
+		# 		'metric'  : []}
 
 		for atom in self.atomList:
-			data['metric']  += atom.densMetric[metric][normType]['values']
-			data['Atom']    += [atom.getAtomID()]*self.getNumDatasets()
-			data['Dataset'] += range(1, self.getNumDatasets() + 1)
-
-		d = pd.DataFrame(data = data)
-		d = d.pivot("Atom",
-					"Dataset",
-					"metric")
+			c = atom.chaintype
+			data[c]['metric']  += atom.densMetric[metric][normType]['values']
+			data[c]['Atom']    += [atom.getAtomID()]*self.getNumDatasets()
+			data[c]['Dataset'] += range(1, self.getNumDatasets() + 1)
 
 		# stretch the plot in the vertical direction, depending 
 		# on how many atoms are present within the structure
 		fontsize_pt = plt.rcParams['ytick.labelsize']
 		dpi = 60
-		matrix_height_pt = fontsize_pt * self.getNumAtoms()
+		chainLengths = [len(data[c]['Atom']) for c in chains]
+		maxLength = float(max(chainLengths)) # get largest chain length
+		matrix_height_pt = fontsize_pt * maxLength
 		matrix_height_in = matrix_height_pt / dpi
-		top_margin    = 0.04    
+		top_margin    = 0.01   
 		bottom_margin = 0.04
 		figure_height = matrix_height_in / (1 - top_margin - bottom_margin)
 		figure_width = 5*self.getNumDatasets()
-		fig, ax = plt.subplots(figsize     = (figure_width,figure_height), 
-		        			   gridspec_kw = dict(top    = 1 - top_margin,
-		        				 				  bottom = bottom_margin))
+
+		# fig, ax = plt.subplots(1,len(chains),figsize = (figure_width,figure_height))
+		# 					# gridspec_kw = dict(width_ratios = [1,1,1]))
+
+		fig = plt.figure(figsize = (figure_width,figure_height))
+
+		# gs = gridspec.GridSpec(1, 3, height_ratios = np.array(chainLengths)/maxLength,width_ratios =[1,1,1] )
+		
+		gs = gridspec.GridSpec(2, 3)
+
+		ax = []
+		for i in range(3):
+			ax.append(plt.subplot(gs[i]))
+		# cbar_ax = fig.add_axes()
+
+			# , 
+		 #        			   gridspec_kw = dict(height_ratios = (.001, 1),width_ratios = (0.5,1)))
+
+		# top    = 1 - top_margin,
+		#         				 				  bottom = bottom_margin,
 
 		if metric == 'loss' and normType == 'Standard':
 			pal = 'Reds_r'
@@ -1327,25 +1357,59 @@ class combinedAtomList(object):
 										sep     = 80,
 										n       = 7,
 										as_cmap = True)
-		f = sns.heatmap(d,
-						ax     = ax,
-						cmap   = pal,
-						robust = True)
 
-		plt.yticks(rotation = 0) 
-		plt.title('Metric: D{},\nNormalisation: {}\n'.format(metric,normType),
-				  fontsize = titleFont)
+
+		for i,c in enumerate(chains):
+			d = pd.DataFrame(data = data[c])
+			d = d.pivot("Atom",
+						"Dataset",
+						"metric")
+						
+			f = sns.heatmap(d,
+							ax       = ax[i],
+							cbar     = False,
+							cmap     = pal,
+							robust   = True,
+							square   = forceSquares,
+							linewidths = 1,
+							linecolor = 'white',
+							cbar_kws = {"orientation" : "horizontal"})
+
+
+		# cbar=i == 0,
+	 #               			cbar_ax=None if i else cbar_ax,
+
+		for i,a in enumerate(ax):
+			plt.sca(a)
+			plt.yticks(rotation = 0) 
+			# a.set_aspect(chainLengths[i]/maxLength)
+
+		figTitle = plt.suptitle('Metric: D{},\nNormalisation: {}\n'.format(metric,normType),
+				  fontsize = titleFont, y = 1.02)
+
+		fig.tight_layout()
 
 		if saveFig is False:
 			plt.show()
 
 		else:
-			saveName = '{}heatmap_metric-{}_normalisation-{}'.format(self.outputDir,
+			saveName = '{}heatmap_metric-{}_normalisation-{}'.format(outputDir,
 																	 metric,
 																	 normType)
 			fileName = self.checkUniqueFileName(fileName = saveName,
 									 			fileType = fileType)
-			fig.savefig(fileName)
+			fig.savefig(fileName, bbox_extra_artists = (figTitle,), bbox_inches = "tight")
+
+	def getChains(self):
+
+		# find different chains in list of atoms
+
+		chains = []
+		for atom in self.atomList:
+			chain = atom.chaintype
+			if chain not in chains:
+				chains.append(chain)
+		return chains
 
 	def detectSuspiciousAtoms(self,
 							  dataset      = 0,
@@ -1355,10 +1419,13 @@ class combinedAtomList(object):
 							  suppressText = True):
 
 		# detect any atoms within a speicific type (e.g. LYS-NZ) 
-		# that do not behaviour like rest of that type
+		# that do not behaviour like rest of that type. Returns
+		# a list of atom identifiers and a list of states (higher
+		# or lower than expected for each atom detected).
 
-		atmDic = self.groupByAtmType(dataset=dataset)
+		atmDic = self.groupByAtmType(dataset = dataset)
 		suspAtoms = []
+		highOrLow = [] 
 		for k in atmDic.keys():
 			vals = [atm.densMetric[metric][normType]['values'][dataset] for atm in atmDic[k]]
 			meanVal = np.mean(vals)
@@ -1367,15 +1434,19 @@ class combinedAtomList(object):
 				val = atm.densMetric[metric][normType]['values'][dataset]
 				if np.linalg.norm(val-meanVal) > stdVal*threshold:
 					suspAtoms.append(atm.getAtomID())
-					if suppressText is True:
-						continue
 					if val < meanVal:
-						print 'Unusually low compared to mean value ({} < {})'.format(round(val,3),round(meanVal,3))
+						if suppressText is False:
+							print 'Unusually low compared to mean value ({} < {})'.format(round(val,3),
+																						  round(meanVal,3))
+						highOrLow.append('low')
 					else:
-						print 'Unusually high compared to mean value ({} > {})'.format(round(val,3),round(meanVal,3))
+						if suppressText is False:
+							print 'Unusually high compared to mean value ({} > {})'.format(round(val,3),
+																						   round(meanVal,3))
+						highOrLow.append('high')
 		if suppressText is False:
 			print '{} atoms found with suspiciously high/low damage relative to average of that atom type'
-		return suspAtoms
+		return suspAtoms,highOrLow
 
 	def getNumDatasets(self):
 
@@ -1795,7 +1866,7 @@ class combinedAtomList(object):
 								 				fileType = fileType)
 			f.savefig(fileName)
 
-		return figName+fileType
+		return fileName
 
 	def checkMetricPresent(self,
 						   atom     = '',

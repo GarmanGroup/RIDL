@@ -119,9 +119,10 @@ class calculateMetrics(object):
 			# 	              atomType  = 'SG')
 
 			for norm in ('Standard','Calpha normalised'):
-				self.combinedAtoms.densityMetricHeatMap(saveFig  = True,
-												        metric   = 'loss',
-												        normType = norm)
+				self.combinedAtoms.densityMetricHeatMap(saveFig   = True,
+												        metric    = 'loss',
+												        normType  = norm,
+												        outputDir = self.outputPlotDir)
 
 		else: 
 			ln = 'Post processing job not chosen...'
@@ -600,7 +601,7 @@ class calculateMetrics(object):
 		# provide some links to useful output files
 		bodyString = '<h3>Links to useful output files</h3>\n'+\
 					 '<ul><li><a href = "csvFiles/{}/{}-{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(normType.replace(' ','-'),metric,normType.replace(' ',''),normType,metric)+\
-					 '<li><a href = "heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li>'.format(self.outputDir,metric,normType.replace(' ',''),normType,metric)+\
+					 '<li><a href = "plots/heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li>'.format(metric,normType.replace(' ',''),normType,metric)+\
 					 '<li><a href = "plots/{}">Top 25 damage sites per residue/nucleotide type</a></li></ul>'.format(figName.split('/')[-1])
 		summaryFile.write(bodyString)
 
@@ -652,7 +653,7 @@ class calculateMetrics(object):
 																					  outputLoc = self.outputPlotDir)
 
 			t = '# atoms with {} D<sub>{}</sub> metric above N std dev of structure-wide mean'.format(normType,metric)
-			c = '<img class="img-responsive" src="{}" width="{}">'.format(figName,imWidth)
+			c = '<img class="img-responsive" src="plots/{}" width="{}">'.format(figName.split('/')[-1],imWidth)
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
 										           content = c,
 										           dataset = i)	
@@ -750,28 +751,50 @@ class calculateMetrics(object):
 										                   dataset = i)
 					summaryFile.write(panelStr)
 
-			infoString = ''
-			suspAtomLens = []
-			for t in [6,5,4,3,2]:
-				suspAtoms = self.combinedAtoms.detectSuspiciousAtoms(dataset   = i,
-							  										 metric    = metric,
-							  										 normType  = normType,
-							  										 threshold = t)
 
-				infoString+= '{} atoms found with unusually high/low D{} '.format(len(suspAtoms),metric)+\
-							 'values compared to average of that atom type '+\
-							 '(over {} standard deviations from average)'.format(t)
+			infoString = 'Atoms with unusually <font color="red">high</font> '+\
+				  		 'or <font color="blue">low</font> D<sub>{}</sub> values '.format(metric)+\
+				  		 'relative to the mean D<sub>{}</sub> value for that specific '.format(metric)+\
+				  		 'atom type will be reported.<br><br>'
+
+			lastInfoString = ''
+			suspAtomLens   = []
+			notDoneBefore  = True
+
+			for t in [6,5,4,3,2]:
+				suspAtoms,highOrLow = self.combinedAtoms.detectSuspiciousAtoms(dataset   = i,
+							  										 		   metric    = metric,
+							  										 		   normType  = normType,
+							  										 		   threshold = t)
+
+				tmpInfoString = '{} atoms found with unusually high/low D{} '.format(len(suspAtoms),metric)+\
+							    'values compared to average of that atom type '+\
+							    '(over {} standard deviations from average)'.format(t)
 
 				if len(suspAtoms) > 0:
+
+					if notDoneBefore is True:
+						infoString += lastInfoString + tmpInfoString
+						notDoneBefore = False
+					else:
+						infoString += tmpInfoString
+
 					infoString += ':<br>'
 					suspAtomLens.append(len(suspAtoms))
-					for s in suspAtoms:
-						infoString += '{}<br>'.format(s)
-				infoString += '<br>'
+					for s,h in zip(suspAtoms,highOrLow):
+						if h == 'high':
+							c = 'red'
+						else:
+							c = 'blue'
+						infoString += '<font color="{}">{}</font><br>'.format(c,s)
+					infoString += '<br>'
 
 				if len(suspAtomLens) > 1:
 					if suspAtomLens[-1] > 0 and suspAtomLens[-2] > 0:
 						break
+
+				lastInfoString = tmpInfoString + '<br>'
+
 
 			t = 'Suspicious Atoms'
 			c = infoString
