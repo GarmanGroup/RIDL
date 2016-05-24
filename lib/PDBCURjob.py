@@ -9,7 +9,7 @@ class PDBCURjob():
 				 runLog       = ''):
 
 		self.inputPDBfile  = inputPDBfile
-		self.outputPDBfile = '{}/{}_pdbcur.pdb'.format(outputDir,inputPDBfile.split('/')[-1].split('.pdb')[0])
+		self.outputPDBfile = '{}{}_pdbcur.pdb'.format(outputDir,inputPDBfile.split('/')[-1].split('.pdb')[0])
 		self.outputDir 	   = outputDir
 		self.runLog 	   = runLog
 
