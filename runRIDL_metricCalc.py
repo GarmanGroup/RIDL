@@ -76,7 +76,7 @@ class run():
 					   initialPDB    = '',
 					   doses         = '',
 					   PKLMULTIFILE  = '',
-					   outputGraphs  = True):
+					   outputGraphs  = 'yes'):
 
 		# write a generic input file for a damage series here
 
@@ -90,8 +90,10 @@ class run():
 		if PKLMULTIFILE != '':
 			inputString += 'PKLMULTIFILE {}'.format(PKLMULTIFILE)
 
-		if outputGraphs is True:
+		if outputGraphs == 'yes':
 			inputString += 'plot'
+		elif outputGraphs == 'slim':
+			inputString += 'slim-plot'
 
 		inputFile  = open(self.inputFileName,'w')
 		inputFile.write(inputString)

@@ -1,10 +1,13 @@
-import argparse
 from runRIDL_class import process
+import argparse
 
-# an outer layer for the pipeline scripts. This allows the pipeline
-# to be run from the command line by simply calling:
-# python runRIDL.py -i [inputfilename.txt] -pc
-# This is the recommended run mode for the scripts
+# an outer layer for the pipeline scripts. This allows 
+# the pipeline to be run from the command line by simply 
+# calling:
+#
+# 	python runRIDL.py -i [inputfilename.txt] -pc
+#
+# This is the recommended run mode for the scripts.
 
 parser = argparse.ArgumentParser(description = 'Run the RIDL pipeline from the command line.')
 
@@ -46,10 +49,19 @@ parser.add_argument('-j',
 parser.add_argument('-g',
 					dest    = 'noGraphs',
 					action  = 'store_const',
-					default = True,
-					const   = False,
+					default = False,
+					const   = True,
                     help    = 'Include if no graphs should be output (for case where '+\
                     		  'seaborn plotting library not accessible, for example).')
+
+parser.add_argument('--slim',
+					dest    = 'slim',
+					action  = 'store_const',
+					default = False,
+					const   = True,
+                    help    = 'Include only key graphs in the generated output. Per-atom per-dataset '+\
+                    		  'heatmaps are not produced. Recommended if many datasets on a large '+\
+                    		  'structure are to be input, since the resulting heatmap files will be large')
 
 parser.add_argument('-r',
 					dest    = 'cleanUpFinalFiles',
@@ -82,13 +94,23 @@ if args.inputFileHelp is True:
 	p = process(run = False)
 	p.howToWriteInputFile()
 
+# decide whether to include no graphs (no),
+# key graphs only (slim) or all graphs (yes)
+if args.noGraphs is True:
+	plot = 'no'
+else:
+	if args.slim is True:
+		plot = 'slim'
+	else:
+		plot = 'yes'
+
 # run the pipeline, including generating density and atom-tagged
 # maps from input pdb and mtz files (in a damage series), as 
 # specified within an input file
 if args.process is True:
 	p = process(inputFile           = args.inputFile,
 				proceedToMetricCalc = args.calculate,
-				outputGraphs        = args.noGraphs,
+				outputGraphs        = plot,
 				cleanUpFinalFiles   = args.cleanUpFinalFiles,
 				printOutput         = args.suppressOutput)
 
@@ -100,6 +122,6 @@ else:
 	if args.calculate is True:
 		p = process(inputFile         = args.inputFile,
 					skipToMetricCalc  = True,
-					outputGraphs      = args.noGraphs,
+					outputGraphs      = plot,
 					cleanUpFinalFiles = args.cleanUpFinalFiles,
 					printOutput       = args.suppressOutput)

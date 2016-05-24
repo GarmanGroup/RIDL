@@ -18,14 +18,14 @@ class process():
 				 run                 = True,
 				 proceedToMetricCalc = False,
 				 skipToMetricCalc    = False,
-				 outputGraphs        = True,
+				 outputGraphs        = 'yes',
 				 cleanUpFinalFiles   = False,
 				 printOutput         = True):
 
 		self.inputFile           = inputFile
 		self.proceedToMetricCalc = proceedToMetricCalc
 		self.skipToMetricCalc    = skipToMetricCalc
-		self.outputGraphs        = outputGraphs
+		self.outputGraphs        = outputGraphs # takes 'yes', 'no' or 'slim'
 		self.cleanUpFinalFiles   = cleanUpFinalFiles
 		self.printOutput         = printOutput
 

@@ -11,7 +11,7 @@ class processFiles():
 				 inputFile           = '',
 				 proceedToMetricCalc = False,
 				 skipToMetricCalc	 = False,
-				 outputGraphs        = True,
+				 outputGraphs        = 'yes',
 				 metricCalcInputName = 'metricCalc_inputfile.txt',
 				 cleanFinalFiles     = False,
 				 logFileObj          = ''):

@@ -30,7 +30,7 @@ class calculateMetrics(object):
 				 seriesName = "untitled-series",
 				 pklSeries  = "",
 				 doses      = [],
-				 plot       = False,
+				 plot       = 'no',
 				 output     = 'simple',
 				 logFile    = ''):
 
@@ -57,6 +57,14 @@ class calculateMetrics(object):
 		# pipeline. Takes inputs to specify which parts of above pipeline are to be
 		# included. For each function input specify True if this part is to be performed
 		# and False otherwise.
+
+		# ###########################################################
+		# # FOR TESTING PURPOSES WHERE ONLY OUTPUT FILES ARE CHANGING
+		# map_process  = False
+		# post_process = False
+		# retrieve     = True
+		# self.pklSeries = 'Juers2011_data.pkl'
+		# ###########################################################
 
 		self.inputFileName = inputFileName
 
@@ -99,30 +107,8 @@ class calculateMetrics(object):
 						'{}{}'.format(self.outputDir,pklSeries))
 			self.pklSeries = pklSeries
 
-			# provide summary txt file on Dloss metric metric per-dataset
-			self.summaryFile(normType = 'Standard') 
 
-			if self.CalphaPresent is True:
-				self.summaryFile(normType = 'Calpha normalised') 
-			
-			self.writeDamSitesToFile()
-
-			# TEST CASES - NOT NORMALLY PLOTTED
-			# self.plotLinePlot(restype   = 'GLU',
-			# 				  errorBars = 'NONE',
-			# 				  atomType  = '')
-			# self.plotLinePlot(restype   = 'GLU',
-			# 				  errorBars = 'ATOMTYPE',
-			# 				  atomType  = '')
-			# self.plotLinePlot(restype   = 'CYS',
-			# 	              errorBars = 'NONE',
-			# 	              atomType  = 'SG')
-
-			for norm in ('Standard','Calpha normalised'):
-				self.combinedAtoms.densityMetricHeatMap(saveFig   = True,
-												        metric    = 'loss',
-												        normType  = norm,
-												        outputDir = self.outputPlotDir)
+			self.provideFeedback()
 
 		else: 
 			ln = 'Post processing job not chosen...'
@@ -130,6 +116,7 @@ class calculateMetrics(object):
 
 		if retrieve is True:
 			self.PDBmulti_retrieve()
+			self.provideFeedback()
 
 		self.fillerLine(blank = True)
 
@@ -181,7 +168,11 @@ class calculateMetrics(object):
 			elif 'doses' == l[0]:
 				self.doses 	= [float(d) for d in l[1].split(',')]
 			elif 'plot' == l[0]:
-				self.plot = True
+				self.plot         = True
+				self.plotHeatmaps = True
+			elif 'slim-plot' == l[0]:
+				self.plot         = True
+				self.plotHeatmaps = False
 		inputfile.close()
 
 		if not self.initialPDB.endswith('.pdb'):
@@ -356,13 +347,34 @@ class calculateMetrics(object):
 		combinedAtoms.calcAdditionalMetrics(newMetric = 'average')
 
 		# calculate Calpha normalised metrics, if Calpha atoms exist
-		self.CalphaPresent = combinedAtoms.checkCalphaAtomsExist()
-		if self.CalphaPresent is True:
+		if self.checkCalphasPresent(atomObjList = combinedAtoms) is True:
 			for m in ('loss','mean','gain','Bfactor'):
 				combinedAtoms.calcAdditionalMetrics(metric = m)
 		
 		self.combinedAtoms = combinedAtoms
+
+	def provideFeedback(self):
+
+		# create series of output feedback files
+
 		self.writeCsvFiles(output = self.output)
+
+		# provide summary txt file on Dloss metric metric per-dataset
+		self.summaryFile(normType = 'Standard') 
+
+		if self.checkCalphasPresent(atomObjList = self.combinedAtoms) is True:
+			self.summaryFile(normType = 'Calpha normalised') 
+		
+		self.writeDamSitesToFile()
+
+		# create heatmap plots (large files) if requested
+		if self.plot is True:
+			if self.plotHeatmaps is True:
+				for norm in ('Standard','Calpha normalised'):
+					self.combinedAtoms.densityMetricHeatMap(saveFig   = True,
+													        metric    = 'loss',
+													        normType  = norm,
+													        outputDir = self.outputPlotDir)	
 
 	def writeCsvFiles(self,
 					  move   = True,
@@ -371,6 +383,8 @@ class calculateMetrics(object):
 		# write atom numbers and density metrics to simple 
 		# csv files,one for each density metric separately
 
+
+		CalphasPresent = self.checkCalphasPresent(atomObjList = self.combinedAtoms)
 		self.fillerLine()
 		ln = 'Writing .csv file for per-atom density metric:'
 		self.logFile.writeToLog(str = ln)
@@ -380,7 +394,7 @@ class calculateMetrics(object):
 			metrics = [['loss','Standard'],
 					   ['loss','reliability']]
 
-			if self.CalphaPresent is True:
+			if CalphasPresent is True:
 				metrics += [['loss','Calpha normalised']]
 		else:
 			metrics = self.combinedAtoms.getDensMetrics()
@@ -395,7 +409,7 @@ class calculateMetrics(object):
 		for groupBy in ('residue','atomtype'):
 			self.combinedAtoms.writeMetric2File(where   = self.outputDir,
 										   		groupBy = groupBy)
-			if self.CalphaPresent is True:
+			if CalphasPresent is True:
 				self.combinedAtoms.writeMetric2File(where    = self.outputDir,
 										  	        groupBy  = groupBy,
 										            normType = 'Calpha normalised')
@@ -542,16 +556,6 @@ class calculateMetrics(object):
 			summaryFile.write(statsOut[0]+'\n')
 		summaryFile.close()
 
-	def metricBarplots(self):
-
-		# plot barplots of damage metric for each susceptible residue type
-
-		numDsets = self.getNumDatasets()
-		for i in range(numDsets):
-			for set in [1,2]:
-				for b in ('Box','Bar'):
-					self.combinedAtoms.susceptAtmComparisonBarplot(metric,normType,i,set,b)
-
 	def summaryHTML(self, 
 					metric        = 'loss', 
 					normType      = 'Standard',
@@ -601,9 +605,53 @@ class calculateMetrics(object):
 		# provide some links to useful output files
 		bodyString = '<h3>Links to useful output files</h3>\n'+\
 					 '<ul><li><a href = "csvFiles/{}/{}-{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(normType.replace(' ','-'),metric,normType.replace(' ',''),normType,metric)+\
-					 '<li><a href = "plots/heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li>'.format(metric,normType.replace(' ',''),normType,metric)+\
-					 '<li><a href = "plots/{}">Top 25 damage sites per residue/nucleotide type</a></li></ul>'.format(figName.split('/')[-1])
+					 '<li><a href = "plots/{}">Top 25 damage sites per residue/nucleotide type</a></li>'.format(figName.split('/')[-1])
+		
+
+		# create heatmap plots (large files) if requested
+		if self.plot is True:
+			if self.plotHeatmaps is True:
+				bodyString += '<li><a href = "plots/heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li></ul>'.format(metric,normType.replace(' ',''),normType,metric)
+			else: 
+				bodyString += '</ul>'
+		else:
+			bodyString += '</ul>'
+
 		summaryFile.write(bodyString)
+
+		# find top overall damaged atoms and plot line plots 
+		# versus dataset. Only plot if more than 1 high dose
+		# dataset is present.
+		if self.combinedAtoms.getNumDatasets() == 1:
+			pass
+		elif includeGraphs is True:
+			numDamSites = 10
+			topAtoms = self.combinedAtoms.getTopNAtoms(dataset = 'all', 
+													   n       = numDamSites)
+
+			aInfoDic = {'resType'   : [],
+						'atomType'  : [],
+						'chainType' : [],
+						'resNum'    : []}
+
+			for atom in topAtoms:
+				aInfo = atom.split('-')
+
+				aInfoDic['resType'].append(aInfo[2])
+				aInfoDic['atomType'].append(aInfo[3])
+				aInfoDic['chainType'].append(aInfo[0])
+				aInfoDic['resNum'].append(int(aInfo[1]))
+
+			figName = self.plotLinePlot(resType   = aInfoDic['resType'],
+			 				  			atomType  = aInfoDic['atomType'],
+			 				  			chainType = aInfoDic['chainType'],
+			 				  			resNum    = aInfoDic['resNum'],
+			 				  			metric    = metric,
+			 				  			normType  = normType,
+			 				  			figTitle  = 'Top {} D{} damage sites'.format(numDamSites,metric))
+			figCall = '<img class="img-responsive" src="plots/{}" width="{}">'.format(figName.split('/')[-1],600)
+
+			summaryFile.write(figCall)
 
 		# get structure-wide metric average & std dev
 		av,std = self.combinedAtoms.getAverageMetricVals(densMet  = metric,
@@ -659,7 +707,10 @@ class calculateMetrics(object):
 										           dataset = i)	
 			summaryFile.write(panelStr)
 
-			statsOut = self.combinedAtoms.getTopNAtomsString(metric,normType,i,25)
+			statsOut = self.combinedAtoms.getTopNAtomsString(metric   = metric,
+															 normType = normType,
+															 dataset  = i,
+															 n        = 25)
 			t = 'Top hits ranked by D<sub>{}</sub> metric'.format(metric)
 			c = 'Top hits ranked by D<sub>{}</sub> metric.<br>D<sub>mean</sub> and D<sub>gain</sub> are mean '.format(metric)+\
 			    'and maximum voxel difference density values, respectively, '+\
@@ -714,17 +765,17 @@ class calculateMetrics(object):
 														   n        = 'all')
 			t = 'Per-chain Statistics'
 			c = 'D<sub>{}</sub> metric ranked by mean value:<br><br>\n'.format(metric)
-			c += self.convertPlainTxtTable2html(statsOut[0],width='60%')
+			c += self.convertPlainTxtTable2html(statsOut[0], width = '60%')
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
 										           content = c,
 										           dataset = i)
 			summaryFile.write(panelStr)
 
 
-			# TEST - NEED TO FIND PROPER PLACE FOR THIS
-			self.makeDistnPlots(densMet  = metric,
-								normType = normType,
-							    plotSet  = 2)
+			# # TEST - NEED TO FIND PROPER PLACE FOR THIS
+			# self.makeDistnPlots(densMet  = metric,
+			# 					normType = normType,
+			# 				    plotSet  = 2)
 
 			if includeGraphs is True:
 				failedPlots = self.makeDistnPlots(densMet  = metric,
@@ -738,11 +789,10 @@ class calculateMetrics(object):
 										                   dataset = i)
 					summaryFile.write(panelStr)
 
-
-
 				failedPlots = self.makeDistnPlots(densMet  = metric,
 												  normType = normType,
 												  plotSet  = 3)
+
 				if i not in failedPlots['DADCDGDT']:
 					t = 'Distribution of D<sub>{}</sub> for known susceptible nucleotide types\n'.format(metric)
 					c = '<img class="img-responsive" src="plots/DistnPlot_Residues-DADCDGDT_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}"><br>'.format(metric,normType.replace(' ',''),i,imWidth)
@@ -991,19 +1041,39 @@ class calculateMetrics(object):
 			pymolScript.close()
 			os.system('pymol -q {}'.format(scriptName))
 
-
 	def plotLinePlot(self,
-					 restype   = 'GLU',
+					 resType   = 'GLU',
 					 errorBars = 'NONE',
-					 atomType  = ''):
+					 atomType  = '',
+					 chainType = 'A',
+					 resNum    = '',
+					 metric    = 'loss',
+					 normType  = 'Standard',
+					 figTitle  = ''):
 
 		# create a line plot for Dloss density metric vs dataset number
 
-		self.combinedAtoms.graphMetric(atomType  = atomType,
-									   restype   = restype,
-									   errorBars = errorBars,
-									   outputDir = self.outputPlotDir,
-									   saveFig   = True)
+		figName = self.combinedAtoms.graphMetric(atomType  = atomType,
+											     resType   = resType,
+											     chainType = chainType,
+											     resiNum   = resNum,
+											     densMet   = metric,
+											     normType  = normType,
+											     errorBars = errorBars,
+											     outputDir = self.outputPlotDir,
+											     saveFig   = True,
+											     figTitle  = figTitle)
+		return figName
+
+	def metricBarplots(self):
+
+		# plot barplots of damage metric for each susceptible residue type
+
+		numDsets = self.getNumDatasets()
+		for i in range(numDsets):
+			for set in [1,2]:
+				for b in ('Box','Bar'):
+					self.combinedAtoms.susceptAtmComparisonBarplot(metric,normType,i,set,b)
 
 	def makeDistnPlots(self,
 					   densMet  = 'loss',
@@ -1127,14 +1197,22 @@ class calculateMetrics(object):
 					  						['TYR','CE2']]]
 
 		for aTypes in atomtypes:
-			self.combinedAtoms.plotSusceptibleAtoms(densMet = metric,
-													sus = aTypes,
-													normType  = normType)
+			self.combinedAtoms.plotSusceptibleAtoms(densMet  = metric,
+													sus      = aTypes,
+													normType = normType)
 
 			self.combinedAtoms.plotSusceptibleAtoms(densMet   = metric,
 													normType  = normType,
 													errorbars = False,
 													susAtms   = aTypes)
+
+	def checkCalphasPresent(self,
+							atomObjList = []):
+
+		# check whether structure contains any Calpha protein 
+		# backbone atoms within it
+
+		return atomObjList.checkCalphaAtomsExist()
 
 	def getSpaceGroup(self):
 
