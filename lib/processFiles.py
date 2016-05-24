@@ -668,8 +668,8 @@ class processFiles():
 		# write the input file for the first subroutine
 		# (run of CAD and SCALEIT)
 
-		self.pipe1FileName 	= '{}{}_cadscaleit.txt'.format(self.mapProcessDir,
-														   self.inputFile.split('.')[0])
+		self.pipe1FileName 	= '{}{}_subroutine1.txt'.format(self.mapProcessDir,
+														   self.jobName)
 
 		props = {'mtzIn1'          : 'mtz1',
 				 'Mtz1LabelName'   : 'mtzlabels1_current',
@@ -706,8 +706,8 @@ class processFiles():
 		# write input file for the second subroutine 
 		# (run of SFALL and FFT)
 
-		self.pipe2FileName 	= '{}{}_sfallfft.txt'.format(self.mapProcessDir,
-														 self.inputFile.split('.')[0])
+		self.pipe2FileName 	= '{}{}_subroutine2.txt'.format(self.mapProcessDir,
+														 self.jobName)
 
 		if self.densMapType != '2FOFC':
 			self.mtzIn = '{}{}_SCALEITcombined.mtz'.format(self.mapProcessDir,self.jobName)
@@ -884,7 +884,7 @@ class processFiles():
 						 			   self.name1))
 		else:
 			for pdb in self.pdb1.split(','):
-				shutil.copy2(pdb,'{}{}.pdb'.format(self.mapProcessDir,self.name1))
+				shutil.copy2(pdb,'{}{}.pdb'.format(self.mapProcessDir, self.name1))
 
 	def runMetricCalcStep(self,
 					      write            = True,
