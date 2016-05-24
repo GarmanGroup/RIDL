@@ -5,7 +5,7 @@ from halfDoseCalc import halfDoseApprox
 from combinedAtom import combinedAtom
 from CalphaWeight import CalphaWeight
 import matplotlib.pyplot as plt
-from matplotlib import cm,gridspec 
+from matplotlib import cm,gridspec,colorbar 
 from scipy import stats
 import pandas as pd
 import string
@@ -13,6 +13,9 @@ import scipy.stats
 import numpy as np
 import operator
 import os
+
+import warnings
+warnings.filterwarnings('ignore')
 
 from checkSeabornPresent import checkSeabornPresent as checkSns
 seabornFound = checkSns()
@@ -273,7 +276,7 @@ class combinedAtomList(object):
 			return foundAtoms
 		if printOutput is True:
 			print 'Atom matching description not found'
-		return False
+		return []
 
 	def getDensMetrics(self):
 
@@ -344,7 +347,8 @@ class combinedAtomList(object):
 			elif newMetric == 'average':
 				atom.calcAvMetric(normType,metric)
 
-	def retrieveCalphaWeight(self,metric = 'loss'):
+	def retrieveCalphaWeight(self,
+							 metric = 'loss'):
 
 		# retrieve the metric average over all Calpha atoms 
 		# for current model
@@ -377,7 +381,8 @@ class combinedAtomList(object):
 		for atom in self.atomList:
 			atom.calcVectorSubtractedMetric(metric,normType,vector)	
 
-	def calcStandardisedMetrics(self,metric = 'loss'):
+	def calcStandardisedMetrics(self,
+								metric = 'loss'):
 
 		# standardise distribution of a given metric to have 
 		# (mean=0,std=1) for each dataset within a damage series
@@ -517,12 +522,12 @@ class combinedAtomList(object):
 
 		foundPairs = {}
 		for pair in pairs:
-			found = self.getAtom(restype=pair[0])
+			found = self.getAtom(restype = pair[0])
 
 			if found == False: 
 				continue # don't proceed if no atoms of a residue type
 
-			output = self.findMetricRatio(metric   = metric,
+			output = self.findMetricRatio(metric    = metric,
 										  normType  = normType,
 										  resiType  = pair[0],
 										  atomType1 = pair[1],
@@ -634,8 +639,8 @@ class combinedAtomList(object):
 
 		foundPairs = {}
 		for pair in pairs:
-			found = self.getAtom(restype=pair[0])
-			if found == False: 
+			found = self.getAtom(restype = pair[0])
+			if len(found) == 0: 
 				continue # don't proceed if no atoms of a residue type
 			output = self.findMetricRatio(metric   = metric,
 										  normType  = normType,
@@ -722,7 +727,8 @@ class combinedAtomList(object):
 			i += 1 
 		return fname(i)
 
-	def getAtomListWithoutPartialAtoms(self,dataset = 0):
+	def getAtomListWithoutPartialAtoms(self,
+									   dataset = 0):
 
 		# return new list of atoms with partial atoms 
 		# removed for that dataset
@@ -759,8 +765,22 @@ class combinedAtomList(object):
 				return atomList
 
 		else:
-			# TODO: rank with respect to all datasets
-			return 
+			# rank with respect to all datasets
+			ranks = {}
+			for d in range(self.getNumDatasets()):
+				atomList = self.getAtomListWithoutPartialAtoms(dataset = d)
+				atomList.sort(key=lambda x: x.densMetric[metric][normType]['values'][d],reverse = True)
+				for i,atom in enumerate(atomList):
+					if d == 0:
+						ranks[atom.getAtomID()] = [i]
+					else:
+						ranks[atom.getAtomID()].append(i+1)
+			overallRank = {}
+			for k in ranks.keys():
+				overallRank[k] = np.product(ranks[k])			
+			top = sorted(overallRank.iteritems(), key=operator.itemgetter(1), reverse = True)[:n]
+			atomList = [t[0] for t in top]
+			return atomList
 
 	def getTopNAtomsPDBfile(self,
 							metric   = 'loss',
@@ -1270,7 +1290,8 @@ class combinedAtomList(object):
 				chainDict[atom.chaintype].append(atom)
 		return chainDict
 
-	def checkCalphaAtomsExist(self,printText = True):
+	def checkCalphaAtomsExist(self,
+							  printText = True):
 
 		# check that Calpha backbone protein atoms 
 		# actually exist within structure
@@ -1280,7 +1301,7 @@ class combinedAtomList(object):
 			atom = self.getAtom(restype     = res,
 								atomtype    = 'CA',
 								printOutput = False)
-			if atom is False:
+			if len(atom) == 0:
 				count += 1
 		if count == len(self.aminoAcids):
 			if printText is True:
@@ -1290,64 +1311,75 @@ class combinedAtomList(object):
 			return True
 
 	def densityMetricHeatMap(self,
-							 metric       = 'loss',
-							 normType     = 'Standard',
-							 saveFig      = False,
-							 fileType     = '.svg',
-							 titleFont    = 24,
-							 outputDir    = './',
-							 forceSquares = True):
+							 metric         = 'loss',
+							 normType       = 'Standard',
+							 saveFig        = False,
+							 fileType       = '.svg',
+							 titleFont      = 24,
+							 outputDir      = './',
+							 forceSquares   = True,
+							 columnPerChain = False):
 
 		# plot a heatmap of density metric values per atom per dataset.
 		# depending on the metric and normalisation type chosen, a different
 		# colour scheme is chosen
-		chains = self.getChains()
-		data = {c : {'Atom'    : [],
-					 'Dataset' : [],
-					 'metric'  : []} for c in chains}
 
-		# data = {'Atom'    : [],
-		# 		'Dataset' : [],
-		# 		'metric'  : []}
+		if columnPerChain is True:
+			chains       = self.getChains()
+			data = {c : { 'Atom'    : [],
+						  'Dataset' : [],
+						  'metric'  : [] } for c in chains}
 
-		for atom in self.atomList:
-			c = atom.chaintype
-			data[c]['metric']  += atom.densMetric[metric][normType]['values']
-			data[c]['Atom']    += [atom.getAtomID()]*self.getNumDatasets()
-			data[c]['Dataset'] += range(1, self.getNumDatasets() + 1)
+			for atom in self.atomList:
+				c = atom.chaintype
+				data[c]['metric']  += atom.densMetric[metric][normType]['values']
+				data[c]['Atom']    += [atom.getAtomID()]*self.getNumDatasets()
+				data[c]['Dataset'] += range(1, self.getNumDatasets() + 1)
+		else:
+			chains      = self.getChains()
+			chainCounts = {c:0 for c in chains}
+			newChains   = []
+			data = {}
+			for atom in self.atomList:
+
+				c = atom.chaintype
+				chainCounts[c] += 1
+				i = chainCounts[c]
+				j = i/200
+
+				if c+str(j) not in data.keys():
+
+					data[c+str(j)] = {'Atom'    : [],
+						  			  'Dataset' : [],
+						  			  'metric'  : []}
+					newChains.append(c+str(j))
+
+				data[c+str(j)]['metric']  += atom.densMetric[metric][normType]['values']
+				data[c+str(j)]['Atom']    += [atom.getAtomID()]*self.getNumDatasets()
+				data[c+str(j)]['Dataset'] += range(1, self.getNumDatasets() + 1)
+			chains = newChains
+		numChains = len(data.keys())
+
+		sns.set_context("notebook")
+		chainLengths = np.array([len( data[c]['Atom'] ) for c in chains])/self.getNumDatasets()
+		maxLength    = int((2.0*max(chainLengths))) # get largest chain length
 
 		# stretch the plot in the vertical direction, depending 
 		# on how many atoms are present within the structure
 		fontsize_pt = plt.rcParams['ytick.labelsize']
-		dpi = 60
-		chainLengths = [len(data[c]['Atom']) for c in chains]
-		maxLength = float(max(chainLengths)) # get largest chain length
-		matrix_height_pt = fontsize_pt * maxLength
+		dpi = 80
+		matrix_height_pt = fontsize_pt * (maxLength+1)
 		matrix_height_in = matrix_height_pt / dpi
-		top_margin    = 0.01   
-		bottom_margin = 0.04
-		figure_height = matrix_height_in / (1 - top_margin - bottom_margin)
-		figure_width = 5*self.getNumDatasets()
-
-		# fig, ax = plt.subplots(1,len(chains),figsize = (figure_width,figure_height))
-		# 					# gridspec_kw = dict(width_ratios = [1,1,1]))
-
+		top_margin       = 0.01   
+		bottom_margin    = 0.04
+		figure_height    = matrix_height_in / (1 - top_margin - bottom_margin)
+		figure_width     = numChains*2.5  
 		fig = plt.figure(figsize = (figure_width,figure_height))
-
-		# gs = gridspec.GridSpec(1, 3, height_ratios = np.array(chainLengths)/maxLength,width_ratios =[1,1,1] )
-		
-		gs = gridspec.GridSpec(2, 3)
-
+		gs = gridspec.GridSpec(maxLength+1, numChains+1, width_ratios = [0.1]+[1]*numChains)
 		ax = []
-		for i in range(3):
-			ax.append(plt.subplot(gs[i]))
-		# cbar_ax = fig.add_axes()
-
-			# , 
-		 #        			   gridspec_kw = dict(height_ratios = (.001, 1),width_ratios = (0.5,1)))
-
-		# top    = 1 - top_margin,
-		#         				 				  bottom = bottom_margin,
+		ax.append(plt.subplot(gs[:20,0]))
+		for i in range(numChains):
+			ax.append(plt.subplot(gs[1:chainLengths[i]+1,i+1]))
 
 		if metric == 'loss' and normType == 'Standard':
 			pal = 'Reds_r'
@@ -1358,34 +1390,44 @@ class combinedAtomList(object):
 										n       = 7,
 										as_cmap = True)
 
+		# find overall max and min metric values
+		vals    = [data[k]['metric'] for k in data.keys()]
+		vals1d  = [x for sublist in vals for x in sublist]
+
+		quantiles = stats.mstats.mquantiles(vals1d, prob = [0.05, 0.95])
+		highVal = quantiles[1]
+		lowVal  = quantiles[0]
 
 		for i,c in enumerate(chains):
+
 			d = pd.DataFrame(data = data[c])
 			d = d.pivot("Atom",
 						"Dataset",
 						"metric")
-						
+			
 			f = sns.heatmap(d,
-							ax       = ax[i],
-							cbar     = False,
+							ax       = ax[i+1],
+							cbar     = i == 0,
+							cbar_ax  = None if i else ax[0],
 							cmap     = pal,
-							robust   = True,
+							vmin     = lowVal, 
+							vmax     = highVal,
 							square   = forceSquares,
 							linewidths = 1,
 							linecolor = 'white',
-							cbar_kws = {"orientation" : "horizontal"})
-
-
-		# cbar=i == 0,
-	 #               			cbar_ax=None if i else cbar_ax,
+							cbar_kws = {"orientation" : "vertical"})
 
 		for i,a in enumerate(ax):
+			if i == 0:
+				continue
 			plt.sca(a)
 			plt.yticks(rotation = 0) 
-			# a.set_aspect(chainLengths[i]/maxLength)
+			a.xaxis.tick_top()
+			a.xaxis.set_label_position("top")
 
-		figTitle = plt.suptitle('Metric: D{},\nNormalisation: {}\n'.format(metric,normType),
-				  fontsize = titleFont, y = 1.02)
+		figTitle = plt.suptitle('Metric: $D_{' + str(metric) + '}$'+'\nNormalisation: {}'.format(normType),
+				  				fontsize = titleFont,
+				  				y        = 1.02)
 
 		fig.tight_layout()
 
@@ -1398,18 +1440,45 @@ class combinedAtomList(object):
 																	 normType)
 			fileName = self.checkUniqueFileName(fileName = saveName,
 									 			fileType = fileType)
-			fig.savefig(fileName, bbox_extra_artists = (figTitle,), bbox_inches = "tight")
+			fig.savefig(fileName,
+						bbox_extra_artists = (figTitle,),
+						bbox_inches        = "tight")
 
 	def getChains(self):
 
 		# find different chains in list of atoms
 
-		chains = []
-		for atom in self.atomList:
-			chain = atom.chaintype
-			if chain not in chains:
-				chains.append(chain)
+		chains = self.getListOf(prop = 'chain')
 		return chains
+
+	def getResidues(self):
+
+		# find different residues in list of atoms
+
+		residues = self.getListOf(prop = 'residue')
+		return residues
+
+	def getListOf(self,
+				  prop = 'chain'):
+
+		# return list of different 'prop' values in 
+		# list of atoms
+
+		if prop == 'chain':
+			attr = 'chaintype'
+		elif prop == 'residue':
+			attr = 'basetype'
+		elif prop == 'nucleotide':
+			attr = 'basetype'
+		elif prop == 'atom':
+			attr = 'atomtype'
+
+		vals = []
+		for atom in self.atomList:
+			val = getattr(atom,attr)
+			if val not in vals:
+				vals.append(val)
+		return vals
 
 	def detectSuspiciousAtoms(self,
 							  dataset      = 0,
@@ -1484,14 +1553,14 @@ class combinedAtomList(object):
 			count = 0
 			for res in resiType:
 				atms = self.getAtom(restype = res)
-				if atms is False: 
+				if len(atms) == 0: 
 					count += 1
 			if count > 0:
 				if printText is True:
-					print 'Warning: not all selected residue types found!'
+					print 'Warning: not all selected residue/nucleotide types found!'
 			if count == len(resiType):
 				if printText is True:
-					print 'Warning: no residues found for current plot'
+					print 'Warning: no residues/nucleotides found for current plot'
 				return {}
 
 		if plotType not in ('hist','kde','both'): 
@@ -1517,7 +1586,7 @@ class combinedAtomList(object):
 						datax = [atm.densMetric[metric][normType]['values'][i] for atm in presentAtms]
 						self.plotHist(plotType = plotType,
 									  datax    = datax,
-									  lbl      = 'Dataset {}'.format(i),
+									  lbl      = 'Dataset {}'.format(i+1),
 									  color    = color)
 						plotData[resiType] = datax
 
@@ -1527,7 +1596,7 @@ class combinedAtomList(object):
 						if len(datax) > 0:
 							self.plotHist(plotType = plotType,
 										  datax    = datax,
-										  lbl      = 'Dataset {},{}'.format(i,res),
+										  lbl      = 'Dataset {},{}'.format(i+1,res),
 										  color    = color)
 						plotData[res] = datax	
 
@@ -1543,7 +1612,7 @@ class combinedAtomList(object):
 				else:
 					presentAtms = self.getAtomListWithoutPartialAtoms(dataset = valType)
 					datax = [atm.densMetric[metric][normType]['values'][valType] for atm in presentAtms]
-					lbl = 'Dataset '+str(valType)
+					lbl = 'Dataset '+str(valType+1)
 
 				self.plotHist(plotType = plotType,
 							  datax    = datax,
@@ -1561,7 +1630,7 @@ class combinedAtomList(object):
 					else:
 						presentAtms = self.getAtomListWithoutPartialAtoms(dataset = valType)
 						datax = [atm.densMetric[metric][normType]['values'][valType] for atm in presentAtms if atm.basetype == res]
-						lbl = 'Dataset {}, {}'.format(valType,res)
+						lbl = 'Dataset {}, {}'.format(valType+1,res)
 
 					if len(datax) > 0:
 						self.plotHist(plotType = plotType,
@@ -1570,7 +1639,7 @@ class combinedAtomList(object):
 									  color    = color)
 					plotData[res] = datax	
 
-		plt.legend()
+		plt.legend(loc='best')
 		plt.xlabel('{} D{} per atom'.format(normType,metric), fontsize = axesFont)
 		plt.ylabel('Normed-frequency', fontsize = axesFont)
 		sns.despine()
@@ -1618,24 +1687,34 @@ class combinedAtomList(object):
 					 histtype = "stepfilled",
 					 alpha    = .7,
 					 label    = lbl,
-					 color=color)
+					 color    = color)
+
 		elif plotType == 'kde':
-			sns.kdeplot(np.array(datax), shade=True, label=lbl, color=color)
+			sns.kdeplot(np.array(datax),
+						shade = True,
+						label = lbl,
+						color = color)
+
 		elif plotType == 'both':
-			sns.distplot(np.array(datax), label=lbl, color=color)
+			sns.distplot(np.array(datax),
+						 label = lbl,
+						 color = color)
 
 	def graphMetric(self,
 					densMet   = 'loss',
 					normType  = 'Standard',
 					atomType  = '',
-					restype   = '',
+					resType   = '',
 					resiNum   = '',
+					chainType = '',
 					errorBars = 'NONE',
 					saveFig   = False,
 					outputDir = './',
 					fileType  = '.svg',
-					axesFont  = 18,
+					axesFont  = 24,
 					titleFont = 24,
+					figTitle  = '',
+					legFont   = 18,
 					palette   = 'hls'):
 	
 		# produce a graph of selected metric against dataset number 
@@ -1653,10 +1732,42 @@ class combinedAtomList(object):
 			print 'invalid error parameter..\n choose from: {}'.format(errorOptions)
 			return
 
-		# find atoms of interest 
-		foundAtoms = self.getAtom(restype  = restype,
-								  resnum   = resiNum,
-								  atomtype = atomType)
+		# find atoms of interest. Can now also handle special case
+		# where lists of atom identities are supplied, provided all
+		# info (res num, chain, atom type, res type) are supplied.
+		# this can only be done for non-error bar plots currently
+		if isinstance(atomType,list) is False:		
+			foundAtoms = self.getAtom(restype  = resType,
+									  resnum   = resiNum,
+									  atomtype = atomType,
+									  chain    = chainType)
+		else:
+			errorBars = 'NONE'
+			if (isinstance(resType,list) is False or
+				isinstance(chainType,list) is False or
+				isinstance(resiNum,list) is False):
+
+				print 'Non-compatible input format. All of "chainType", '+\
+					  '"resiNum", "resType" and "atomType" inputs must be '+\
+					  'lists if one of them is specified to be a list here.'
+				return
+
+			l = len(atomType)
+			if (len(resType) != l or
+				len(chainType) != l or
+				len(resiNum) != l):
+
+				print 'Lengths of input lists must be identical..'
+				return
+
+			foundAtoms = []
+			for i in range(l):
+				foundAtom = self.getAtom(restype  = resType[i],
+										  resnum   = resiNum[i],
+										  chain    = chainType[i],
+										  atomtype = atomType[i])
+				foundAtoms.append(foundAtom[0])
+
 		if len(foundAtoms) == 0:
 			print 'No atoms found..'
 			return
@@ -1664,22 +1775,23 @@ class combinedAtomList(object):
 		# define x range here (number in damage series)
 		x = range(self.getNumDatasets())
 
+		sns.set_palette(palette  = palette,
+						n_colors = len(foundAtoms),
+						desat    = .6)
+		sns.set_context("talk", rc={"figure.figsize":(14, 10)})
+		f = plt.figure()
+		ax = plt.subplot(111)
+
 		# determine y values here dependent on density metric type specified 
 		if errorBars == 'NONE':
 
-			sns.set_palette(palette  = palette,
-							n_colors = len(foundAtoms),
-							desat    = .6)
-			sns.set_context(rc={"figure.figsize":(10, 10)})
-			f = plt.figure()	
-
 			for atom in foundAtoms:
 
-				if self.checkMetricPresent(atom=atom,metric=densMet,normType=normType) is False: 
+				if self.checkMetricPresent(atom = atom, metric = densMet, normType = normType) is False: 
 					return # check metric valid
 
 				y = atom.densMetric[densMet][normType]['values']
-				plt.plot(x,y,label=atom.getAtomID())
+				plt.plot(x,y,label = atom.getAtomID())
 
 		else: # error bars will be plotted
 			errorBarKey = {'ATOMTYPE' : 'atomtype',
@@ -1688,7 +1800,7 @@ class combinedAtomList(object):
 			yDict 		= {}
 			for atom in foundAtoms:
 
-				if self.checkMetricPresent(atom = atom,metric = densMet,normType = normType) is False: 
+				if self.checkMetricPresent(atom = atom, metric = densMet, normType = normType) is False: 
 					return # check metric valid
 
 				vals = atom.densMetric[densMet][normType]['values']
@@ -1698,12 +1810,6 @@ class combinedAtomList(object):
 				else:
 					yDict[getattr(atom,errorAttr)].append(vals)
 
-			sns.set_palette(palette  = palette,
-							n_colors = len(yDict.keys()),
-							desat    = .6)
-			sns.set_context(rc={"figure.figsize":(10, 10)})
-			f = plt.figure()
-
 			for key in yDict.keys():
 				plt.errorbar(x,
 							 np.mean(yDict[key],0),
@@ -1712,27 +1818,45 @@ class combinedAtomList(object):
 							 capthick = 2,
 							 label    = key)
 
-		plt.xlabel('Dataset', fontsize = axesFont)
-		plt.ylabel('{} D{}'.format(normType,densMet), fontsize = axesFont)
-		plt.legend()
+		sns.despine()
 
-		args = [normType,
-				densMet,
-				restype,
+		# place legend outside to right of plot
+		box = ax.get_position()
+		ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+		ax.legend(loc            = 'center left',
+				  bbox_to_anchor = (1, 0.5),
+				  fontsize       = legFont)
+
+		plt.xlabel('Dataset',
+				   fontsize = axesFont)
+		plt.ylabel('{} D{}'.format(normType,densMet),
+				   fontsize = axesFont)
+
+		args = [densMet,
+				normType,
+				resType,
 				resiNum,
 				atomType]
 
-		f.suptitle('{} D{}: {} {} {}'.format(*args), fontsize = titleFont)
+		if figTitle == '':
+			title = 'metric: D{}, normalisation:{}, atom info: {} {} {}'.format(*args)
+		else:
+			title = figTitle
+
+		f.suptitle(title,
+				   fontsize = titleFont)
 		if saveFig is False:
 			plt.show()
 		else:
-			name = '{}D{}-{}-{}-{}'.format(*args)
+			name = 'Lineplot_Metric-D{}_Normalisation-{}_{}-{}-{}'.format(*args)
 			if errorBars != 'NONE':
 				name += 'witherrorbars'
 
 			fileName = self.checkUniqueFileName(fileName = outputDir+name,
 								 				fileType = fileType)
-			fig.savefig(fileName)
+			f.savefig(fileName)
+
+			return fileName
 
 	def plotSusceptibleAtoms(self,
 							 densMet   = 'loss',
@@ -1759,7 +1883,7 @@ class combinedAtomList(object):
 		for s in susAtms:
 			findAtms = self.getAtom(restype  = s[0],
 									atomtype = s[1])
-			if findAtms is False: 
+			if len(findAtms) == 0: 
 				continue
 			if not isinstance(findAtms,list): 
 				findAtms = [findAtms]
@@ -1798,10 +1922,13 @@ class combinedAtomList(object):
 					 capthick = 2,
 					 color    = 'k') 
 
-		plt.xlabel('Dataset', fontsize = axesFont)
-		plt.ylabel('{} D{}'.format(normType,densMet), fontsize = axesFont)
+		plt.xlabel('Dataset',
+				   fontsize = axesFont)
+		plt.ylabel('{} D{}'.format(normType,densMet),
+			       fontsize = axesFont)
 		plt.legend()
-		f.suptitle('{} D{}: susceptible residues'.format(normType,densMet),fontsize = titleFont)
+		f.suptitle('{} D{}: susceptible residues'.format(normType,densMet),
+			       fontsize = titleFont)
 		if saveFig is False:
 			plt.show()
 		else:
@@ -1851,6 +1978,7 @@ class combinedAtomList(object):
 		f = plt.figure()
 		plt.plot(numStds,numAtomsFound)
 
+		sns.despine()
 		plt.xlabel('# standard deviations from structure mean', fontsize = axesFont)
 		plt.ylabel('Number of atoms located', fontsize = axesFont)
 		f.suptitle('# atoms with metric value of n standard deviations from structure-wide mean',fontsize = titleFont)
@@ -2048,7 +2176,7 @@ class combinedAtomList(object):
 
 		if plotType not in ('hist','kde','both'): 
 			return 'Unknown plotting type selected.. cannot plot..'
-		if self.checkMetricPresent(metric=metric,normType=normType) is False: 
+		if self.checkMetricPresent(metric = metric, normType = normType) is False: 
 			return # check metric valid
 
 		sns.set_palette("deep", desat=.6)
@@ -2481,7 +2609,7 @@ class combinedAtomList(object):
 		for atm in keyAtomTypes:
 			foundAtms = self.getAtom(restype  = atm[0],
 									 atomtype = atm[1])
-			if foundAtms == False: 
+			if len(foundAtms) == 0: 
 				continue 
 			for foundAtm in foundAtms:
 				atmId 	= '-'.join(atm)
@@ -2631,7 +2759,7 @@ class combinedAtomList(object):
 		# find specified atoms within structure
 		atms = self.getAtom(restype  = resType,
 							atomtype = atomType)
-		if atms is False: 
+		if len(atms) == 0: 
 			return plotData # don't continue if no atoms exist
 		self.calcAdditionalMetrics(metric    = densMet,
 								   normtype  = normType,
@@ -2680,8 +2808,8 @@ class combinedAtomList(object):
 		# for specified residue type, calculate the average 
 		# metric for each atom type within the residue
 
-		atms = self.getAtom(restype=resType)
-		if atms is False: 
+		atms = self.getAtom(restype = resType)
+		if len(atms) == 0: 
 			return
 		atmDic,meanDic = {},{}
 		for atm in atms:

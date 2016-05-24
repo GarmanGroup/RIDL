@@ -51,7 +51,8 @@ class error():
 		# return error to command line or log file (if exists)
 
 		if self.log != '':
-			self.log.writeToLog(str = message)
+			self.log.writeToLog(str   = message,
+								strip = False)
 		else:
 			print message
 
