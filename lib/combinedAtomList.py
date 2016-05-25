@@ -127,8 +127,10 @@ class combinedAtomList(object):
 						 'min90tile',
 						 'max90tile',
 						 'min95tile',
-						 'max95tile',
-						 'reliability')
+						 'max95tile')
+
+		if self.checkReliabilityPresent() is True:
+			multiDimAttrs += 'reliability'
 
 		for atom in self.datasetList[0]:
 			atm_counter = 1
@@ -181,7 +183,8 @@ class combinedAtomList(object):
 							newatom.getDensMetricInfo(metName,'Standard',atomDict[attr])
 
 				# include reliability value also for Dloss metric
-				newatom.getDensMetricInfo('loss','reliability',atomDict['reliability'])
+				if self.checkReliabilityPresent() is True:
+					newatom.getDensMetricInfo('loss','reliability',atomDict['reliability'])
 
 				if atm_counter != len(self.datasetList):
 					if printText is True:
@@ -216,6 +219,18 @@ class combinedAtomList(object):
 			print txt
 		else:
 			logFile.writeToLog(str = txt)
+
+	def checkReliabilityPresent(self):
+
+		# only include 'reliability' attribute if it exists. This is only in
+		# case where FC maps have been created within the RIDL 
+		# map generation stage of th pipeline
+
+		try:
+			getattr(self.datasetList[0],'reliability')
+		except AttributeError:
+			return False
+		return True	
 
 	def findMetricName(self,metricName):
 
@@ -405,6 +420,10 @@ class combinedAtomList(object):
 		# 'groupBy' takes values 'none','residue','atomtype'. numDP 
 		# is number of decimal points the values in csv should be
 		# rounded to (default of 2dp)
+
+		if normType == 'reliability':
+			if self.checkReliabilityPresent() is False:
+				return
 
 		csvName = '{}{}-{}.csv'.format(where,metric,normType.replace(" ",""))
 		if groupBy in ('residue','atomtype'):
@@ -768,17 +787,21 @@ class combinedAtomList(object):
 			# rank with respect to all datasets
 			ranks = {}
 			for d in range(self.getNumDatasets()):
+
 				atomList = self.getAtomListWithoutPartialAtoms(dataset = d)
-				atomList.sort(key=lambda x: x.densMetric[metric][normType]['values'][d],reverse = True)
+				atomList.sort(key = lambda x: x.densMetric[metric][normType]['values'][d], reverse = True)
+
 				for i,atom in enumerate(atomList):
 					if d == 0:
-						ranks[atom.getAtomID()] = [i]
+						ranks[atom.getAtomID()] = [i+1]
 					else:
 						ranks[atom.getAtomID()].append(i+1)
+
 			overallRank = {}
 			for k in ranks.keys():
-				overallRank[k] = np.product(ranks[k])			
-			top = sorted(overallRank.iteritems(), key=operator.itemgetter(1), reverse = True)[:n]
+				overallRank[k] = np.product(map(float,ranks[k]))
+
+			top = sorted(overallRank.iteritems(), key = operator.itemgetter(1), reverse = True)[:n]
 			atomList = [t[0] for t in top]
 			return atomList
 
@@ -853,13 +876,20 @@ class combinedAtomList(object):
 		for atom in topN:
 			data = atom.getAtomID()+'\t\t'
 			data += str(round(atom.densMetric['loss'][normType]['values'][dataset],2))+'\t\t'
-			data += str(round(atom.densMetric['loss']['reliability']['values'][dataset],2))+'\t\t'
+
+			if self.checkReliabilityPresent() is True:
+				data += str(round(atom.densMetric['loss']['reliability']['values'][dataset],2))+'\t\t'
 
 			for met in ('mean','gain','Bfactor'):
 				data += str(round(atom.densMetric[met][normType]['values'][dataset],2))+'\t\t'
 			atomInfoList.append(data)
-		stringOut = 'Atom-ID\t\t\tDloss\t\tProximity\t\tDmean\t\tDgain\t\tBfactor\n'
-		stringOut += '\n'.join(atomInfoList)	
+
+		stringOut = 'Atom-ID\t\t\tDloss\t\t'
+		if self.checkReliabilityPresent() is True:
+			stringOut += 'Proximity\t\t'
+		stringOut += 'Dmean\t\tDgain\t\tBfactor\n'+\
+					 '\n'.join(atomInfoList)	
+
 		return stringOut
 
 	def breakdownTopNatomsBy(self,
@@ -958,12 +988,6 @@ class combinedAtomList(object):
 		numResis = len(plotDic.keys())
 		for i,(k, color) in enumerate( zip( plotDic.keys(), sns.color_palette(palette, n_colors = numResis,desat = 0.9) ) ):
 
-			# plt.barplot(range(numDsets),
-			# 		accumulatedVals,
-			# 		label = k,
-			# 		color = color,
-			# 		width = barWidth)
-
 			fd = pd.DataFrame()
 			fd['dataset']   = np.array(range(numDsets))+1
 			fd['frequency'] = accumulatedVals
@@ -983,8 +1007,6 @@ class combinedAtomList(object):
 				  fontsize       = legendFont)
 
 		sns.despine()
-
-		# plt.xticks(np.array(range(numDsets)) + barWidth/2.,['{}'.format(i+1) for i in range(numDsets)])
 
 		plt.xlabel('Dataset Number', fontsize = axesFont)
 		plt.ylabel('Frequency', fontsize = axesFont)
@@ -1362,7 +1384,7 @@ class combinedAtomList(object):
 
 		sns.set_context("notebook")
 		chainLengths = np.array([len( data[c]['Atom'] ) for c in chains])/self.getNumDatasets()
-		maxLength    = int((2.0*max(chainLengths))) # get largest chain length
+		maxLength    = int(2.0*max(chainLengths)) # get largest chain length
 
 		# stretch the plot in the vertical direction, depending 
 		# on how many atoms are present within the structure
@@ -1370,10 +1392,15 @@ class combinedAtomList(object):
 		dpi = 80
 		matrix_height_pt = fontsize_pt * (maxLength+1)
 		matrix_height_in = matrix_height_pt / dpi
+
+		matrix_width_pt  = fontsize_pt * (20+self.getNumDatasets())*numChains
+		matrix_width_in  = matrix_width_pt / dpi
+
 		top_margin       = 0.01   
 		bottom_margin    = 0.04
 		figure_height    = matrix_height_in / (1 - top_margin - bottom_margin)
-		figure_width     = numChains*2.5  
+		figure_width     = matrix_width_in
+		
 		fig = plt.figure(figsize = (figure_width,figure_height))
 		gs = gridspec.GridSpec(maxLength+1, numChains+1, width_ratios = [0.1]+[1]*numChains)
 		ax = []
@@ -1715,6 +1742,7 @@ class combinedAtomList(object):
 					titleFont = 24,
 					figTitle  = '',
 					legFont   = 18,
+					useDoses  = True,
 					palette   = 'hls'):
 	
 		# produce a graph of selected metric against dataset number 
@@ -1772,8 +1800,13 @@ class combinedAtomList(object):
 			print 'No atoms found..'
 			return
 			
-		# define x range here (number in damage series)
-		x = range(self.getNumDatasets())
+		# define x range here (dose list or number datasets)
+		if useDoses is True:
+			x = self.doseList
+			xLabel = 'Dose (MGy)'
+		else:
+			x = range(self.getNumDatasets())
+			xLabel = 'Dataset'
 
 		sns.set_palette(palette  = palette,
 						n_colors = len(foundAtoms),
@@ -1827,7 +1860,7 @@ class combinedAtomList(object):
 				  bbox_to_anchor = (1, 0.5),
 				  fontsize       = legFont)
 
-		plt.xlabel('Dataset',
+		plt.xlabel(xLabel,
 				   fontsize = axesFont)
 		plt.ylabel('{} D{}'.format(normType,densMet),
 				   fontsize = axesFont)
