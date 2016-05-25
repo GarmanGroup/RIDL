@@ -58,7 +58,8 @@ class maps2DensMetrics():
                  plotScatter = False,
                  plotHist    = False,
                  plotBar     = False,
-                 logFile     = logFile):
+                 logFile     = logFile,
+                 calcFCmap   = False):
 
         self.filesIn     = filesIn     # the input directory
         self.filesOut    = filesOut    # the output directory
@@ -70,6 +71,7 @@ class maps2DensMetrics():
         self.plotHist    = plotHist    # (bool) plot histogram plots or not
         self.plotBar     = plotBar     # (bool) plot bar plots or not
         self.log         = logFile
+        self.calcFCmap   = calcFCmap   # whether FC map should be generated
 
     def maps2atmdensity(self):
 
@@ -84,13 +86,18 @@ class maps2DensMetrics():
         self.readDensityMap()
         self.reportDensMapInfo()
         self.checkMapCompatibility()
-        self.readFCMap()
-        self.createVoxelList()
+
+        if self.calcFCmap is True:
+            self.readFCMap()
+        self.createVoxelList(useFCmap = self.calcFCmap)
+
         if self.plotHist is True:
             self.plotDensHistPlots()
-        self.calculateDensMetrics(plotDistn = False)
+        self.calculateDensMetrics(FCweighted = self.calcFCmap)
+
         if self.plotScatter is True:
             self.plotDensScatterPlots()
+
         if self.plotBar is True:
             self.plotPerResidueBoxPlots()
         self.pickleAtomList()
@@ -289,7 +296,7 @@ class maps2DensMetrics():
 
     def calculateDensMetrics(self,
                              FCweighted = True,
-                             plotDistn  = True):
+                             plotDistn  = False):
 
         # determine density summary metrics per atom
 

@@ -132,20 +132,21 @@ class pipeline():
 			return 5
 
 		# generate FC map using FFT
-		self.printStepNumber()
-		fft_FC = FFTjob(mapType   = 'FC',
-					    FOMweight = self.FOMweight,
-					    pdbFile   = self.reorderedPDBFile,
-					    mtzFile   = self.inputMtzFile,
-				        outputDir = self.outputDir,
-				        axes      = axes,
-				        gridSamps = gridSamps,
-				        labels1   = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset],
-				        runLog    = self.runLog)
-		success = fft_FC.run()
+		if self.includeFCmaps() is True:
+			self.printStepNumber()
+			fft_FC = FFTjob(mapType   = 'FC',
+						    FOMweight = self.FOMweight,
+						    pdbFile   = self.reorderedPDBFile,
+						    mtzFile   = self.inputMtzFile,
+					        outputDir = self.outputDir,
+					        axes      = axes,
+					        gridSamps = gridSamps,
+					        labels1   = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset],
+					        runLog    = self.runLog)
+			success = fft_FC.run()
 
-		if success is False: 
-			return 6
+			if success is False: 
+				return 6
 
 		# crop atom-tagged map to asymmetric unit:
 		self.printStepNumber()
@@ -182,9 +183,10 @@ class pipeline():
 								            atmMap  = mapmask1.outputMapFile)
 
 		# crop FC map to atom-tagged map over asym unit:
-		newMap = self.cropDensmapToSFALLmap(mapType = 'FC',
-								   			densMap = fft_FC.outputMapFile,
-								   			atmMap  = mapmask1.outputMapFile)
+		if self.includeFCmaps() is True:
+			newMap = self.cropDensmapToSFALLmap(mapType = 'FC',
+									   			densMap = fft_FC.outputMapFile,
+									   			atmMap  = mapmask1.outputMapFile)
 
 		# print the map info (grid size, num voxels)
 		ln =  'All generated maps should now be restricted to asym unit '+\
@@ -226,7 +228,8 @@ class pipeline():
 				 'laterPDB'     : 'laterPDB',
 				 'phaseDataset' : 'phaseDataset',
 				 'densMapType'  : 'densMapType',
-				 'FFTmapWeight' : 'FOMweight'}
+				 'FFTmapWeight' : 'FOMweight',
+				 'FCmaps'       : 'FCmaps'}
 
 		self.sfall_GRID = []
 		for l in inputFile.readlines():
@@ -237,6 +240,15 @@ class pipeline():
 			elif l.split()[0] == 'sfall_GRID':
 				self.sfall_GRID = l.split()[1:4]
 		return True
+
+	def includeFCmaps(self):
+
+		# determine whether FCalc maps should be generated
+
+		if self.FCmaps.upper() == 'TRUE':
+			return True
+		else:
+			return False
 
 	def renumberPDBFile(self):
 

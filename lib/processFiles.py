@@ -170,6 +170,7 @@ class processFiles():
 			setattr(self,line.split()[0],inputPart)
 		fileIn.close()
 
+		self.checkNonNecessaryInputs()
 		success = self.checkAllRequiredInputsFound()
 		return success
 
@@ -190,11 +191,7 @@ class processFiles():
 						 'mtz3',
 						 'phaseLabel',
 						 'FcalcLabel',
-						 'sfall_VDWR',
-						 'densMapType',
 						 'dir',
-						 'FFTmapWeight',
-						 'deleteIntermediateFiles',
 						 'dose1',
 						 'dose2']
 
@@ -210,6 +207,32 @@ class processFiles():
 		self.logFile.writeToLog(str = ln)
 
 		return True
+
+	def checkNonNecessaryInputs(self):
+
+		# check whether non necessary inputs are present
+		# and set to default values if not specified
+
+		props = ['sfall_VDWR',
+				 'densMapType',
+				 'FFTmapWeight',
+				 'calculateFCmaps',
+				 'deleteIntermediateFiles']
+
+		defaults = [1,
+				    'DIFF',
+				    'NONE',
+				    'FALSE',
+				    'TRUE']
+
+		for i,prop in enumerate(props):
+			try:
+				getattr(self,prop)
+			except AttributeError:
+				setattr(self,prop,defaults[i])
+				ln = 'Input "{}" not found in input file. '.format(prop)+\
+					 'Setting to default value: "{}"'.format(defaults[i])
+				self.logFile.writeToLog(str = ln)
 
 	def checkCorrectInputFormats(self):
 
@@ -721,7 +744,8 @@ class processFiles():
 				 'sfall_VDWR'   : 'sfall_VDWR',
 				 'mtzIN'        : 'mtzIn',
 				 'densMapType'  : 'densMapType',
-				 'FFTmapWeight' : 'FFTmapWeight'}
+				 'FFTmapWeight' : 'FFTmapWeight',
+				 'FCmaps'       : 'calculateFCmaps'}
 
 		fileOut2 = open(self.pipe2FileName,'w')
 		inputString = ''
@@ -792,16 +816,17 @@ class processFiles():
 		ln = '\nCleaning up working directory.'
 		self.logFile.writeToLog(str = ln)
 
-		# distinguish between FFT and END map output formats 
+		# distinguish between FFT and END map output formats
 		# depending on program used (FFT/END shellscript)
 		if self.densMapType == 'END':
 			densMapProg = 'END_switchedAxes'
 		else:
 			densMapProg = 'fft'
 
-		params 		  = [self.mapProcessDir,self.dsetName]
-		renameParams  = [self.mapProcessDir,self.name2_current]
-		renameParams2 = [self.mapProcessDir,self.name1_current]
+		m = [self.mapProcessDir]
+		params 		  = m + [self.dsetName]
+		renameParams  = m + [self.name2_current]
+		renameParams2 = m + [self.name1_current]
 
 		keyLogFiles  = [self.p1.runLog.logFile,self.p2.runLog.logFile]
 
@@ -818,6 +843,10 @@ class processFiles():
 
 		renameMaps = ['{}{}_density.map'.format(*renameParams),
 					   '{}{}_atoms.map'.format(*renameParams)]
+
+		# cannot keep FC maps if they were never made
+		if self.calculateFCmaps.upper() == 'FALSE':
+			includeFCmap = False
 
 		if includeFCmap is True:
 			mapFiles += ['{}{}-FC-{}_cropped_cropped.map'.format(self.mapProcessDir,
@@ -881,7 +910,7 @@ class processFiles():
 		if self.multiDatasets == False or self.repeatedFile1InputsUsed == True:
 			shutil.copy2(self.pdb1,
 						 '{}{}.pdb'.format(self.mapProcessDir,
-						 			   self.name1))
+						 			       self.name1))
 		else:
 			for pdb in self.pdb1.split(','):
 				shutil.copy2(pdb,'{}{}.pdb'.format(self.mapProcessDir, self.name1))
