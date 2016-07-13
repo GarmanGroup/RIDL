@@ -14,7 +14,7 @@ class getSeries():
 		# or 'final' (= from pdb_redo with refinement)
 
 		self.datasetName = str(PDBcode).lower()
-		self.outputDir 	 = outputDir+self.datasetName
+		self.outputDir 	 = outputDir + self.datasetName
 		self.pdbFile 	 = self.datasetName+'.pdb'
 		self.mmcifFile 	 = self.datasetName+'-sf.cif'
 		self.mtzFile 	 = self.datasetName+'.mtz'
@@ -34,7 +34,7 @@ class getSeries():
 
 			# copy input files to directory
 			for fileName in (self.mtzFile,self.pdbFile):
-				shutil.move('{} {}/{}'.format(fileName,self.outputDir,fileName))
+				shutil.move('{}'.format(fileName),'{}/{}'.format(self.outputDir,fileName))
 
 		elif pdb_redo == 'false':
 			# downloading pdb and mmcif files from PDB
@@ -46,7 +46,7 @@ class getSeries():
 
 			# copy input files to directory
 			for fileName in (self.mmcifFile,self.pdbFile):
-				shutil.move('{} {}/{}'.format(fileName,self.outputDir,fileName))
+				shutil.move(fileName,'{}/{}'.format(self.outputDir,fileName))
 			print 'running cif2mtz...'
 			self.runCif2MTZ()
 
@@ -108,13 +108,13 @@ class getSeries():
 			if self.checkFileExists('{}.{}{}'.format(pdb,fileType,fileFmt)) is False:
 				print 'Failed to download {} file successfully from PDB'.format(fileType)
 				return False
-			return
+
 			if self.refineType == 'initial':
 				os.system('gunzip {}.{}.gz -f'.format(pdb,fileType))
 
 		# want to change label names in mtz file to make unique to pdb code
 		self.changePDBredoMtzLabelInfo(pdb)
-		shutil.move('{}_editedLabels.mtz {}.mtz'.format(pdb,pdb))
+		shutil.move('{}_editedLabels.mtz'.format(pdb),'{}.mtz'.format(pdb))
 		return True
 
 	def changePDBredoMtzLabelInfo(self,pdbcode):
