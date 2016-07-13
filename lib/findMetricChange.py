@@ -25,28 +25,26 @@ def findBchange(initialPDB,multiDoseList,Bmetric):
 
 	initpdbindices = range(0,len(initialPDB))
 	numDatasets = len(multiDoseList[0].densMetric[Bmetric]['Standard']['values'])
-	for atom in multiDoseList:
+	BmetDic = {}
+	for c,atom in enumerate(multiDoseList):
+		atmID    = atom.getAtomID()
 
 		# unessential loading bar add-in
-		counter += 1
-		progress(counter, num_atoms, suffix='')
+		progress(c+1, num_atoms, suffix='')
 
-		Inds = ('residuenum','atomtype','basetype','chaintype')
-		atomIndentifier = [getattr(atom, attr) for attr in Inds]
-		k = -1
-		for atomindex in initpdbindices:
-			k += 1
+		for k,atomindex in enumerate(initpdbindices):
 			otheratom = initialPDB[atomindex]
-
-	        if atomIndentifier == [getattr(otheratom, att) for att in Inds]:        
+			othAtmID = otheratom.getAtomID()
+			if atmID == othAtmID: 
 				# determine the Bmetric change between all later datasets and initial dataset
-				BmetricChange = Bmetric+'Change'
+				BmetricChange = Bmetric + 'Change'
 				laterVals = np.array(map(float, atom.densMetric[Bmetric]['Standard']['values']))
-				initialVal = np.array([float(otheratom.densMetric[Bmetric]['Standard']['values'])]*numDatasets)
-				atom.densMetric[BmetricChange] = list(laterVals - initialVal)
+				initialVal = np.array([getattr(otheratom,Bmetric)]*numDatasets)
+				BmetDic[atom.getAtomID()] = list(laterVals - initialVal)
 				break
 
 		initpdbindices.pop(k)        
 	print '\n---> success...'
+	return BmetDic
 
 
