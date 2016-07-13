@@ -10,15 +10,21 @@ class run():
 	# of increasing doses
 
 	def __init__(self,
-				 runAll       = True,
-				 inputFileLoc = '',
-				 logFile      = ''):
+				 runAll            = True,
+				 inputFileLoc      = '',
+				 logFile           = '',
+				 skipToSummaryFile = False):
 
-		self.inputFileName = inputFileLoc+'metricCalc_inputfile.txt'
+		self.inputFileName = inputFileLoc + 'metricCalc_inputfile.txt'
 		self.logFile       = logFile
 		
 		if runAll is True:
 			self.runCalculateMetrics()
+
+		if skipToSummaryFile is True:
+			self.runCalculateMetrics(mapProcess  = False,
+									 postProcess = False,
+									 retrieve    = True)
 
 	def runCalculateMetrics(self,
 				            mapProcess  = True,

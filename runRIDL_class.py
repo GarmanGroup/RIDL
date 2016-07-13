@@ -20,7 +20,8 @@ class process():
 				 skipToMetricCalc    = False,
 				 outputGraphs        = 'yes',
 				 cleanUpFinalFiles   = False,
-				 printOutput         = True):
+				 printOutput         = True,
+				 skipToSummaryFile   = False):
 
 		self.inputFile           = inputFile
 		self.proceedToMetricCalc = proceedToMetricCalc
@@ -28,6 +29,7 @@ class process():
 		self.outputGraphs        = outputGraphs # takes 'yes', 'no' or 'slim'
 		self.cleanUpFinalFiles   = cleanUpFinalFiles
 		self.printOutput         = printOutput
+		self.skipToSummaryFile   = skipToSummaryFile
 
 		if run is True:
 			self.run()
@@ -68,7 +70,8 @@ class process():
 						   skipToMetricCalc    = self.skipToMetricCalc,
 						   outputGraphs        = self.outputGraphs,
 						   cleanFinalFiles     = self.cleanUpFinalFiles,
-						   logFileObj          = self.logFile)
+						   logFileObj          = self.logFile,
+						   skipToSummaryFile   = self.skipToSummaryFile)
 
 		return pro.jobSuccess
 
