@@ -2,6 +2,7 @@ from CADSCALEITpiped import pipeline as pipe1
 from SFALLFFTpiped import pipeline as pipe2
 from cleanUpFiles import cleanUpFinalFiles
 from errors import error
+import difflib
 import shutil
 import os
 
@@ -14,7 +15,8 @@ class processFiles():
 				 outputGraphs        = 'yes',
 				 metricCalcInputName = 'metricCalc_inputfile.txt',
 				 cleanFinalFiles     = False,
-				 logFileObj          = ''):
+				 logFileObj          = '',
+				 skipToSummaryFile   = False):
 
 		# class to read an input file and generate a set of density 
 		# and atom-tagged maps for a damage series. Can handle a single
@@ -29,6 +31,23 @@ class processFiles():
 		self.outputGraphs        = outputGraphs
 		self.metricCalcInputName = metricCalcInputName
 		self.logFile             = logFileObj
+		self.skipToSummaryFile   = skipToSummaryFile
+
+		self.props1 = ['name1',
+				       'mtz1',
+				       'mtzlabels1',
+				       'pdb1',
+				       'RfreeFlag1']
+
+		self.props2 = ['name2',
+					   'mtz2',
+					   'mtzlabels2',
+					   'pdb2']
+
+		self.props3 = ['name3',
+				       'mtz3',
+				       'phaseLabel',
+				       'FcalcLabel']
 
 		if skipToMetricCalc is False:
 			success = self.runProcessing()
@@ -63,9 +82,9 @@ class processFiles():
 				self.writeError(text = err)
 				return False
 
-			success = self.runMetricCalcStep(run              = True,
-							 		         imports          = True,
-							 		         skipToMetricCalc = True)
+			success = self.runMetricCalcStep(run               = True,
+							 		         useImports        = True,
+							 		         skipToMetricCalc  = True)
 			return True
 
 	def runProcessing(self):
@@ -85,6 +104,13 @@ class processFiles():
 			self.multiDatasets
 		except AttributeError:
 			return # don't proceed if error in input file
+
+		if self.multiDatasets is True:
+			try:
+				self.repeatedFile1InputsUsed
+				self.repeatedPhaseInputsUsed
+			except AttributeError:
+				return # don't proceed if error in input file
 
 		success = self.checkCorrectInputFormats()
 		if success is False:
@@ -178,22 +204,10 @@ class processFiles():
 
 		# check that all required properties have been found
 
-		requiredProps = ['name1',
-						 'mtz1',
-						 'mtzlabels1',
-						 'pdb1',
-						 'RfreeFlag1',
-						 'name2',
-						 'mtz2',
-						 'mtzlabels2',
-						 'pdb2',
-						 'name3',
-						 'mtz3',
-						 'phaseLabel',
-						 'FcalcLabel',
-						 'dir',
-						 'dose1',
-						 'dose2']
+		requiredProps  = self.props1+self.props2+self.props3
+		requiredProps += ['dir',
+						  'dose1',
+						  'dose2']
 
 		for prop in requiredProps:
 			try:
@@ -243,6 +257,7 @@ class processFiles():
 				 'mtz2',
 				 'pdb2',
 				 'mtz3']
+
 		fType = ['.mtz','.pdb']*2+['.mtz']
 
 		for p,t in zip(props,fType):
@@ -325,14 +340,29 @@ class processFiles():
 				self.writeError(text = err)
 				return False
 
-		success = self.checkNameLength(name      = self.name3,
-							 		   property  = 'name3',
-							 		   maxLength = 22)
-		if success is False:
-			return False
+		if self.multiDatasets is True:
+			if self.repeatedPhaseInputsUsed is True:
+				names = [self.name3]
+			else:
+				names = self.name3.split(',')
+		else:
+			names = [self.name3]
 
-		# add to name3 to identify it from other datasets
-		self.name3 += '-ph'
+		for name in names:
+			success = self.checkNameLength(name      = name,
+								 		   property  = 'name3',
+								 		   maxLength = 22)
+			if success is False:
+				return False
+
+		# add '-ph' to name3 to identify it from other datasets
+		if self.multiDatasets is False:
+			self.name3 += '-ph'
+		else:
+			if self.repeatedPhaseInputsUsed is True:
+				self.name3 += '-ph'
+			else:
+				self.name3 = ','.join([n+'-ph' for n in self.name3.split(',')])
 
 		if self.densMapType not in ('DIFF','SIMPLE','2FOFC','END'):
 			err = '"densMapType" input of incompatible format, (default is "DIFF"). '+\
@@ -458,14 +488,15 @@ class processFiles():
 			mtzFiles  = self.mtz1.split(',')
 			mtzLabels = self.mtzlabels1.split(',')
 
-		for i,(f, lab) in enumerate(zip(mtzFiles, mtzLabels)):
+		for (f, lab) in zip(mtzFiles, mtzLabels):
 			foundLabels = self.getLabelsFromMtz(fileName = f)
 			labels = ['F'+lab,
 					  'SIGF'+lab]
 			for lab in labels:
 				if lab not in foundLabels:
-					self.mtzLabelNotFound(mtzFile = f,
-										  label   = lab)
+					self.mtzLabelNotFound(mtzFile   = f,
+										  label     = lab,
+									  	  labelList = foundLabels)
 					return False
 
 		# later dataset mtz files checked here
@@ -476,36 +507,63 @@ class processFiles():
 			mtzFiles  = self.mtz2.split(',')
 			mtzLabels = self.mtzlabels2.split(',')
 
-		for i,(f, lab) in enumerate(zip(mtzFiles, mtzLabels)):
+		for (f, lab) in zip(mtzFiles, mtzLabels):
 			foundLabels = self.getLabelsFromMtz(fileName = f)
 			labels = ['F'+lab,
 					  'SIGF'+lab]
 			for lab in labels:
 				if lab not in foundLabels:
-					self.mtzLabelNotFound(mtzFile = f,
-										  label   = lab)
+					self.mtzLabelNotFound(mtzFile   = f,
+										  label     = lab,
+									      labelList = foundLabels)
 					return False
 
 		# phase information dataset mtz file checked here
-		foundLabels = self.getLabelsFromMtz(fileName = self.mtz3)
-		labels = [self.phaseLabel,
-				  self.FcalcLabel]
-		for lab in labels:
-			if lab not in foundLabels:
-				self.mtzLabelNotFound(mtzFile = self.mtz3,
-									  label   = lab)
-				return False
+		if self.multiDatasets is True:
+			if self.repeatedPhaseInputsUsed is False:
+				mtzFiles  = self.mtz3.split(',')
+				phaseLabels = self.phaseLabel.split(',')
+				FcalcLabels = self.FcalcLabel.split(',')
+			else:	
+				mtzFiles    = [self.mtz3]
+				phaseLabels = [self.phaseLabel]
+				FcalcLabels = [self.FcalcLabel]
+		else:
+			mtzFiles    = [self.mtz3]
+			phaseLabels = [self.phaseLabel]
+			FcalcLabels = [self.FcalcLabel]
+
+		for (f,phaseLab,FcalcLab) in zip(mtzFiles,phaseLabels,FcalcLabels):
+			foundLabels = self.getLabelsFromMtz(fileName = f)
+			for lab in (phaseLab,FcalcLab):
+				if lab not in foundLabels:
+					self.mtzLabelNotFound(mtzFile   = f,
+										  label     = lab,
+										  labelList = foundLabels)
+					return False
 
 		return True
 
 	def mtzLabelNotFound(self,
-						 mtzFile = 'untitled.mtz',
-						 label   = 'unspecified'):
+						 mtzFile   = 'untitled.mtz',
+						 label     = 'unspecified',
+						 labelList = []):
 
 		# if an mtz label has not been found, print an error message
 		err = 'Column "{}" not found in file "{}".\n'.format(label,mtzFile.split('/')[-1])+\
 			  'Please check the .txt input file used for the current job.\n'+\
 		      'Also check the mtz file to ensure the column name "{}" exists. '.format(label)
+
+		if labelList != []:
+			err += '\nLabels found in mtz file:\n'+\
+				   '{}'.format(', '.join(labelList))
+			closeMatch = difflib.get_close_matches(label,labelList)
+
+			if len(closeMatch) == 1:
+				err += '\nDid you mean "{}"?'.format(closeMatch[0])
+			elif len(closeMatch) > 1:
+				err += '\nDid you mean any of ({})?'.format(', '.join(['"{}"'.format(i) for i in closeMatch]))
+
 		self.writeError(text = err)
 
 	def getLabelsFromMtz(self,
@@ -522,6 +580,7 @@ class processFiles():
 		os.system('mtzdump hklin {} < mtzdumpInput.txt > mtzdump.tmp'.format(fileName))
 		output = open('mtzdump.tmp','r')
 		labelsFound = False
+		labels = ''
 		for l in output.readlines():
 			if l.replace('\n','') == '':
 				continue
@@ -570,11 +629,7 @@ class processFiles():
 		# Determine whether this is the case and check that correctly 
 		# formatted.
 
-		props = ['name2',
-				 'mtz2',
-				 'mtzlabels2',
-				 'pdb2']
-
+		props = self.props2
 		if self.dose2 != 'NOTCALCULATED':
 			props.append('dose2')
 
@@ -597,27 +652,42 @@ class processFiles():
 		else:
 			ln = 'Multiple higher dose datasets located in input file to be processed.'
 			self.logFile.writeToLog(str = ln)
+			self.multiDatasets = True
 
-			props = ['name1',
-					 'mtz1',
-					 'mtzlabels1',
-					 'pdb1',
-					 'RfreeFlag1']
-			lengths = []
-			for p in props:
-				val = getattr(self,p)
-				lengths.append(len(val.split(',')))
+			# check whether 1 single initial dataset present, or separate 
+			# 'initial' dataset for each corresponding higher dose dataset
+			self.checkForOptionalMultiInputs(props = self.props1,
+											 type  = 'initial')
 
-			if lengths not in ([1]*5,[self.numDsets]*5):
-				err = 'Error! Input file properties ({})'.format(','.join(props))+\
-					  'must all each have either 1 or 5 comma-separated inputs'
-				self.writeError(text = err)
-			else:
-				s = False
-				if lengths == [1]*5:
-					s = True
+			# check whether 1 single phase dataset present, or separate 
+			# phases dataset for each corresponding higher dose dataset
+			self.checkForOptionalMultiInputs(props = self.props3,
+											 type  = 'phase')
+
+	def checkForOptionalMultiInputs(self,
+									props = [],
+									type  = 'initial'):
+
+		# check for optional multiple inputs in input file
+		# (for initital dataset and phase datasets)
+
+		lengths = []
+		for p in props:
+			val = getattr(self,p)
+			lengths.append(len(val.split(',')))
+
+		if lengths not in ([1]*len(props),[self.numDsets]*len(props)):
+			err = 'Error! Input file properties ({})'.format(','.join(props))+\
+				  'must all each have either 1 or {} comma-separated inputs'.format(self.numDsets)
+			self.writeError(text = err)
+		else:
+			s = False
+			if lengths == [1]*len(props):
+				s = True
+			if type == 'initial':
 				self.repeatedFile1InputsUsed = s
-				self.multiDatasets = True
+			elif type == 'phase':
+				self.repeatedPhaseInputsUsed = s
 
 	def checkOutputDirsExists(self,
 							  makeProcessDir = True):
@@ -650,28 +720,23 @@ class processFiles():
 		# main input file. used when writing separate input files 
 		# for each part of pipeline.
 
-		props1 = ['name2',
-				  'mtz2',
-				  'mtzlabels2',
-				  'pdb2']
-
-		props2 = ['name1',
-				  'mtz1',
-				  'mtzlabels1',
-				  'pdb1',
-				  'RfreeFlag1']
-
 		if self.multiDatasets == False:
-			for prop in props1+props2:
+			for prop in self.props1+self.props2+self.props3:
 				setattr(self,prop+'_current',getattr(self,prop))
 			self.createDatasetName()
 			return
 
-		for prop in props1:
+		for prop in self.props2:
 			setattr(self,prop+'_current',getattr(self,prop).split(',')[jobNumber])
 
-		for prop in props2:
-			if self.repeatedFile1InputsUsed == True:
+		for prop in self.props1:
+			if self.repeatedFile1InputsUsed is True:
+				setattr(self,prop+'_current',getattr(self,prop))
+			else:
+				setattr(self,prop+'_current',getattr(self,prop).split(',')[jobNumber])
+
+		for prop in self.props3:
+			if self.repeatedPhaseInputsUsed is True:
 				setattr(self,prop+'_current',getattr(self,prop))
 			else:
 				setattr(self,prop+'_current',getattr(self,prop).split(',')[jobNumber])
@@ -684,7 +749,7 @@ class processFiles():
 		# input file naming scheme (if name2 not the same 
 		# as pdb2 then this is required)
 
-		self.dsetName = str((self.pdb2_current).split('/')[-1]).strip('.pdb')
+		self.dsetName = str((self.pdb2_current).split('/')[-1]).replace('.pdb','')
 
 	def writePipeline1Inputs(self):
 
@@ -701,10 +766,10 @@ class processFiles():
 				 'mtzIn2'          : 'mtz2_current',
 				 'Mtz2LabelName'   : 'mtzlabels2_current',
 				 'Mtz2LabelRename' : 'name2_current',
-				 'mtzIn3'          : 'mtz3',
-				 'Mtz3phaseLabel'  : 'phaseLabel',
-				 'Mtz3FcalcLabel'  : 'FcalcLabel',
-				 'Mtz3LabelRename' : 'name3',
+				 'mtzIn3'          : 'mtz3_current',
+				 'Mtz3phaseLabel'  : 'phaseLabel_current',
+				 'Mtz3FcalcLabel'  : 'FcalcLabel_current',
+				 'Mtz3LabelRename' : 'name3_current',
 				 'inputPDBfile'    : 'pdb2_current',
 				 'densMapType'     : 'densMapType',
 				 'deleteMtzs'      : 'deleteIntermediateFiles',
@@ -740,7 +805,7 @@ class processFiles():
 		props = {'pdbIN'        : 'pdb2_current',
 				 'initialPDB'   : 'name1_current',
 				 'laterPDB'     : 'name2_current',
-				 'phaseDataset' : 'name3',
+				 'phaseDataset' : 'name3_current',
 				 'sfall_VDWR'   : 'sfall_VDWR',
 				 'mtzIN'        : 'mtzIn',
 				 'densMapType'  : 'densMapType',
@@ -918,7 +983,7 @@ class processFiles():
 	def runMetricCalcStep(self,
 					      write            = True,
 					 	  run              = True,
-					      imports          = True,
+					      useImports       = True,
 					      skipToMetricCalc = False):
 
 		# writes an input file for the run of the metric calculation 
@@ -931,7 +996,7 @@ class processFiles():
 		# run the rest of the program with ALL datasets within the
 		# damage series included.
 
-		if imports is True:
+		if useImports is True:
 			from runRIDL_metricCalc import run as run_metricCalc
 
 		if skipToMetricCalc is False:
@@ -949,7 +1014,7 @@ class processFiles():
 
 			else:
 				if self.dose2 == 'NOTCALCULATED':
-					doses = ','.join(map(str,range(len(self.name2.split(',')))))
+					doses = ','.join( map( str, range( len( self.name2.split(',') ) ) ) )
 				else:
 					doses = self.dose2
 
@@ -965,8 +1030,14 @@ class processFiles():
 						'{}/{}'.format(self.dir,r.inputFileName))
 
 		if run is True:
-			r = run_metricCalc(inputFileLoc = self.dir,
-							   logFile      = self.logFile)
+			if self.skipToSummaryFile is True:
+				runAll = False
+			else:
+				runAll = True
+			r = run_metricCalc(inputFileLoc      = self.dir,
+							   runAll            = runAll,
+							   logFile           = self.logFile,
+							   skipToSummaryFile = self.skipToSummaryFile)
 
 		return True
 
