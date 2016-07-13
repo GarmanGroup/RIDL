@@ -1,12 +1,18 @@
-from savevariables import retrieve_objectlist,save_objectlist,saveGenericObject,retrieveGenericObject
-from checkSeabornPresent import checkSeabornPresent as checkSns
-from PDBFileManipulation import PDBtoList,writePDBline
+print 'Importing packages...'
+import time
+t0 = time.time()
 from combinedAtomList import combinedAtomList
+t1 = time.time()
+from checkSeabornPresent import checkSeabornPresent as checkSns
+t1 = time.time()
+from savevariables import retrieve_objectlist,save_objectlist,saveGenericObject,retrieveGenericObject
+from PDBFileManipulation import PDBtoList,writePDBline
 from readAtomMap import maps2DensMetrics
 from time import gmtime, strftime
-import numpy as np
-import shutil
-import os
+from numpy import isnan
+from shutil import move
+from os import path,makedirs,listdir,system
+print 'Total import time: {}'.format(time.time()-t0)
 
 class calculateMetrics(object):
 
@@ -58,14 +64,6 @@ class calculateMetrics(object):
 		# included. For each function input specify True if this part is to be performed
 		# and False otherwise.
 
-		# ###########################################################
-		# # FOR TESTING PURPOSES WHERE ONLY OUTPUT FILES ARE CHANGING
-		# map_process  = False
-		# post_process = False
-		# retrieve     = True
-		# self.pklSeries = 'Juers2011_data.pkl'
-		# ###########################################################
-
 		self.inputFileName = inputFileName
 
 		# check whether valid inputs to function
@@ -99,14 +97,17 @@ class calculateMetrics(object):
 		if post_process is True:
 			self.post_processing()
 
-			# save PDBmulti as pkl file
+			# save metric data to pkl file
 			pklSeries = saveGenericObject(obj      = self.combinedAtoms,
 										  fileName = self.seriesName)
 
-			shutil.move(pklSeries,
-						'{}{}'.format(self.outputDir,pklSeries))
+			move(pklSeries,
+				 '{}{}'.format(self.outputDir,pklSeries))
 			self.pklSeries = pklSeries
 
+			inputfile = open(self.inputFileName,'a')
+			inputfile.write('\npklDataFile ' + pklSeries)
+			inputfile.close()
 
 			self.provideFeedback()
 
@@ -150,7 +151,7 @@ class calculateMetrics(object):
 				 'outDir'         : 'outDir',
 				 'damageset_name' : 'seriesName',
 				 'initialPDB'     : 'initialPDB',
-				 'PKLMULTIFILE'   : 'pklSeries',
+				 'pklDataFile'    : 'pklSeries',
 				 'laterDatasets'  : 'laterDatasets'}
 
 		inputfile = open(self.inputFileName,'r')
@@ -209,7 +210,7 @@ class calculateMetrics(object):
 		# found and make subdirectories if present
 
 		for dir in ([[self.inDir,'Input'],[self.outDir,'Output']]):
-			if os.path.isdir(dir[0]) == False:
+			if path.isdir(dir[0]) == False:
 				err = '{} file location: {} does not exist. '.format(dir[1],dir[0])+\
 					  'Please select an appropriate directory'
 				self.logFile.writeToLog(str = err)
@@ -221,10 +222,19 @@ class calculateMetrics(object):
 
 		# if the above sub directory does not exist, make it
 
-		if not os.path.exists(dirName):
-			os.makedirs(dirName)
+		if not path.exists(dirName):
+			makedirs(dirName)
 			ln = 'New sub directory "{}" created to contain output files'.format(dirName.replace(self.outputDir,''))
 			self.logFile.writeToLog(str = ln)
+
+	def makeNewPlotSubdir(self,
+						  subdir = 'untitled/'):
+
+		# make a new sub directory for plots within plots/ subdir
+		outDir = self.outputPlotDir + subdir
+		self.makeOutputDir(dirName = outDir)
+
+		return outDir
 
 	def setOutputDirs(self):
 
@@ -264,6 +274,7 @@ class calculateMetrics(object):
 
 		pklFileNames = []
 		for i,dataset in enumerate(self.pdbNames):
+
 			# derive per-atom density metrics from maps
 			mapName1 = '{}_atoms.map'.format(dataset)
 			mapName2 = '{}_density.map'.format(dataset)
@@ -273,26 +284,26 @@ class calculateMetrics(object):
 				  'Higher dose dataset {} starts here'.format(i+1)
 			self.logFile.writeToLog(str = txt)
 
-			maps2DensMets = maps2DensMetrics(filesIn    = self.inDir,
-										     filesOut   = self.outputDir,
-										     pdbName    = dataset,
-										     atomTagMap = mapName1,
-										     densityMap = mapName2,
-										     FCmap 	  = mapName3,
+			maps2DensMets = maps2DensMetrics(filesIn     = self.inDir,
+										     filesOut    = self.outputDir,
+										     pdbName     = dataset,
+										     atomTagMap  = mapName1,
+										     densityMap  = mapName2,
+										     FCmap 	     = mapName3,
 										     plotScatter = False,
-										     plotHist   = self.plot,
-										     plotBar    = False,
-										     logFile    = self.logFile)
+										     plotHist    = self.plot,
+										     plotBar     = False,
+										     logFile     = self.logFile)
 
    			maps2DensMets.maps2atmdensity()
 
 			# move pkl file to working output directory
 			pklFileName = maps2DensMets.pklFileName
 
-			shutil.move(pklFileName,
-						'{}{}{}'.format(self.outputDir,
-										pklFileDir,
-										pklFileName))
+			move(pklFileName,
+				 '{}{}{}'.format(self.outputDir,
+								 pklFileDir,
+								 pklFileName))
 
 			pklFileNames.append('{}{}{}'.format(self.outputDir,
 												pklFileDir,
@@ -314,7 +325,7 @@ class calculateMetrics(object):
 		self.logFile.writeToLog(str = txt)
 
 		# next read in the pdb structure file as list of atom objects
-		initialPDBlist = PDBtoList(pdbFileName = self.inDir+self.initialPDB)
+		initialPDBlist = PDBtoList(pdbFileName = self.get1stDsetPDB())
 
 		# retrieve object lists of atoms for each damage set
 		ln = 'Reading in damaged pkl files...'
@@ -353,36 +364,71 @@ class calculateMetrics(object):
 		
 		self.combinedAtoms = combinedAtoms
 
-	def provideFeedback(self):
+	def provideFeedback(self,
+						standardFeedback = False,
+					    includeTests     = True,
+					    writeCsvs        = False,
+					    writeSumFile     = False,
+					    writeTopDamSites = False,
+					    plotHeatMaps     = False):
 
 		# create series of output feedback files
 
-		self.writeCsvFiles(output = self.output)
+		# define a 'standard' feedback for the program
+		if standardFeedback is True:
+			writeCsvs        = True
+			writeSumFile     = True
+			writeTopDamSites = True
+			includeTests     = False
 
-		# provide summary txt file on Dloss metric metric per-dataset
-		self.summaryFile(normType = 'Standard') 
+		for norm in ('Standard','Calpha normalised'):
 
-		if self.checkCalphasPresent(atomObjList = self.combinedAtoms) is True:
-			self.summaryFile(normType = 'Calpha normalised') 
+			if norm == 'Calpha normalised':
+				if self.checkCalphasPresent(atomObjList = self.combinedAtoms) is False:
+					continue
+
+			self.tests_FurtherAnalysis(perform  = includeTests,
+									   normfype = norm)
+
+		if writeCsvs is True:
+			self.writeCsvFiles(output = self.output)
+
+		# provide summary html file for Dloss metric per-dataset
+		if writeSumFile is True:
+			self.summaryFile(normType = 'Standard') 
+			if self.checkCalphasPresent(atomObjList = self.combinedAtoms) is True:
+				self.summaryFile(normType = 'Calpha normalised') 
 		
-		self.writeDamSitesToFile()
+		if writeTopDamSites is True:
+			self.writeDamSitesToFile()
 
-		# create heatmap plots (large files) if requested
+		# create heatmap plots (large files) if requested. Here
+		# the plotting can be overridden within this method by 
+		# setting 'plotHeatMaps' to True
 		if self.plot is True:
-			if self.plotHeatmaps is True:
+			if self.plotHeatmaps is True and plotHeatMaps is True:
+
+				subdir = 'metric_heatmap/'
+				outDir = self.makeNewPlotSubdir(subdir = subdir)
+
 				for norm in ('Standard','Calpha normalised'):
+					if norm == 'Calpha normalised':
+						if self.checkCalphasPresent(atomObjList = self.combinedAtoms) is False:
+							continue
 					self.combinedAtoms.densityMetricHeatMap(saveFig   = True,
 													        metric    = 'loss',
 													        normType  = norm,
-													        outputDir = self.outputPlotDir)	
+													        outputDir = outDir)	
 
 	def writeCsvFiles(self,
-					  move   = True,
-					  output = 'simple'):
+					  moveCsv     = True,
+					  output      = 'simple',
+					  inclGroupby = True):
 
 		# write atom numbers and density metrics to simple 
-		# csv files,one for each density metric separately
-
+		# csv files,one for each density metric separately.
+		# inclGroupby = True also writes csv files for atoms
+		# grouped by residue type and atom type
 
 		CalphasPresent = self.checkCalphasPresent(atomObjList = self.combinedAtoms)
 		self.fillerLine()
@@ -406,28 +452,29 @@ class calculateMetrics(object):
 										        metric   = densMet[0],
 										        normType = densMet[1])
 
-		for groupBy in ('residue','atomtype'):
-			self.combinedAtoms.writeMetric2File(where   = self.outputDir,
-										   		groupBy = groupBy)
-			if CalphasPresent is True:
-				self.combinedAtoms.writeMetric2File(where    = self.outputDir,
-										  	        groupBy  = groupBy,
-										            normType = 'Calpha normalised')
+		if inclGroupby is True:
+			for groupBy in ('residue','atomtype'):
+				self.combinedAtoms.writeMetric2File(where   = self.outputDir,
+											   		groupBy = groupBy)
+				if CalphasPresent is True:
+					self.combinedAtoms.writeMetric2File(where    = self.outputDir,
+											  	        groupBy  = groupBy,
+										            	normType = 'Calpha normalised')
 
 		# make csvFiles dir and move all generated csv files to this
-		if move is True:
+		if moveCsv is True:
 			self.makeOutputDir(dirName = '{}csvFiles/'.format(self.outputDir))
 			self.makeOutputDir(dirName = '{}csvFiles/Calpha-normalised/'.format(self.outputDir))
 			self.makeOutputDir(dirName = '{}csvFiles/Standard/'.format(self.outputDir))
 
-			for file in os.listdir(self.outputDir):
-				if file.endswith(".csv"):
-					if '-Calphanormalised' in file:
+			for fName in listdir(self.outputDir):
+				if fName.endswith(".csv"):
+					if '-Calphanormalised' in fName:
 						loc = 'Calpha-normalised/'
 					else:
 						loc = 'Standard/'
-					shutil.move('{}{}'.format(self.outputDir,file),
-								'{}csvFiles/{}{}'.format(self.outputDir,loc,file))
+					move('{}{}'.format(self.outputDir,fName),
+						 '{}csvFiles/{}{}'.format(self.outputDir,loc,fName))
 
 	def PDBmulti_retrieve(self):
 
@@ -461,100 +508,7 @@ class calculateMetrics(object):
 							 normType      = normType,
 							 includeGraphs = self.plot)
 		else:
-			self.summaryTxt(metric   = metric,
-				            normType = normType)
-
-	def summaryTxt(self, 
-				   metric   = 'loss', 
-				   normType = 'Standard'):
-
-		# produce a selection of per-dataset summary statistics
-		# by default set metric as 'loss' for Dloss metric
-
-		numDsets = self.getNumDatasets()
-		summaryFile = open('{}summaryFile-D{}-{}.txt'.format(self.outputDir,metric,normType.replace(' ','-')),'w')
-		summaryFile.write('D{} ({}) RIDL summary file\n'.format(metric,normType))
-		summaryFile.write('Created: {}\n'.format(strftime("%Y-%m-%d %H:%M:%S", gmtime())))
-		summaryFile.write('Summary information derived from {}\n'.format(self.pklSeries))
-		summaryFile.write('Email charles.bury@dtc.ox.ac.uk for queries\n')
-
-		summaryFile.write('\n-----------------------\n')
-		summaryFile.write('Number of datasets reported in file: {}\n'.format(numDsets))
-		summaryFile.write('Providing analysis on each dataset individually below\n')
-
-		summaryFile.write('\n-----------------------\n')
-		summaryFile.write('Key of reported quantities:\n')
-		summaryFile.write('mean: average of metric calculated over all atoms of a specified type\n')
-		summaryFile.write('std: standard deviation of metric calculated over all atoms of a specified type\n')
-		summaryFile.write('#atoms: total number of atoms of a specified type\n')
-		summaryFile.write('outliers: assuming a symmetric distn around the mode, number of atoms that fall outside this domain\n')
-		summaryFile.write('skew: skewness of metric distribution for atoms of specified type\n')
-		summaryFile.write('ratio: net ratio of distn values either side of metric distn mode\n\n')
-
-		av,std = self.combinedAtoms.getAverageMetricVals(metric,normType) # get structure-wide metric average & std dev
-
-		for i in range(numDsets):
-			summaryFile.write('-----------------------'*3+'\n')
-			summaryFile.write('Dataset info:\nNumber in series: {}\n'.format(i+1))
-			summaryFile.write('Name: {}\n'.format(self.pdbNames[i]))
-			summaryFile.write('Dose (MGy): {}\n'.format(self.doses[i]))
-
-			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Structure-wide D{} summary:\n'.format(metric))
-			summaryFile.write('Average D{}: {}\n'.format(metric,round(av[i],3)))
-			summaryFile.write('Std dev in D{}: {}\n'.format(metric,round(std[i],3)))
-
-			summaryFile.write('# atoms with {} Dloss metric above N std dev of structure-wide mean:\n'.format(normType))
-			summaryFile.write('N\t\t#atoms\n')
-			n = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = i,
-															   metric    = metric,
-															   normType  = normType,
-															   threshold = 0.5)
-			summaryFile.write('{}\t\t{}\n'.format(0.5,n))
-			t = 0
-			while n != 0:
-				t += 1
-				n = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = i,
-															   	   metric    = metric,
-															       normType  = normType,
-															   	   threshold = t)
-				summaryFile.write('{}\t\t{}\n'.format(t,n))
-
-			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Per-atom Statistics:\n')
-			summaryFile.write('Top hits ranked by D{} metric:\n'.format(metric))
-			statsOut = self.combinedAtoms.getTopNAtomsString(metric,normType,i,25)
-			summaryFile.write(statsOut)
-
-			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Per-atom-type Statistics:\n')
-			summaryFile.write('D{} metric ranked by mean value:\n'.format(metric))
-			statsOut = self.combinedAtoms.getPerAtmtypeStats(metric,normType,i,'mean',25)
-			summaryFile.write(statsOut[0]+'\n')
-
-			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Per-atom Statistics:\n')
-			summaryFile.write('Top D{} hits grouped by residue type:\n'.format(metric))
-			n = self.combinedAtoms.getNumAtoms()*0.05 # take top 5% of atoms here
-			statsOut = self.combinedAtoms.breakdownTopNatomsBy(metric   = metric,
-															   normType = normType,
-															   dataset  = i,
-															   n        = n)
-
-			summaryFile.write(statsOut[0]+statsOut[1]+'\n')
-
-			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Per-residue Statistics:\n')
-			summaryFile.write('D{} metric ranked by mean value:\n'.format(metric))
-			statsOut = self.combinedAtoms.getPerResidueStats(metric,normType,i,'mean','all')
-			summaryFile.write(statsOut[0]+'\n')
-
-			summaryFile.write('\n-----------------------\n')
-			summaryFile.write('Per-chain Statistics:\n')
-			summaryFile.write('D{} metric ranked by mean value:\n'.format(metric))
-			statsOut = self.combinedAtoms.getPerChainStats(metric,normType,i,'mean','all')
-			summaryFile.write(statsOut[0]+'\n')
-		summaryFile.close()
+			print 'Unknown file format. Only currently supported format is "html"'
 
 	def summaryHTML(self, 
 					metric        = 'loss', 
@@ -563,6 +517,11 @@ class calculateMetrics(object):
 					imWidth       = 750):
 
 		# produce a selection of per-dataset summary statistics
+
+		if normType == 'Calpha normalised':
+			norm = 'C<sub>&#945</sub>-normalised'
+		else:
+			norm = normType
 
 		numDsets = self.getNumDatasets()
 		summaryFile = open('{}summaryFile-D{}-{}.html'.format(self.outputDir,metric,normType.replace(' ','-')),'w')
@@ -583,7 +542,7 @@ class calculateMetrics(object):
 
 		bodyString = '<body>\n'+\
 					 '<div class="container">\n'+\
-					 '<h1>D<sub>{}</sub> ({}) RIDL summary file</h1>\n'.format(metric,normType)+\
+					 '<h1>D<sub>{}</sub> ({}) RIDL summary file</h1>\n'.format(metric,norm)+\
 					 'Created: {}<br>\n'.format(strftime("%Y-%m-%d %H:%M:%S", gmtime()))+\
 					 'Summary information derived from {}<br>\n'.format(self.pklSeries)+\
 					 'Email charles.bury@dtc.ox.ac.uk for queries<br>\n'+\
@@ -611,7 +570,7 @@ class calculateMetrics(object):
 		# create heatmap plots (large files) if requested
 		if self.plot is True:
 			if self.plotHeatmaps is True:
-				bodyString += '<li><a href = "plots/heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li></ul>'.format(metric,normType.replace(' ',''),normType,metric)
+				bodyString += '<li><a href = "plots/metric_heatmap/heatmap_metric-{}_normalisation-{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li></ul>'.format(metric,normType.replace(' ',''),normType,metric)
 			else: 
 				bodyString += '</ul>'
 		else:
@@ -626,32 +585,43 @@ class calculateMetrics(object):
 			pass
 		elif includeGraphs is True:
 			numDamSites = 10
-			topAtoms = self.combinedAtoms.getTopNAtoms(dataset = 'all', 
-													   n       = numDamSites)
 
-			aInfoDic = {'resType'   : [],
-						'atomType'  : [],
-						'chainType' : [],
-						'resNum'    : []}
+			figCalls = []
+			for t in ['Top','Bottom']:
 
-			for atom in topAtoms:
-				aInfo = atom.split('-')
+				topAtoms = self.combinedAtoms.getTopNAtoms(dataset  = 'all', 
+														   n        = numDamSites,
+														   topOrBot = t.lower())
 
-				aInfoDic['resType'].append(aInfo[2])
-				aInfoDic['atomType'].append(aInfo[3])
-				aInfoDic['chainType'].append(aInfo[0])
-				aInfoDic['resNum'].append(int(aInfo[1]))
+				aInfoDic = {'resType'   : [],
+							'atomType'  : [],
+							'chainType' : [],
+							'resNum'    : []}
 
-			figName = self.plotLinePlot(resType   = aInfoDic['resType'],
-			 				  			atomType  = aInfoDic['atomType'],
-			 				  			chainType = aInfoDic['chainType'],
-			 				  			resNum    = aInfoDic['resNum'],
-			 				  			metric    = metric,
-			 				  			normType  = normType,
-			 				  			figTitle  = 'Top {} D{} damage sites'.format(numDamSites,metric))
-			figCall = '<img class="img-responsive" src="plots/{}" width="{}">'.format(figName.split('/')[-1],600)
+				for atom in topAtoms:
+					aInfo = atom.split('-')
 
-			summaryFile.write(figCall)
+					aInfoDic['resType'].append(aInfo[2])
+					aInfoDic['atomType'].append(aInfo[3])
+					aInfoDic['chainType'].append(aInfo[0])
+					aInfoDic['resNum'].append(aInfo[1])
+
+				figName = self.plotLinePlot(resType   = aInfoDic['resType'],
+				 				  			atomType  = aInfoDic['atomType'],
+				 				  			chainType = aInfoDic['chainType'],
+				 				  			resNum    = aInfoDic['resNum'],
+				 				  			metric    = metric,
+				 				  			normType  = normType,
+				 				  			figTitle  = '{} {} D{} damage sites'.format(t,numDamSites,metric),
+				 				  			saveName  = 'Lineplot_Metric-D{}_Normalisation-{}_{}-atoms'.format(metric,normType,t))
+				figCalls.append('<img class="img-responsive" src="plots/{}" width="{}">'.format(figName.split('/')[-1],400))
+
+			info = '<div class = "row">\n'+\
+			  	   '<div class = "col-sm-6">{}</div>\n'.format(figCalls[0])+\
+			       '<div class = "col-sm-6">{}</div>\n'.format(figCalls[1])+\
+			       '</div>\n'
+
+			summaryFile.write(info)
 
 		# get structure-wide metric average & std dev
 		av,std = self.combinedAtoms.getAverageMetricVals(densMet  = metric,
@@ -666,6 +636,7 @@ class calculateMetrics(object):
 			t = 'Dataset info'
 			c = 'Number in series : {}<br>\n'.format(i+1)+\
 				'Dose (MGy)       : {}<br>\n'.format(self.doses[i])+\
+				'Number of atoms  : {}<br>\n'.format(self.combinedAtoms.getNumAtoms())+\
 				'Fourier diff map : <a href ="../RIDL-maps/{}_density.map">Download</a><br>\n'.format(self.pdbNames[i])
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
 										           content = c,
@@ -685,23 +656,33 @@ class calculateMetrics(object):
 			summaryFile.write(panelStr)
 
 			if includeGraphs is True:
-				failedPlots = self.makeDistnPlots(densMet  = metric,
-											      normType = normType,
-											      plotSet  = 4)
+
+				subdir = 'metricDistn_allAtoms/'
+				outDir = self.makeNewPlotSubdir(subdir = subdir)
+
+				failedPlots = self.makeDistnPlots(densMet   = metric,
+											      normType  = normType,
+											      plotSet   = 4,
+											      outputDir = outDir,
+											      dataset   = i)
+
 				t = 'Distribution of D<sub>{}</sub> for all refined atoms within structure'.format(metric)
-				c = '<img class="img-responsive" src="plots/DistnPlot_Residues-all_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}">'.format(metric,normType.replace(' ',''),i,imWidth)
+				c = '<img class="img-responsive" src="plots/{}DistnPlot_Residues-all_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}">'.format(subdir,metric,normType.replace(' ',''),i,imWidth)
 				panelStr = self.writeHtmlDropDownPanel(title   = t,
 											           content = c,
 										               dataset = i)
 				summaryFile.write(panelStr)
 
+			subdir = 'zScorePlots/'
+			outDir = self.makeNewPlotSubdir(subdir = subdir)
+
 			figName = self.combinedAtoms.plotNumAtomsWithMetricAboveStructureWideMean(metric   = metric,
 																					  normType = normType,
 																					  dataset  = i,
-																					  outputLoc = self.outputPlotDir)
+																					  outputLoc = outDir)
 
-			t = '# atoms with {} D<sub>{}</sub> metric above N std dev of structure-wide mean'.format(normType,metric)
-			c = '<img class="img-responsive" src="plots/{}" width="{}">'.format(figName.split('/')[-1],imWidth)
+			t = '# atoms with {} D<sub>{}</sub> metric above N std dev of structure-wide mean'.format(norm,metric)
+			c = '<img class="img-responsive" src="plots/{}{}" width="{}">'.format(subdir,figName.split('/')[-1],imWidth)
 			panelStr = self.writeHtmlDropDownPanel(title   = t,
 										           content = c,
 										           dataset = i)	
@@ -771,36 +752,36 @@ class calculateMetrics(object):
 										           dataset = i)
 			summaryFile.write(panelStr)
 
-
-			# # TEST - NEED TO FIND PROPER PLACE FOR THIS
-			# self.makeDistnPlots(densMet  = metric,
-			# 					normType = normType,
-			# 				    plotSet  = 2)
-
 			if includeGraphs is True:
-				failedPlots = self.makeDistnPlots(densMet  = metric,
-											      normType = normType,
-											      plotSet  = 1)
-				if i not in failedPlots['GLUASPCYSMETTYR']:
-					t = 'Distribution of D<sub>{}</sub> for known susceptible residue types\n'.format(metric)
-					c = '<img class="img-responsive" src="plots/DistnPlot_Residues-GLUASPCYSMETTYR_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}"><br>'.format(metric,normType.replace(' ',''),i,imWidth)
-					panelStr = self.writeHtmlDropDownPanel(title   = t,
-												           content = c,
-										                   dataset = i)
-					summaryFile.write(panelStr)
 
-				failedPlots = self.makeDistnPlots(densMet  = metric,
-												  normType = normType,
-												  plotSet  = 3)
+				params = [['Residues',1,'GLUASPCYSMETTYR','residue'],
+						  ['nucleotides',3,'DADCDGDT','nucleotide']]
 
-				if i not in failedPlots['DADCDGDT']:
-					t = 'Distribution of D<sub>{}</sub> for known susceptible nucleotide types\n'.format(metric)
-					c = '<img class="img-responsive" src="plots/DistnPlot_Residues-DADCDGDT_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}"><br>'.format(metric,normType.replace(' ',''),i,imWidth)
-					panelStr = self.writeHtmlDropDownPanel(title   = t,
-												           content = c,
-										                   dataset = i)
-					summaryFile.write(panelStr)
+				for paramSet in params:
+					subdir = 'metricDistn_key{}/'.format(paramSet[0])
+					outDir = self.makeNewPlotSubdir(subdir = subdir)
 
+					failedPlots = self.makeDistnPlots(densMet   = metric,
+												      normType  = normType,
+												      plotSet   = paramSet[1],
+												      outputDir = outDir,
+												      dataset   = i)
+
+					if failedPlots[paramSet[2]] is False:
+
+						args = [subdir,
+								paramSet[2],
+								metric,
+								normType.replace(' ',''),
+								i,
+								imWidth]
+
+						t = 'Distribution of D<sub>{}</sub> for known susceptible {} types\n'.format(metric,paramSet[3])
+						c = '<img class="img-responsive" src="plots/{}DistnPlot_Residues-{}_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}"><br>'.format(*args)
+						panelStr = self.writeHtmlDropDownPanel(title   = t,
+													           content = c,
+											                   dataset = i)
+						summaryFile.write(panelStr)
 
 			infoString = 'Atoms with unusually <font color="red">high</font> '+\
 				  		 'or <font color="blue">low</font> D<sub>{}</sub> values '.format(metric)+\
@@ -924,7 +905,7 @@ class calculateMetrics(object):
 	def writeDamSitesToFile(self, 
 							metric      = 'loss', 
 							normType    = 'Standard', 
-							numDamSites = 25):
+							numDamSites = 'all'):
 
 		# write top damage sites to .pdb file for each dataset
 
@@ -934,7 +915,7 @@ class calculateMetrics(object):
 															normType = normType,
 															dataset  = 'all',
 															n        = numDamSites,
-															pdbFile  = self.inDir + self.initialPDB)
+															pdbFile  = self.get1stDsetPDB())
 
 			self.damSitesPDB.append(damPDB)
 
@@ -954,8 +935,9 @@ class calculateMetrics(object):
 		if normType == 'Calpha normalised': 
 			self.combinedAtoms.calcAdditionalMetrics(metric=metric,normType=normType)
 
-		pdbIn = open(self.inDir + self.initialPDB,'r')
-		fileOut = self.outputDir + self.initialPDB.strip('.pdb')+'_{}D{}_{}.pdb'.format(normType.replace(" ",""),metric,dataset)
+		pdbIn = open(self.get1stDsetPDB(), 'r')
+		fileOut = self.outputDir+self.initialPDB.strip('.pdb')+\
+				  '_{}D{}_{}.pdb'.format(normType.replace(" ",""),metric,dataset)
 		if singleRes != '':
 			fileOut = fileOut.strip('.pdb')+'-{}.pdb'.format(singleRes)
 
@@ -971,7 +953,7 @@ class calculateMetrics(object):
 		if singleRes == '':
 			for atm in self.combinedAtoms.atomList:
 				dens = atm.densMetric[metric][normType]['values'][dataset]
-				if not np.isnan(dens): # don't include atoms for which not calculated properly
+				if not isnan(dens): # don't include atoms for which not calculated properly
 					l = writePDBline(atm,dens)
 					pdbOut.write(l+'\n')
 		else:
@@ -1008,7 +990,8 @@ class calculateMetrics(object):
 		except AttributeError:
 			return "Must run .writeDamSitesToFile() before damage sites can be read in {}".format(software)
 		if software == 'coot':
-			os.system('coot -pdb {} -pdb2 {}'.format(self.inDir+self.initialPDB,self.damSitesPDB[dataset]))
+			system('coot -pdb {} -pdb2 {}'.format(self.get1stDsetPDB(),
+													 self.damSitesPDB[dataset]))
 		else:
 			# need to write script for pymol to run with
 			damSitesTag = (self.damSitesPDB[dataset].split('/')[-1]).strip('.pdb')
@@ -1016,7 +999,7 @@ class calculateMetrics(object):
 			scriptName = self.outputDir+'runPymolScript.pml'
 			pymolScript = open(scriptName,'w')
 
-			pymolStr = 'load {}\n'.format(self.inDir+self.initialPDB)+\
+			pymolStr = 'load {}\n'.format(self.get1stDsetPDB())+\
 					   'load {}\n'.format(self.damSitesPDB[dataset])+\
 					   'hide lines\nshow cartoon\n'+\
 					   'set antialias, 1\n'+\
@@ -1039,7 +1022,220 @@ class calculateMetrics(object):
 
 			pymolScript.write(pymolStr)
 			pymolScript.close()
-			os.system('pymol -q {}'.format(scriptName))
+			system('pymol -q {}'.format(scriptName))
+
+	def tests_FurtherAnalysis(self,
+							  endAfter     = False,
+							  normType     ='Standard',
+							  metric       = 'loss',
+							  perform      = False,
+							  metSigPlots  = False,
+							  mainSideCmp  = True,
+							  distToDiSulp = False,
+							  tTests       = False,
+							  TopOfType    = False,
+							  rankings     = False,
+							  sigKSstats   = False,
+							  atmCorels    = False,
+							  HbondCorr    = False):
+	
+		# plot line plots of statistics against dataset number and also
+		# plot scatter plots to compare two statistics for each dataset
+		# for each residue present within a structure. The currently
+		# plotted statistics are mean, std dev, skewness and kurtosis.
+		# This plot should NOT be output in a default run of program
+
+		if perform is False:
+			return
+
+		if self.getNumDatasets() == 1:
+			return
+
+		if perform is False:
+			return
+
+		if metSigPlots is True:
+			for t,u in zip(['','-sideOnly'],[False,True]):
+				outDir = self.makeNewPlotSubdir(subdir = 'metricSignaturePlots{}/'.format(t))
+				for i in range(self.getNumDatasets()):
+					self.makeDistnPlots(densMet    = metric,
+										normType   = normType,
+									    plotSet    = 2,
+									    calcKSstat = True,
+									    calcADstat = True,
+									    sideOnly   = u,
+									    outputDir  = outDir,
+									    dataset    = i,
+									    requireAll = True)
+
+		if mainSideCmp is True:
+			outDir = self.makeNewPlotSubdir(subdir = 'side-main-compare-distn/')
+
+			for d in range(self.getNumDatasets()):
+				for s in [4,5]:
+					self.makeDistnPlots(densMet    = metric,
+								        normType   = normType,
+								        plotSet    = s,
+								        calcKSstat = True,
+								   	 	calcADstat = True,
+								        outputDir  = outDir,
+								        dataset    = d)
+
+		# COMMENTED CODE BELOW ONLY WORKS FOR MYROSINASE (BURMEISTER, 2000)
+		# loc = '/Users/charlie/DPhil/YEAR2/JUN/setOccupanciesTo1/'
+		# for bmet in ('Bdamage','Bfactor'):
+		# 	for d,i in zip(range(self.getNumDatasets()),['f','g','h','i']):
+		# 		self.combinedAtoms.compareDensToBdamChange(BDamageFile1  = loc + '1dwa_editted_refmac1Bdamage.txt',
+		# 												   BDamageFile2  = loc + '1dw{}_editted_refmac1Bdamage.txt'.format(i),
+		# 												   BdamChange    = True,
+		# 												   resType       = 'TYR',
+		# 												   atomType      = 'OH',
+		# 												   Bmetric       = bmet,
+		# 												   percentChange = True,
+		# 												   densMet       = metric,
+		# 												   normType      = normType,
+		# 												   outputDir     = loc,
+		# 												   dataset       = d)
+
+		if distToDiSulp is True:
+			print 'Finding distances to nearest disulphide bridges'
+			self.combinedAtoms.scatterAtmsByDistToOtherAtms(outputDir = self.outputPlotDir)
+
+		# COMMENTED CODE BELOW ONLY WORKS FOR TRAP (BURY ET AL., 2016)
+		# for resNum in ['62']:
+		# 	self.combinedAtoms.metricValsAtDistFromAtom(atomType  = 'OH',
+		# 												resType   = 'TYR',
+		# 												resNum    = resNum,
+		# 												chainType = 'A',
+		# 												metric    = metric,
+		# 												normType  = normType,
+		# 												outputDir = self.outputPlotDir)
+
+		if TopOfType is True:
+			t = ['TYR','OH']
+			print 'Finding top atom of type: {}'.format('-'.join(t))
+			self.combinedAtoms.findTopAtomOfType(normType = normType,
+								  				 atomType  = t[1]
+						  						 resType   = t[0])
+
+		if tTests is True:
+			print 'Performing t-test to compare metric correlation between atom types'
+			for d in range(self.getNumDatasets()):
+				stats = self.combinedAtoms.twoAtomTypeTtest(dataset   = d,
+															atomType2 = ['OE1','OE2','OD1','OD2'],
+															resType2  = ['GLU','GLU','ASP','ASP'])
+				print 'Glu/Asp) Dataset: {}, stats: {}'.format(d,stats)
+
+				stats = self.combinedAtoms.twoAtomTypeTtest(dataset   = d,
+															atomType2 = ['OE1','OD1'],
+															resType2  = ['GLN','ASN'])
+				print 'Gln/Asn) Dataset: {}, stats: {}'.format(d,stats)
+
+		res = ['CYS','TYR','TYR','GLU','GLU','GLU','GLU','ASP','ASP','ASP','ASP','GLN','GLN','ASN','ASN','SER','THR']
+		atm = ['SG','OH','CZ','CD','OE1','OE2','CG','CG','CB','OD1','OD2','OE1','NE2','OD1','ND2','OG','OG1']
+		if rankings is True:
+			print 'Determining per atom-type rankings for selected atoms in structure'
+			rank = self.combinedAtoms.getAtomtypeRanking(metric    = metric,
+												         normType  = normType,
+												         dataset   = 'all',
+												         residue   = res,
+												         atomtype  = atm,
+												         printText = True)
+			for key in rank.keys():
+				print '{}: {}'.format(key,rank[key])
+
+			for r,a in zip(res,atm):
+				num = self.combinedAtoms.numAtmsWithMetricAboveLevel(dataset   = 'all',
+																     metric    = metric,
+																     normType  = normType,
+																     threshold = 1,
+																     firstTime = True,
+																     atomType  = a,
+																     resType   = r)
+				print '{}-{}: {}'.format(r,a,num)
+
+			if self.getNumDatasets() == 1:
+				return
+
+			outDir = self.makeNewPlotSubdir(subdir = 'TyrOH-ranking/')
+			self.combinedAtoms.plotAtomtypeRankingWithDataset(outputDir = outDir,
+															  percent   = False,
+															  normType  = normType)
+
+			for r,a in zip(res,atm):
+				self.combinedAtoms.plotNumAtomsWithMetricAboveStructureWideMean(metric    = metric,
+																				normType  = normType,
+																				dataset   = 'all',
+																				outputLoc = outDir,
+																				atomType  = a,
+																				resType   = r)
+
+		if sigKSstats is True:
+			print 'Calculating Kolmogorov-Smirnov statistics to compare damage '+\
+				  'signatures between atom types in current structure'
+			outDir = self.makeNewPlotSubdir(subdir = 'MetricSignature-statistics/')
+			self.combinedAtoms.plotStatVsDataset(normType  = normType,
+											     outputDir = outDir)
+
+			self.combinedAtoms.plotStatVsStat(normType  = normType,
+											  outputDir = outDir)
+
+			if self.checkCalphasPresent(atomObjList = self.combinedAtoms) is False:
+				return
+
+			plotType = 'box'
+			outDir = self.makeNewPlotSubdir(subdir = 'KS-stat-values/')
+
+			# for ref in ('GLY','ALA'):
+			# 	saveName = '{}plot_Metric-D{}_Normalisation-{}-KSstat_allResidues-rel-to-{}'.format(plotType,metric,normType,ref)
+			# 	self.combinedAtoms.plotKSstatVsDataset(normType  = normType,
+			# 									  	   outputDir = outDir,
+			# 									  	   reference = ref,
+			# 									  	   plotType  = plotType,
+			# 									  	   saveName  = saveName)
+
+			res = ['GLU','ASP','TYR','LYS','ILE','THR']
+			ref = ['GLN','ASN','PHE','ARG','LEU','SER']
+			saveName = '{}plot_Metric-D{}_Normalisation-{}-KSstat_keyResidues'.format(plotType,metric,normType)
+
+			sideOnly = True
+			if sideOnly is True:
+				res += ['GLU']
+				ref += ['ASP']
+				saveName += '_sideChainsOnly'
+
+			self.combinedAtoms.plotKSstatVsDataset(normType  = normType,
+											  	   outputDir = outDir,
+											  	   reference = ref,
+											  	   residues  = res,
+											  	   plotType  = plotType,
+											  	   inclLine  = False,
+											  	   sideOnly  = sideOnly,
+											  	   saveName  = saveName)
+
+		if atmCorels is True:
+			print 'Determining correlation between atom types in same residues'
+			outDir = self.makeNewPlotSubdir(subdir = 'atomtype-correlationPlots/')
+			self.combinedAtoms.compareSensAtoms_RsquaredLinePlotWithDataset(normType  = normType,
+							 											    outputDir = outDir,
+							 											    plotType  = 'box')
+
+		if HbondCorr is True:
+			t = ['TYR','OH']
+			print 'Determining whether a correlation exists between {} and '.format('-'.join(t))+\
+				  'the presence of carboxylate salt bridge interactions'
+			outDir = self.makeNewPlotSubdir(subdir = 'carboxylate-TyrOH-correlation/')
+			self.combinedAtoms.plot_densMetSurroundAtmsCorrel(pdbName       = self.get1stDsetPDB(),
+															  symmetrygroup = self.getSpaceGroup(),
+															  restype       = t[0],
+								  	   						  atomtype      = t[1],
+															  normType      = normType,
+															  outputDir     = outDir,
+															  errorbars     = False,
+															  printText     = False)
+
+		if endAfter is True:
+			self.endAfter()
 
 	def plotLinePlot(self,
 					 resType   = 'GLU',
@@ -1049,7 +1245,8 @@ class calculateMetrics(object):
 					 resNum    = '',
 					 metric    = 'loss',
 					 normType  = 'Standard',
-					 figTitle  = ''):
+					 figTitle  = '',
+					 saveName  = ''):
 
 		# create a line plot for Dloss density metric vs dataset number
 
@@ -1062,7 +1259,8 @@ class calculateMetrics(object):
 											     errorBars = errorBars,
 											     outputDir = self.outputPlotDir,
 											     saveFig   = True,
-											     figTitle  = figTitle)
+											     figTitle  = figTitle,
+											     saveName  = saveName)
 		return figName
 
 	def metricBarplots(self):
@@ -1076,15 +1274,28 @@ class calculateMetrics(object):
 					self.combinedAtoms.susceptAtmComparisonBarplot(metric,normType,i,set,b)
 
 	def makeDistnPlots(self,
-					   densMet  = 'loss',
-					   normType = 'Standard',
-					   plotType = 'both',
-					   plotSet  = 1):
+					   densMet    = 'loss',
+					   normType   = 'Standard',
+					   plotType   = 'both',
+					   plotSet    = 1,
+					   calcKSstat = False,
+					   calcADstat = False,
+					   sideOnly   = False,
+					   resSplit   = False,
+					   outputDir  = '',
+					   dataset    = 0,
+					   requireAll = False):
 
 		# retrieve the distribution for damage metric values for all 
 		# atoms of specified residues (see 'resList' below), and then 
-		# plot a kde plot for each
-		title   = ''
+		# plot a kde plot for each.
+		# If 'calcKSstat' is True, perform the 2-sample Kolmogorov-Smirnov 
+		# test (will only calculate when two histograms plotted on 1 axis)
+
+		if outputDir == '':
+			outputDir = self.outputPlotDir
+
+		title      = ''
 		if plotSet == 1:
 			resList = [['GLU','ASP','CYS','MET','TYR']]
 			title   = 'Predicted susceptible residue types'
@@ -1093,31 +1304,57 @@ class calculateMetrics(object):
 					   ['ASP','ASN'],
 					   ['ILE','LEU'],
 					   ['TYR','PHE'],
-				   	   ['TYR','PHE','GLY']]
+					   ['GLU','ASP'],
+					   ['GLU','GLY'],
+					   ['ASP','GLY'],
+					   ['ALA','GLY'],
+					   ['TYR','GLY'],
+					   ['CYS','GLY'],
+					   ['MET','GLY'],
+					   ['ARG','LYS'],
+					   ['A','GLY'],
+					   ['G','GLY'],
+					   ['U','GLY']]
 		elif plotSet == 3:
 			resList = [['DA','DC','DG','DT']]
 
 		elif plotSet == 4:
 			resList = ['all']
+			resSplit  = True
+
+		elif plotSet == 5:
+			resList  = [['CYS'],['GLU'],['GLN'],['TYR'],
+						['PHE'],['ASP'],['ASN'],['LYS'],
+						['ARG'],['SER'],['GLY'],
+						['DA'],['DC'],['DG'],['DT'],
+						['A'],['C'],['G'],['U']]
+			resSplit = True
 
 		for resGroup in resList:
 			k = ''.join(resGroup)
-			failedPlots = {k:[]}
-			if len(resGroup) > 6:
+			failedPlots = {k : []}
+			if len(resGroup) > 6 or plotSet == 4:
 				plotType = 'kde'
 			else:
 				plotType = 'both'
-			for i in range(self.getNumDatasets()):
-				data = self.combinedAtoms.graphMetricDistn(metric    = densMet,
-														   normType  = normType,
-														   valType   = i,
-														   plotType  = plotType,
-														   resiType  = resGroup,
-														   outputDir = self.outputPlotDir,
-														   printText = False,
-														   plotTitle = title)	
-				if data == {}:
-					failedPlots[k].append(i)
+			data = self.combinedAtoms.graphMetricDistn(metric     = densMet,
+													   normType   = normType,
+													   valType    = dataset,
+													   plotType   = plotType,
+													   resiType   = resGroup,
+													   resSplit   = resSplit,
+													   sideOnly   = sideOnly,
+													   outputDir  = outputDir,
+													   printText  = False,
+													   plotTitle  = title,
+													   calcKSstat = calcKSstat,
+													   calcADstat = calcADstat,
+													   requireAll = requireAll)	
+			if data == {}:
+				failedPlots[k] = True
+			else:
+				failedPlots[k] = False
+
 		return failedPlots
 
 	def sensAtomPlots(self,
@@ -1209,17 +1446,25 @@ class calculateMetrics(object):
 	def checkCalphasPresent(self,
 							atomObjList = []):
 
-		# check whether structure contains any Calpha protein 
-		# backbone atoms within it
+		# check whether structure contains any Calpha 
+		# protein backbone atoms within it
 
 		return atomObjList.checkCalphaAtomsExist()
+
+	def get1stDsetPDB(self):
+
+		# retrieve name of first dataset pdb coordinate file
+
+		pdbFile = self.inDir + self.initialPDB
+
+		return pdbFile
 
 	def getSpaceGroup(self):
 
 		# parse the first dataset pdb file and retrieve the space group
 
-		pdbFile = self.inDir+self.initialPDB
-		pdbin = open(self.inDir+self.initialPDB,'r')
+		pdbFile = self.get1stDsetPDB()
+		pdbin = open(pdbFile,'r')
 
 		for line in pdbin.readlines():
 			if line.split()[0] == 'CRYST1':
@@ -1263,3 +1508,11 @@ class calculateMetrics(object):
 			  'Some output plots could not be produced.\n'+\
 			  'Use "pip install seaborn" to install package.'
 		self.logFile.writeToLog(str = txt)
+
+
+	def endAfter(self):
+
+		# force quit of the class
+
+		import sys
+		sys.exit()
