@@ -65,6 +65,27 @@ class StructurePDB(object):
                                  'G',
                                  'U']
 
+        self.aminoAcids       = ['ALA',
+                                 'ARG',
+                                 'ASN',
+                                 'ASP',
+                                 'CYS',
+                                 'GLN',
+                                 'GLU',
+                                 'GLY',
+                                 'HIS',
+                                 'ILE',
+                                 'LEU',
+                                 'LYS',
+                                 'MET',
+                                 'PHE',
+                                 'PRO',
+                                 'SER',
+                                 'THR',
+                                 'TRP',
+                                 'TYR',
+                                 'VAL']
+
         self.mainchainProtein = ['N',
                                  'CA',
                                  'C',
@@ -80,6 +101,10 @@ class StructurePDB(object):
                                  "C2'",
                                  "C1'",
                                  "O4'",
+                                 "OP2"]
+
+        self.phosphateNucAcid = ["P",
+                                 "OP1",
                                  "OP2"]
    
     def protein_or_nucleicacid(self):
@@ -109,6 +134,30 @@ class StructurePDB(object):
             else:
                 sideormain = 'mainchain'
         return sideormain
+
+    def categorise(self):
+
+        # categorise atom into disjoint subsets
+
+        if self.protein_or_nucleicacid() == 'nucleic acid':
+            if self.atomtype in self.phosphateNucAcid:
+                return 'phosphate'
+            elif self.atomtype in self.mainchainNucAcid:
+                return 'sugar'
+            else:
+                return 'base'
+        else:
+            if self.basetype in self.aminoAcids:
+                if self.atomtype in self.mainchainProtein:
+                    return 'mainchain protein'
+                else:
+                    return 'sidechain protein'
+
+            else:
+                if self.basetype == 'HOH':
+                    return 'water'
+                else:
+                    return 'other'
             
     def VDW_get(self):
 
