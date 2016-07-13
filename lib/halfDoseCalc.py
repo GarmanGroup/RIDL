@@ -1,11 +1,11 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.optimize import curve_fit
-
 from checkSeabornPresent import checkSeabornPresent as checkSns
 seabornFound = checkSns()
 if seabornFound is True:
-	import seaborn as sns
+	from seaborn import set as sns_set
+	from seaborn import despine as sns_despine
 
 class halfDoseApprox():
 	def __init__(self,
@@ -128,9 +128,15 @@ class halfDoseApprox():
 																	      'init decay rate' : self.initDecayRate}
 
 	def plotDecayPlot(self,xData,yData):
-		sns.set(context='talk',style='dark')
+		sns_set(context = 'talk',
+				style   = 'dark')
 		f = plt.figure()
-		plt.plot(xData,yData,marker='.',linestyle='',markersize=14)	
+		plt.plot(xData,
+			 	 yData,
+			 	 marker     = '.',
+			 	 linestyle  = '',
+			 	 markersize = 14)	
+
 		x = np.linspace(min(xData),max(xData),100)
 		plt.plot(x,self.decayFuncOffset(x,*self.fitParams))
 
@@ -146,7 +152,7 @@ class halfDoseApprox():
 		plt.ylabel('D{} (e/A^3)'.format(self.densMet),fontsize=20)
 		plt.grid()
 		identifier = self.atom.getAtomID() 
-		sns.despine()
+		sns_despine()
 		f.suptitle('{} {} D{} Half-dose: {} MGy, initial decay: {}'.format(self.atom.getAtomID(),self.normType,
 																		   self.densMet,self.halfDose,self.initDecayRate))
 		if self.plotDir != '':
