@@ -72,6 +72,14 @@ parser.add_argument('-r',
                     		  'If not included, intermediate map files (e.g. '+\
                     		  'atom-tagged maps) will be included for each '+\
 							  'dataset within damage series.')
+parser.add_argument('--replot',
+					dest    = 'replot',
+					action  = 'store_const',
+					default = False,
+					const   = True,
+                    help    = 'Remake output files. If included, is assumed that a previous run of '+\
+                    		  'RIDL has been performed and that a _data.pkl file is available to '+\
+                    		  'retrieve the data of the previous run.')
 
 parser.add_argument('-s',
 					dest    = 'suppressOutput',
@@ -124,4 +132,5 @@ else:
 					skipToMetricCalc  = True,
 					outputGraphs      = plot,
 					cleanUpFinalFiles = args.cleanUpFinalFiles,
-					printOutput       = args.suppressOutput)
+					printOutput       = args.suppressOutput,
+					skipToSummaryFile = args.replot)
