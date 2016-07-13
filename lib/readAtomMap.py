@@ -280,7 +280,8 @@ class maps2DensMetrics():
         self.densmap,self.atmmap,self.FCmap =[],[],[]
         self.stopTimer()
  
-    def plotDensHistPlots(self):
+    def plotDensHistPlots(self,
+                          getVoxelStats = False):
 
         # histogram & kde plots of number of voxels per atom
 
@@ -288,10 +289,22 @@ class maps2DensMetrics():
         self.printStepNumber()
         self.lgwrite(ln = 'Plotting histogram plots of voxels per atom...')
         self.lgwrite(ln = 'Plots written to "{}plots"'.format(self.filesOut))
-        plotVxlsPerAtm(pdbName     = self.pdbName,
-                       where       = self.filesOut,
-                       vxlsPerAtom = self.vxlsPerAtom,
-                       plotType    = 'both')
+
+        if getVoxelStats is True:
+            voxStats = plotVxlsPerAtm(pdbName     = self.pdbName,
+                                      where       = self.filesOut,
+                                      vxlsPerAtom = self.vxlsPerAtom,
+                                      plotType    = 'both',
+                                      returnStats = True)
+
+            print 'mean: {}\nstd: {}\nmax: {}\nmin: {}'.format(*voxStats)
+
+        else: 
+            plotVxlsPerAtm(pdbName     = self.pdbName,
+                           where       = self.filesOut,
+                           vxlsPerAtom = self.vxlsPerAtom,
+                           plotType    = 'both')
+
         self.stopTimer()
 
     def calculateDensMetrics(self,
@@ -305,7 +318,13 @@ class maps2DensMetrics():
         self.lgwrite(ln = 'Calculating electron density statistics per atom...')
 
         for atom in self.PDBarray:
-            atomVxls = self.vxlsPerAtom[atom.atomnum]
+
+            try:
+                atomVxls = self.vxlsPerAtom[atom.atomnum]
+            except KeyError:
+                print 'Warning!: No voxels assigned to an atom. Consider increasing '+\
+                      'per-atom search radius parameter in RIDL input .txt file.'
+                atomVxls = [np.nan]
 
             if FCweighted is True:
                 # calculate reliability measures based on electron 
