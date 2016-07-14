@@ -508,19 +508,27 @@ class combinedAtomList(object):
 																		   resiType,atomType2)
 		print '\n'+'-'*len(title)+title
 		dic,ratioDic = {},{'distance':[],'ratio':[]}
-		for atom in self.atomList:
-			if atom.basetype == resiType and atom.atomtype == atomType1:
-				dic[atom.getAtomID()] = atom.densMetric[metric][normType]['values']
+
+		atms1 = self.getAtom(restype  = resiType,
+							 atomtype = atomType1)
+		if atms1 == []:
+			return
+
+		for atm in atms1:
+			dic[atm.getAtomID()] = atm.densMetric[metric][normType]['values']
+
 		for atom in self.atomList:
 			if atom.basetype == resiType and atom.atomtype == atomType2:
 				key   = '-'.join(atom.getAtomID().split('-')[0:3]+[atomType1])
 				# check that generated 'key' exists and skip if not (needed for incomplete residues)
-				if key not in dic.keys(): continue
+				if key not in dic.keys(): 
+					continue
 				a,b = np.array(dic[key]),atom.densMetric[metric][normType]['values']
 				ratioDic['ratio'].append(a/b)
 				ratioDic['distance'].append(a-b)
 		summary = {}
 		for key in ratioDic:
+			print np.mean(ratioDic[key],0)
 			outputString  = '\nFor metric {} between two atoms'.format(key)	
 			outputString += '\n# atom pairs: {}'.format(len(ratioDic[key]))
 			outputString += '\nmean\t' + '\t'.join([str(round(val,3)) for val in list(np.mean(ratioDic[key],0))])
@@ -565,6 +573,8 @@ class combinedAtomList(object):
 										  resiType  = pair[0],
 										  atomType1 = pair[1],
 										  atomType2 = pair[2])
+			if output == None:
+				continue
 
 			foundPairs['-'.join(pair)] = output[0]
 			fileout.write(output[1][rType]+'\n')
@@ -605,7 +615,7 @@ class combinedAtomList(object):
 
 		fig.suptitle('{} D{} {}'.format(normType,metric,rType),fontsize = titleFont)
 
-		figName = '{}{}-D{}-{}-{}_{}'.format(self.outputDir,normType,metric,rType,title)
+		figName = '{}metric-D{}_normalisation-{}_{}_{}'.format(self.outputDir,metric,normType,rType,title)
 		fileName = self.checkUniqueFileName(fileName = figName,
 								 			fileType = fileType)
 		fig.savefig(fileName)
@@ -1164,7 +1174,7 @@ class combinedAtomList(object):
 	def getTopAtomsStackedBarplot(self,
 								  metric     = 'loss',
 								  normType   = 'Standard',
-								  n          = 40,
+								  n          = 25,
 								  palette    = 'hls',
 								  barWidth   = 0.5,
 								  axesFont   = 18,

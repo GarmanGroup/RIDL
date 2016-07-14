@@ -30,8 +30,6 @@ def plotVxlsPerAtm(pdbName     = 'untitled',
         sns.set_style("ticks")
         sns.set_context("talk", rc = {"figure.figsize":(10, 6)})
         f = plt.figure()
-        # sns.set_palette("deep", desat=.6)
-        # sns.set_context(rc={"figure.figsize": (10, 6)})
 
     fig = plt.figure()
 
@@ -55,7 +53,7 @@ def plotVxlsPerAtm(pdbName     = 'untitled',
 
     else:
         print 'Unknown plotting type selected.. cannot plot..'
-        return
+        return ''
 
     if seabornFound is True:
         sns.despine(offset = 0, 
@@ -78,4 +76,6 @@ def plotVxlsPerAtm(pdbName     = 'untitled',
         maxVal  = max(datax)
         minVal  = min(datax)
         return (meanVal,stdVal,maxVal,minVal)
+    else:
+        return ''
     

@@ -389,7 +389,6 @@ class multiPDB(StructurePDB):
         self.rsddensity         = rsddensity
         self.rangedensity       = rangedensity
 
-
 class MapInfo:
 
     # A class for .map file header info

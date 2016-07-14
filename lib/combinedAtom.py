@@ -22,12 +22,16 @@ class combinedAtom(StructurePDB):
 				 numsurroundatoms   = 0,
 				 numsurroundprotons = 0,
 				 densMetric         = {},
-				 partialInfo        =False):
+				 partialInfo        = False):
 
-		super(combinedAtom, self).__init__(atomnum,residuenum,
-										   atomtype,basetype,
-										   chaintype,X_coord,
-										   Y_coord,Z_coord,
+		super(combinedAtom, self).__init__(atomnum,
+										   residuenum,
+										   atomtype,
+										   basetype,
+										   chaintype,
+										   X_coord,
+										   Y_coord,
+										   Z_coord,
 										   atomID,
 										   numsurroundatoms,
 										   numsurroundprotons)

@@ -72,6 +72,7 @@ parser.add_argument('-r',
                     		  'If not included, intermediate map files (e.g. '+\
                     		  'atom-tagged maps) will be included for each '+\
 							  'dataset within damage series.')
+
 parser.add_argument('--replot',
 					dest    = 'replot',
 					action  = 'store_const',

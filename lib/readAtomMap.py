@@ -290,20 +290,14 @@ class maps2DensMetrics():
         self.lgwrite(ln = 'Plotting histogram plots of voxels per atom...')
         self.lgwrite(ln = 'Plots written to "{}plots"'.format(self.filesOut))
 
-        if getVoxelStats is True:
-            voxStats = plotVxlsPerAtm(pdbName     = self.pdbName,
-                                      where       = self.filesOut,
-                                      vxlsPerAtom = self.vxlsPerAtom,
-                                      plotType    = 'both',
-                                      returnStats = True)
+        stats = plotVxlsPerAtm(pdbName     = self.pdbName,
+                               where       = self.filesOut,
+                               vxlsPerAtom = self.vxlsPerAtom,
+                               plotType    = 'both',
+                               returnStats = getVoxelStats)
 
-            print 'mean: {}\nstd: {}\nmax: {}\nmin: {}'.format(*voxStats)
-
-        else: 
-            plotVxlsPerAtm(pdbName     = self.pdbName,
-                           where       = self.filesOut,
-                           vxlsPerAtom = self.vxlsPerAtom,
-                           plotType    = 'both')
+        if stats != '':
+            print 'mean: {}\nstd: {}\nmax: {}\nmin: {}'.format(*stats)
 
         self.stopTimer()
 
