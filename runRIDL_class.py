@@ -262,8 +262,15 @@ MAPINFO
 		self.quickParseInputFile()
 		self.checkOutputDirExists(printToScreen = self.printOutput)
 
-		fName = '{}RIDLjob.log'.format(self.outputDir)
-		log = logFile(fileName      = fName,
+		name = '{}RIDLjob.log'.format(self.outputDir)
+
+		logName = lambda x: name.strip('.log')+'_{}{}'.format(x,'.log')
+		i = 1
+		while os.path.isfile(logName(i)): 
+			i += 1 
+		uniqLogName = logName(i)
+
+		log = logFile(fileName      = uniqLogName,
 					  fileDir       = self.outputDir,
 					  printToScreen = self.printOutput)
 		self.logFile = log
