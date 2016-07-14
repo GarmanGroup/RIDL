@@ -39,7 +39,7 @@ def plotVxlsPerAtm(pdbName     = 'untitled',
         plotType = 'histogram'
 
     if plotType == 'histogram':
-        plt.hist(datax, 300, histtype="stepfilled", alpha=.7)
+        plt.hist(datax, 300, histtype = "stepfilled", alpha = .7)
         yTitle = 'Frequency'
 
     elif plotType == 'kde':
