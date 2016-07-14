@@ -1,5 +1,4 @@
 # RIDL: Radiation-Induced Density Loss
-#### (Previously known as ETRACK)
 
 A collection of scripts to calculate per-atom density change metrics within a specific damage MX investigation.
 Suitable for any MX experiment in which datasets are collected on the **same crystal** over **multiple doses**.
