@@ -57,7 +57,8 @@ class provideFeedback(object):
 			self.plotHeatMaps  = False
 
 		if autoRun:
-			self.run()
+			atmsObjs.findProbAboveAvDam()
+			# self.run()
 
 	def run(self):
 

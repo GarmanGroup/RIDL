@@ -10,26 +10,29 @@ class run():
 	# of increasing doses
 
 	def __init__(self,
-				 runAll            = True,
-				 inputFileLoc      = '',
-				 logFile           = '',
-				 skipToSummaryFile = False):
+				 calculate      = True,
+				 inputFileLoc   = '',
+				 logFile        = '',
+				 skipToSumFiles = False,
+				 writeSumFiles  = False):
 
 		self.inputFileName = inputFileLoc + 'metricCalc_inputfile.txt'
 		self.logFile       = logFile
 		
-		if runAll is True:
-			self.runCalculateMetrics()
+		if calculate:
+			self.runCalculateMetrics(sumFiles = writeSumFiles)
 
-		if skipToSummaryFile is True:
+		if skipToSumFiles:
 			self.runCalculateMetrics(mapProcess  = False,
 									 postProcess = False,
-									 retrieve    = True)
+									 retrieve    = True,
+									 sumFiles    = True)
 
 	def runCalculateMetrics(self,
 				            mapProcess  = True,
 				  			postProcess = True,
-				  			retrieve    = False):
+				  			retrieve    = False,
+				  			sumFiles    = False):
 
 		# run the metric calculation scripts for the currently 
 		# defined input file
@@ -37,9 +40,12 @@ class run():
 		self.logFile.writeToLog(str = ln)
 
 		exists = self.checkInputFileExists()
-		if exists is False:
+		if not exists:
 			return
-		eT = calculateMetrics(logFile = self.logFile)
+
+		eT = calculateMetrics(logFile  = self.logFile,
+							  sumFiles = sumFiles)
+
 		eT.runPipeline(map_process   = mapProcess,
 					   post_process  = postProcess,
 					   retrieve      = retrieve,

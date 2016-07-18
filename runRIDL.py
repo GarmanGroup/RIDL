@@ -30,7 +30,8 @@ parser.add_argument('-c',
 					action  = 'store_const',
 					default = False,
 					const   = True,
-                    help    = 'Calculate damage metrics per atom.')
+                    help    = 'Calculate damage metrics per atom. Will output '+\
+                    		  'csv-format files of metric per atom upon completion')
 
 parser.add_argument('-t',
 					type    = int,
@@ -73,14 +74,14 @@ parser.add_argument('-r',
                     		  'atom-tagged maps) will be included for each '+\
 							  'dataset within damage series.')
 
-parser.add_argument('--replot',
-					dest    = 'replot',
+parser.add_argument('-o',
+					dest    = 'output',
 					action  = 'store_const',
 					default = False,
 					const   = True,
-                    help    = 'Remake output files. If included, is assumed that a previous run of '+\
-                    		  'RIDL has been performed and that a _data.pkl file is available to '+\
-                    		  'retrieve the data of the previous run.')
+                    help    = 'Create output hmtl file and graphical analysis. If included, it '+\
+                    		  'is assumed that -c step of RIDL has already been performed and that '+\
+                    		  'a _data.pkl file is available to retrieve the data from this step.')
 
 parser.add_argument('-s',
 					dest    = 'suppressOutput',
@@ -99,16 +100,16 @@ if args.integer != 0:
 	p.writeTemplateInputFile(numHigherDoseDatasets = args.template)
 
 # call the help information
-if args.inputFileHelp is True:
+if args.inputFileHelp:
 	p = process(run = False)
 	p.howToWriteInputFile()
 
 # decide whether to include no graphs (no),
 # key graphs only (slim) or all graphs (yes)
-if args.noGraphs is True:
+if args.noGraphs:
 	plot = 'no'
 else:
-	if args.slim is True:
+	if args.slim:
 		plot = 'slim'
 	else:
 		plot = 'yes'
@@ -116,22 +117,26 @@ else:
 # run the pipeline, including generating density and atom-tagged
 # maps from input pdb and mtz files (in a damage series), as 
 # specified within an input file
-if args.process is True:
+if args.process:
 	p = process(inputFile           = args.inputFile,
 				proceedToMetricCalc = args.calculate,
 				outputGraphs        = plot,
 				cleanUpFinalFiles   = args.cleanUpFinalFiles,
-				printOutput         = args.suppressOutput)
+				printOutput         = args.suppressOutput,
+				writeSummaryFiles   = args.output)
 
 # do not run code to create atom-tagged and density maps, but 
 # proceed directly to the code to calculate per-atom damage 
 # metrics. This works provided that the map generation step
 # has been performed beforehand
+
 else:
-	if args.calculate is True:
-		p = process(inputFile         = args.inputFile,
-					skipToMetricCalc  = True,
-					outputGraphs      = plot,
-					cleanUpFinalFiles = args.cleanUpFinalFiles,
-					printOutput       = args.suppressOutput,
-					skipToSummaryFile = args.replot)
+	p = process(inputFile          = args.inputFile,
+				skipToMetricCalc   = True,
+				outputGraphs       = plot,
+				cleanUpFinalFiles  = args.cleanUpFinalFiles,
+				printOutput        = args.suppressOutput,
+				skipToSummaryFiles = not args.calculate,
+				writeSummaryFiles  = args.output)
+
+

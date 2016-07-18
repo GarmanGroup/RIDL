@@ -21,7 +21,8 @@ class process():
 				 outputGraphs        = 'yes',
 				 cleanUpFinalFiles   = False,
 				 printOutput         = True,
-				 skipToSummaryFile   = False):
+				 skipToSummaryFiles  = False,
+				 writeSummaryFiles   = False):
 
 		self.inputFile           = inputFile
 		self.proceedToMetricCalc = proceedToMetricCalc
@@ -29,9 +30,10 @@ class process():
 		self.outputGraphs        = outputGraphs # takes 'yes', 'no' or 'slim'
 		self.cleanUpFinalFiles   = cleanUpFinalFiles
 		self.printOutput         = printOutput
-		self.skipToSummaryFile   = skipToSummaryFile
+		self.skipToSummaryFiles  = skipToSummaryFiles
+		self.writeSummaryFiles   = writeSummaryFiles
 
-		if run is True:
+		if run:
 			self.run()
 
 	def setInputFile(self,name):
@@ -58,7 +60,7 @@ class process():
 		# run to process files with the specified input file
 
 		success = self.checkInputFileExists()
-		if success is False: 
+		if not success: 
 			return success
 
 		self.startLogFile()
@@ -71,7 +73,8 @@ class process():
 						   outputGraphs        = self.outputGraphs,
 						   cleanFinalFiles     = self.cleanUpFinalFiles,
 						   logFileObj          = self.logFile,
-						   skipToSummaryFile   = self.skipToSummaryFile)
+						   skipToSummaryFiles  = self.skipToSummaryFiles,
+						   writeSummaryFiles   = self.writeSummaryFiles)
 
 		return pro.jobSuccess
 
@@ -169,8 +172,9 @@ PHASEDATASET
 MAPINFO
 	For difference map analysis, do not change these parameters
 	"""
-		if printStr is True:
+		if printStr:
 			print infoString
+
 		return infoString
 
 	def writeTestInputFile(self,dataset):
@@ -280,14 +284,14 @@ MAPINFO
 
 		# check whether output directory exists and make if not
 
-		if self.outputDir.endswith('/') is False:
-			if printToScreen is True:
+		if not self.outputDir.endswith('/'):
+			if printToScreen:
 				print 'Working directory specified in input '+\
 					  'file must end in "/" - appending.'
 			self.outputDir += '/'
 
 		if not os.path.exists(self.outputDir):
-			if printToScreen is True:
+			if printToScreen:
 				print 'Output directory "{}" not found, making directory'.format(self.outputDir)
 			os.makedirs(self.outputDir)
 

@@ -493,6 +493,29 @@ class combinedAtomList(object):
 
 		self.atomList.sort(key = lambda x: x.atomnum)
 
+	def findProbAboveAvDam(self,
+						   metric    = 'loss',
+						   normType  = 'Calpha normalised',
+						   threshold = 0):
+
+		# a function that only will work for the calpha
+		# normalised metric. Assuming zero is the base
+		# Dloss level, determine overall probability 
+		# that a randomly picked atom will have above
+		# average Dloss. Could be used as an overall 
+		# indicator for damage to the structure
+
+		for d in self.getDsetList():
+			count = 0
+			for atm in self.atomList:
+				if d in atm.getPresentDatasets():
+					if atm.densMetric[metric][normType]['values'][d] > threshold:
+						count += 1
+
+			prob = float(count)/self.getNumAtoms()
+
+			print 'Dataset {}: damage probability: {}'.format(d,round(prob,2))
+
 	def findMetricRatio(self,
 						metric    = 'loss',
 						normType  = 'Standard',
