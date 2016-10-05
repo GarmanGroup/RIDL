@@ -15,7 +15,7 @@ Suitable for any MX experiment in which datasets are collected on the **same cry
 
 ## How to run in brief
 
-- Compose an input file for the job (e.g. input.txt)
+- Compose an input file for the job (e.g. input.txt). See: [Writing the RIDL input file](#writing-the-ridl-input-file)
 
 - Run on command line ```python runRIDL.py -i input.txt -pco```
 
@@ -116,8 +116,6 @@ phaseLabel PHIC
 FcalcLabel FC
 ```
 
-
-
 `dir` is the directory where the output files should be written
 
 The dataset information for the damage series is broken down into three sections: `INITIALDATASET`, `LATERDATASET` and `PHASEDATASET`. 
@@ -165,7 +163,5 @@ The formulation of the *D<sub>loss</sub>* metric can be found at:
 - Bury CS, et al. (2016) RNA protects a nucleoprotein complex against radiation damage. Acta Crystallogr Sect D Struct Biol 72(5):648–657.
 
 Please cite this if you would like to use these scripts for your own specific damage analysis.
-
- - [Back to top](#contents)
 
 
