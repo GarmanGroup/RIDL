@@ -235,7 +235,7 @@ class processFiles():
 		defaults = [1,
 				    'DIFF',
 				    'NONE',
-				    'FALSE',
+				    'TRUE',
 				    'TRUE']
 
 		for i,prop in enumerate(props):
