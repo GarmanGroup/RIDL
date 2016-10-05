@@ -801,15 +801,15 @@ class processFiles():
 		else:
 			self.mtzIn = '{}{}_sigmaa.mtz'.format(self.mapProcessDir,self.name2_current)
 
-		props = {'pdbIN'        : 'pdb2_current',
-				 'initialPDB'   : 'name1_current',
-				 'laterPDB'     : 'name2_current',
-				 'phaseDataset' : 'name3_current',
-				 'sfall_VDWR'   : 'sfall_VDWR',
-				 'mtzIN'        : 'mtzIn',
-				 'densMapType'  : 'densMapType',
-				 'FFTmapWeight' : 'FFTmapWeight',
-				 'FCmaps'       : 'calculateFCmaps'}
+		props = {'pdbIN'           : 'pdb2_current',
+				 'initialPDB'      : 'name1_current',
+				 'laterPDB'        : 'name2_current',
+				 'phaseDataset'    : 'name3_current',
+				 'sfall_VDWR'      : 'sfall_VDWR',
+				 'mtzIN'           : 'mtzIn',
+				 'densMapType'     : 'densMapType',
+				 'FFTmapWeight'    : 'FFTmapWeight',
+				 'calculateFCmaps' : 'calculateFCmaps'}
 
 		fileOut2 = open(self.pipe2FileName,'w')
 		inputString = ''
