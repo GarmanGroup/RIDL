@@ -38,7 +38,8 @@ class calculateMetrics(object):
 				 plot       = 'no',
 				 output     = 'simple',
 				 logFile    = '',
-				 sumFiles   = False):
+				 sumFiles   = True,
+				 inclFCmets = True):
 
 		self.inDir 		= inDir 		# the input file directory
 		self.outDir  	= outDir 		# the output file directory
@@ -53,6 +54,7 @@ class calculateMetrics(object):
 										# info or 'full' larger selection of output files)
 		self.logFile    = logFile       # log file for the current RIDL job
 		self.sumFiles   = sumFiles      # write summary html files and graphs (bool)
+		self.inclFCmets = inclFCmets    # generate metrics which require FC maps to be made
 		
 	def runPipeline(self,
 					map_process   = True,
@@ -281,7 +283,8 @@ class calculateMetrics(object):
 										     plotScatter = False,
 										     plotHist    = self.plot,
 										     plotBar     = False,
-										     logFile     = self.logFile)
+										     logFile     = self.logFile,
+										     calcFCmap   = self.inclFCmets)
 
    			maps2DensMets.maps2atmdensity()
 
@@ -331,7 +334,10 @@ class calculateMetrics(object):
 			# add new retrieved damage set list to dList
 			dList.append(PDB_ret)
 		pklDir = '/'.join(pkl_filename.split('/')[:-1])+'/'
-		rmdir(pklDir)
+
+		# remove directory if it is now empty
+		if listdir(pklDir) == "":
+			rmdir(pklDir)
 
 		# create a list of atom objects with attributes as lists varying over 
 		# dose range, only including atoms present in ALL damage datasets
@@ -342,7 +348,8 @@ class calculateMetrics(object):
 										 doseList       = self.doses,
 										 initialPDBList = initialPDBlist,
 										 outputDir      = self.outputDir,
-										 seriesName     = self.seriesName)
+										 seriesName     = self.seriesName,
+										 inclFCmetrics  = self.inclFCmets)
 
 		combinedAtoms.getMultiDoseAtomList()
 
