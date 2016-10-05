@@ -15,7 +15,7 @@ Suitable for any MX experiment in which datasets are collected on the **same cry
 
 ## How to run in brief
 
-- Compose an input file for the job (e.g. input.txt). See: [Writing the RIDL input file](#writing-the-ridl-input-file)
+- Compose an input file for the job (e.g. input.txt). See: *Writing the RIDL input file* section below
 
 - Run on command line ```python runRIDL.py -i input.txt -pco```
 
