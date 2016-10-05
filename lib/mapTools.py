@@ -44,7 +44,7 @@ class mapTools():
 
 		# get map size in number of voxels
 
-		numVoxels = 4*(self.numCols*self.numRows*self.numSecs)
+		numVoxels = self.numCols*self.numRows*self.numSecs
 		return numVoxels
 
 	def get4Bytes(self,binaryMapFile):
