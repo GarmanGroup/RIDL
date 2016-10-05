@@ -36,7 +36,8 @@ class combinedAtomList(object):
 				 initialPDBList    = [],
 				 outputDir         = './',
 				 partialDatasets   = True,
-				 seriesName        = 'untitled'):
+				 seriesName        = 'untitled',
+				 inclFCmetrics     = False):
 
 		self.datasetList 		= datasetList
 		self.numLigRegDatasets 	= numLigRegDsets    # number of datasets to perform linear regression over
@@ -45,6 +46,11 @@ class combinedAtomList(object):
 		self.outputDir			= outputDir
 		self.partialDatasets	= partialDatasets   # Bool, whether atoms only in subset of datasets are included
 		self.seriesName			= seriesName
+
+		# only include reliability and distance-weighted mean metrics 
+		# if they exist. This is only in case where FC maps have been 
+		# created within the RIDL map generation stage of th pipeline
+		self.inclFCderivedMetrics = inclFCmetrics
 		
 		# if number of datasets to perform lin reg not stated then 
 		# set to total number of datasets in series
@@ -93,16 +99,16 @@ class combinedAtomList(object):
 			ln = 'Locating common atoms to ALL datasets...:'
 			self.printOrWriteToLog(logFile = logFile, txt = ln)
 
-		singDimAttrs = ('atomnum',
+		singDimAttrs = ['atomnum',
 						'residuenum',
 						'atomtype',
 						'basetype',
 					    'chaintype',
 					    'X_coord',
 					    'Y_coord',
-					    'Z_coord')
+					    'Z_coord']
 
-		multiDimAttrs = ('Bfactor',
+		multiDimAttrs = ['Bfactor',
 					     'Occupancy',
 					     'meandensity',
 					     'maxdensity',
@@ -113,10 +119,11 @@ class combinedAtomList(object):
 						 'min90tile',
 						 'max90tile',
 						 'min95tile',
-						 'max95tile')
+						 'max95tile']
 
-		if self.checkReliabilityPresent() is True:
-			multiDimAttrs += 'reliability'
+		if self.inclFCderivedMetrics:
+			for w in ('reliability','wMean'):
+				multiDimAttrs.append(w)
 
 		for atom in self.datasetList[0]:
 			atm_counter = 1
@@ -171,10 +178,14 @@ class combinedAtomList(object):
 													  values   = atomDict[attr])
 
 				# include reliability value also for Dloss metric
-				if self.checkReliabilityPresent() is True:
+				if self.inclFCderivedMetrics:
 					newatom.getDensMetricInfo(metric   = 'loss',
 											  normType = 'reliability',
 											  values   = atomDict['reliability'])
+
+					newatom.getDensMetricInfo(metric   = 'mean',
+											  normType = 'distance-weighted',
+											  values   = atomDict['wMean'])
 
 				if atm_counter != len(self.datasetList):
 					if printText is True:
@@ -212,18 +223,6 @@ class combinedAtomList(object):
 			print txt
 		else:
 			logFile.writeToLog(str = txt)
-
-	def checkReliabilityPresent(self):
-
-		# only include 'reliability' attribute if it exists. This is only in
-		# case where FC maps have been created within the RIDL 
-		# map generation stage of th pipeline
-
-		try:
-			getattr(self.datasetList[0],'reliability')
-		except AttributeError:
-			return False
-		return True	
 
 	def findMetricName(self,metricName):
 
@@ -427,8 +426,8 @@ class combinedAtomList(object):
 		# is number of decimal points the values in csv should be
 		# rounded to (default of 2dp)
 
-		if normType == 'reliability':
-			if self.checkReliabilityPresent() is False:
+		if not self.inclFCderivedMetrics:
+			if normType in ('reliability','distance-weighted'):
 				return
 
 		csvName = '{}{}-{}.csv'.format(where,metric,normType.replace(" ",""))
@@ -997,6 +996,10 @@ class combinedAtomList(object):
 		# return the top n atoms within structure in terms of 
 		# metric 'metric'. 'n' takes values 'all' or an integer
 
+		# if normalisation type not recognised, set to default
+		if normType not in ('Standard','Calpha normalised'):
+			normType = 'Standard'
+
 		topN = self.getTopNAtoms(metric   = metric,
 								 normType = normType,
 								 dataset  = dataset,
@@ -1006,7 +1009,7 @@ class combinedAtomList(object):
 			data = atom.getAtomID()+'\t\t'
 			data += str(round(atom.densMetric['loss'][normType]['values'][dataset],2))+'\t\t'
 
-			if self.checkReliabilityPresent() is True:
+			if self.inclFCderivedMetrics:
 				data += str(round(atom.densMetric['loss']['reliability']['values'][dataset],2))+'\t\t'
 
 			for met in ('mean','gain','Bfactor'):
@@ -1014,7 +1017,7 @@ class combinedAtomList(object):
 			atomInfoList.append(data)
 
 		stringOut = 'Atom-ID\t\t\tDloss\t\t'
-		if self.checkReliabilityPresent() is True:
+		if self.inclFCderivedMetrics:
 			stringOut += 'Proximity\t\t'
 		stringOut += 'Dmean\t\tDgain\t\tBfactor\n'+\
 					 '\n'.join(atomInfoList)	
@@ -1739,18 +1742,11 @@ class combinedAtomList(object):
 		# specific atoms that fall outside this range
 
 		distMode = self.calcDiscreteDistMode(metricList = metricList)
-		if normType == 'Standard':
-			distMax  = np.max(metricList)
-			sudoMin  = distMode - np.linalg.norm(distMax-distMode)
-			count 	 = 0
-			for val in metricList:
-				if val < sudoMin: count+=1
-		elif normType == 'Calpha normalised':
-			distMin  = np.min(metricList)
-			sudoMax  = distMode + np.linalg.norm(distMin-distMode)
-			count 	 = 0
-			for val in metricList:
-				if val > sudoMax: count += 1
+		distMin  = np.min(metricList)
+		sudoMax  = distMode + np.linalg.norm(distMin - distMode)
+		count 	 = 0
+		for val in metricList:
+			if val > sudoMax: count += 1
 		return count
 
 	def calculateSkew(self,
