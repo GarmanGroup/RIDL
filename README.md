@@ -66,6 +66,8 @@ Several command line flags are required to run the program:
 
 - `-o` indicates that the full output summary file should be generated. This is currently a HTML-format file (including bootstrap features, internet access permitting). As a warning, including this option will currently make separate SVG-format graph files (stored in output subdirectories), and dependent on (a) the number of datasets in a damage series and (b) the total number of atoms within a structure, may take time to complete.
 
+- `-s` (optional) 'silent mode' can be used to prevent any text being output to the command line at run time.
+
 - `-g` (optional) can be used to prevent any graphs from being plotted at run time (will speed up the run). 
 
 ### Writing the RIDL input file
@@ -107,12 +109,6 @@ name3 insulin1
 mtz3 ../insDamSer/insu1.mtz
 phaseLabel PHIC
 FcalcLabel FC
-
-MAPINFO
-sfall_VDWR 1
-densMapType DIFF
-FFTmapWeight False
-deleteIntermediateFiles TRUE
 ```
 
 `dir` is the directory where the output files should be written.
@@ -138,8 +134,6 @@ The `LATERDATASET` section contains the information about the later (higher dose
 The `PHASEDATASET` contains information of MTZ-format file from which the phases will be taken. These are required for generating Fourier difference maps at run time. The `FcalcLabel` and `phaseLabel` parameters specify the `calculated structure factor` and `model phase` column labels within the input .mtz file respectively.
 
 In the above example, the first dataset .mtz is again chosen, and this is the recommended dataset to take. In this case, set `name3` to be the same as `name1`.
-
-The `MAPINFO` section contains additional run information for RIDL. It is recommended that the parameters within this section are not modified as this may lead to run issues.
 
 ## Inspecting the output
 
