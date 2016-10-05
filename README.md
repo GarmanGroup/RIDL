@@ -1,15 +1,15 @@
 # RIDL: Radiation-Induced Density Loss
 
-A program to calculate per-atom density change metrics within a specific damage MX investigation.
+A program to calculate per-atom density change metrics for a specific damage MX investigation.
 Suitable for any MX experiment in which datasets are collected on the **same crystal** over **multiple doses**.
 **NOTE: These scripts are currently under development and updated regularly..**
 
 - [In short: how to run](#in-short)
-- [A brief background](#brief-background)
-- [Usage](#Usage)
-	- [Requirements](#Requirements)
-	- [Running RIDL from command line](#Running-RIDL-from-command-line)
-	- [Writing the RIDL input file](#Writing-the-RIDL-input-file)
+- [A brief background](#a-brief-background)
+- [Usage](#usage)
+	- [Requirements](#requirements)
+	- [Running RIDL from command line](#running-ridl-from-command-line)
+	- [Writing the RIDL input file](#writing-the-ridl-input-file)
 - [The methodology explained with an example from PDB_redo](#pdbredo-example)
 
 ## In short: how to run
@@ -18,11 +18,15 @@ Suitable for any MX experiment in which datasets are collected on the **same cry
 
 - Run on command line ```python runRIDL.py -i input.txt -pco```
 
+## Queries
+
+Please email *charles.bury@dtc.ox.ac.uk*
+
 ## A brief background
 
 During MX data collection, when a protein or nucleic acid crystal is exposed to increasing doses of radiation, localised radiation-induced chemical changes can occur within the crystalline macromolecules, even at doses of the order of several MGy (at 100 K). These *specific damage* manifestations can ultimately leading to false biological interpretations within structures during subsequent model building if not accounted for. 
 
-Localised chemical changes within a macromolecule can be detected by observing shifts in the electron density attributed to particular atoms within the crystal with increasing dose. For instance, radiation-induced decarboxylation of glutamate and aspartate residues has been reported, for a wide range of crystalline model protein systems, as the deterioration in density local to the carboxylate group at different dose states within F<sub>obs</sub>(d<sub>n</sub>) - F<sub>obs</sub>(d<sub>1</sub>) Fourier difference maps between different accumulated dose states d<sub>1</sub> and d<sub>n</sub> within a single crystal.
+Localised chemical changes within a macromolecule can be detected by observing shifts in the electron density attributed to particular atoms within the crystal with increasing dose. For instance, radiation-induced decarboxylation of glutamate and aspartate residues has been reported, for a wide range of crystalline model protein systems, as the deterioration in density local to the carboxylate group at different dose states within *F<sub>obs</sub>(d<sub>n</sub>) - F<sub>obs</sub>(d<sub>1</sub>)* Fourier difference maps between different accumulated dose states *d<sub>1</sub>* and *d<sub>n</sub>* within a single crystal.
 
 Specific radiation damage has been well characterised previously using Fourier difference maps and detecting *difference map peaks* (i.e. localised regions of significant electron density *loss* or *gain* with increasing dose). However, such time-intensive visual inspection is limited by the inherent subjective bias of the investigator; a problem that is compounded by the fact that with increasing dose Fourier difference maps become increasingly noisy, due to the overall degradation of the diffraction data quality (global radiation damage) and unmodelled chemistry within crystal bulk solvent regions. To mitigate such bias and permit systematic categorisation of radiation-induced structure changes over a series of increasing doses for individual refined atoms within a structure, the set of scripts **RIDL** has been written to provide a pipeline to calculate per-atom metrics to quantify the damage susceptibility of each refined atom within a macromolecular structure.
 
@@ -50,7 +54,7 @@ The scripts require the following to run:
 
 ### Running RIDL from command line
 
-Assume here we have a damage series collected on a single crystal, comprising of increasing dose .pdb and .mtz files (e.g. dataset1.pdb, dataset1.mtz, dataset2.pdb, dataset2.mtz, ...)
+Assume here we have a damage series collected on a single crystal, comprising of increasing dose *.pdb* and *.mtz* files (e.g. *dataset1.pdb*, *dataset1.mtz*, *dataset2.pdb*, *dataset2.mtz*, ...)
 
 The simplest way to run the RIDL pipeline is run it directly from the command line. For a default run of RIDL (including generation of HTML-format summary file with accompanying SVG-format graphs), run:
 
@@ -111,29 +115,33 @@ phaseLabel PHIC
 FcalcLabel FC
 ```
 
-`dir` is the directory where the output files should be written.
+
+
+`dir` is the directory where the output files should be written
 
 The dataset information for the damage series is broken down into three sections: `INITIALDATASET`, `LATERDATASET` and `PHASEDATASET`. 
 
 The `INITIALDATASET` section contains information about the first dataset within the damage series:
 
-- `name1` is the name you would like to call the first dataset. This will affect the naming of files subsequently generated by RIDL. This name does not have to be the same as the input .pdb or .mtz files for the first dataset.
-
-- `mtz1` is the path to the first dataset .mtz file.
-
-- `mtzlabels1` is the labelling convention within the first dataset .mtz file for the Fobs and SIGFobs columns. In the above example the Fobs column is currently *F_New* and the SIGFobs is set to *SIGF_New*, such that this input becomes `_New` above. Currently, the same labelling convention must be present for both the Fobs and SIGFobs columns within the input .mtz file.
-
-- `pdb1` is the full path to the first dataset .pdb file.
-
-- `RfreeFlag1` is the full column name for the Rfree column as specified within the input .mtz file.
-
-- `dose1` is the calculated dose for the first dataset within the damage series. It is recommended that *RADDOSE-3D* is run prior to RIDL (see www.raddo.se). If doses are unknown, set this input to `NOTCALCULATED`.
+Property | Description
+--- | --- 
+`name1` | Name you would like to call the first dataset. This will affect the naming of files subsequently generated by RIDL. This name does not have to be the same as the input .pdb or *.mtz* files for the first dataset
+`mtz1` | the path to the first dataset *.mtz* file
+`mtzlabels1` | Labelling convention for first dataset *.mtz* file for the *Fobs* and *SIGFobs* columns. In the above example the Fobs column is currently *F_New* and the *SIGFobs* is set to *SIGF_New*, such that this input becomes `_New` above. Currently, the same labelling convention must be present for both the *Fobs* and *SIGFobs* columns in the input *.mtz* file
+`pdb1` | Full path to the first dataset *.pdb* file
+`RfreeFlag1` | Full *R<sub>free</sub>* column name as specified within the input *.mtz* file
+`dose1` | Calculated dose for the first dataset. It is recommended that *RADDOSE-3D* is run prior to RIDL (see *www.raddo.se*). If doses are unknown, set this input to `NOTCALCULATED
 
 The `LATERDATASET` section contains the information about the later (higher dose) dataset within the damage series. See the `INITIALDATASET` section above for details of the inputs to be specified. The main noticable difference for `LATERDATASET` is that multiple higher dose datasets can be processed successively within the same input file, by including comma-separated inputs within this section (see the input file example above). This is the recommended way to process a damage series comprising multiple higher dose datasets.
 
-The `PHASEDATASET` contains information of MTZ-format file from which the phases will be taken. These are required for generating Fourier difference maps at run time. The `FcalcLabel` and `phaseLabel` parameters specify the `calculated structure factor` and `model phase` column labels within the input .mtz file respectively.
+The `PHASEDATASET` contains information of MTZ-format file from which the phases will be taken. These are required for generating Fourier difference maps at run time. The additional properties here are:
 
-In the above example, the first dataset .mtz is again chosen, and this is the recommended dataset to take. In this case, set `name3` to be the same as `name1`.
+Property | Description
+--- | --- 
+`FcalcLabel` | calculated structure factor column label in input *.mtz* file
+`phaseLabel` | model phase column label in input *.mtz* file
+
+In the above example, the first dataset *.mtz* is again chosen, and this is the recommended dataset to take. In this case, set `name3` to be the same as `name1`.
 
 ## Inspecting the output
 
@@ -147,4 +155,15 @@ The full HTML-format summary file can be generated by running:
 
 ```python runRIDL.py -pco```
 
-The summary file will be output to the output subdirectory `RIDL-metrics/`. The summary file is written to be self expanatory. Please email charles.bury@dtc.ox.ac.uk for queries on the interpretation of this summary file. 
+The summary file will be output to the output subdirectory `RIDL-metrics/`. The summary file is designed to be self expanatory. Please email *charles.bury@dtc.ox.ac.uk* for queries on the interpretation of this summary file.
+
+## Citing when using the scripts
+
+The formulation of the *D<sub>loss</sub>* metric can be found at:
+
+- Bury CS, et al. (2016) RNA protects a nucleoprotein complex against radiation damage. Acta Crystallogr Sect D Struct Biol 72(5):648–657.
+
+Please cite this if you would like to use these scripts for your own specific damage analysis.
+
+ 
+
