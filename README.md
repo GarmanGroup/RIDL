@@ -4,7 +4,7 @@ A program to calculate per-atom density change metrics for a specific damage MX 
 Suitable for any MX experiment in which datasets are collected on the **same crystal** over **multiple doses**.
 **NOTE: These scripts are currently under development and updated regularly..**
 
-- [In short: how to run](#in-short:-how-to-run)
+- [How to run in brief](#how-to-run-in-brief)
 - [A brief background](#a-brief-background)
 - [Usage](#usage)
 	- [Requirements](#requirements)
@@ -12,7 +12,7 @@ Suitable for any MX experiment in which datasets are collected on the **same cry
 	- [Writing the RIDL input file](#writing-the-ridl-input-file)
 - [The methodology explained with an example from PDB_redo](#the-methodology-explained-with-an-example-from-pdb_redo)
 
-## In short: how to run
+## How to run in brief
 
 - Compose an input file for the job (e.g. input.txt)
 
