@@ -134,6 +134,7 @@ class pipeline():
 		# generate FC map using FFT
 		if self.includeFCmaps() is True:
 			self.printStepNumber()
+
 			fft_FC = FFTjob(mapType   = 'FC',
 						    FOMweight = self.FOMweight,
 						    pdbFile   = self.reorderedPDBFile,
@@ -219,17 +220,17 @@ class pipeline():
 			return False
 
 		inputFile = open(self.inputFile,'r')
-		props = {'pdbIN'        : 'pdbcurPDBinputFile',
-				 'runname'      : 'runName',
-				 'sfall_VDWR'   : 'sfall_VDWR',
-				 'mtzIN'        : 'inputMtzFile',
-				 'foldername'   : 'outputDir',
-				 'initialPDB'   : 'initPDB',
-				 'laterPDB'     : 'laterPDB',
-				 'phaseDataset' : 'phaseDataset',
-				 'densMapType'  : 'densMapType',
-				 'FFTmapWeight' : 'FOMweight',
-				 'FCmaps'       : 'FCmaps'}
+		props = {'pdbIN'           : 'pdbcurPDBinputFile',
+				 'runname'         : 'runName',
+				 'sfall_VDWR'      : 'sfall_VDWR',
+				 'mtzIN'           : 'inputMtzFile',
+				 'foldername'      : 'outputDir',
+				 'initialPDB'      : 'initPDB',
+				 'laterPDB'        : 'laterPDB',
+				 'phaseDataset'    : 'phaseDataset',
+				 'densMapType'     : 'densMapType',
+				 'FFTmapWeight'    : 'FOMweight',
+				 'calculateFCmaps' : 'FCmaps'}
 
 		self.sfall_GRID = []
 		for l in inputFile.readlines():

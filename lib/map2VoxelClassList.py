@@ -38,7 +38,7 @@ def readMap(dirIn    = './',
 
     rho.type = unpack('=l',bmf.read(4))[0]
 
-    for s in ('1','2','3'):
+    for s in ('fast','med','slow'):
         rho.start[s] = unpack('=l',bmf.read(4))[0] 
 
     for g in ('1','2','3'):
@@ -51,7 +51,7 @@ def readMap(dirIn    = './',
         rho.axis[a] = unpack('=l',bmf.read(4))[0] 
         
     for d in ('min','max','mean'): 
-        rho.density[d] = unpack('f',bmf.read(4))[0] 
+        rho.density[d] = unpack('f',bmf.read(4))[0]
 
     s = rho.getHeaderInfo(tab = True)
 
@@ -59,7 +59,8 @@ def readMap(dirIn    = './',
     if log != '':
         if os.path.exists(log.logFile):
             for l in s.split('\n'): log.writeToLog(l)
-    else: print s
+    else: 
+        print s
 
     # calculate the last nx*ny*nz bytes of file (corresponding to 
     # the position of the 3D electron density array). Note factor 
@@ -67,6 +68,28 @@ def readMap(dirIn    = './',
     # density array values.
     densitystart = filesize - 4*(reduce(lambda x, y: x*y, rho.nxyz.values()))
     
+    # get symmetry operations from map header
+    for j in range(23,58):
+        if j != 53 and j < 57:
+            val = unpack('=l',bmf.read(4))[0]
+            if j == 24:
+                numSymBytes = val
+        elif j < 57:
+            for i in range(4):
+                val = unpack('c',bmf.read(1))[0]
+        else:
+            for i in range(10):
+                for  k in range(80):
+                    char = unpack('c',bmf.read(1))[0]
+    symOps = []
+    for j in range(numSymBytes/80):
+        line = ''
+        for k in range(80):
+            char = unpack('c',bmf.read(1))[0]
+            line += char
+        symOps.append(line)
+    rho.symOpsUnformatted = symOps
+
     # next seek start of electron density data
     bmf.seek(densitystart,0)
     
@@ -109,7 +132,7 @@ def readMap(dirIn    = './',
                 else:    
                     appenddens(s)
                     appendindex(counter)
-            ln = '# voxels in total : {}'.format(counter+1)
+            ln = '# voxels in total : {}'.format(counter + 1)
             log.writeToLog(str = ln)
 
         # efficient way to read through density map file using indices of atoms
@@ -198,10 +221,10 @@ def densmap2class_readheader(mapfilename):
         print 'Map type 1 found... can only handle type 2'
         print '---> terminating script...'
         sys.exit()
-        
-    rho.start1 = struct.unpack('=l',binarymapfile.read(4))[0] 
-    rho.start2 = struct.unpack('=l',binarymapfile.read(4))[0] 
-    rho.start3 = struct.unpack('=l',binarymapfile.read(4))[0] 
+    
+    rho.start1 = struct.unpack('f',binarymapfile.read(4))[0] 
+    rho.start2 = struct.unpack('f',binarymapfile.read(4))[0] 
+    rho.start3 = struct.unpack('f',binarymapfile.read(4))[0] 
     print 'Start positions: '
     print '%s %s %s' %(rho.start1,rho.start2,rho.start3)
 

@@ -28,7 +28,8 @@ class logFile():
 		# top of the log file to avoid repetition.
 
 		log = open(self.logFile,'a')
-		log.write('All files come from the following directory unless otherwise given:\n"{}"\n'.format(self.fileDir))
+		log.write('All files come from the following directory '+\
+				  'unless otherwise given:\n"{}"\n'.format(self.fileDir))
 		log.close()
 
 	def writeToLog(self,

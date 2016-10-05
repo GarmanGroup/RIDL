@@ -34,7 +34,7 @@ class provideFeedback(object):
 		self.plot          = plotGraphs
 		self.logFile       = logFile
 		self.pklSeries     = pklSeries
-		self.plotHeatMaps  = plotHeatMaps
+		self.plotHeatMaps  = False
 		self.doses         = doses
 		self.pdbNames      = pdbNames
 		self.inDir         = inputDir
@@ -57,6 +57,7 @@ class provideFeedback(object):
 			self.plotHeatMaps  = False
 
 		if autoRun:
+			atmsObjs.findProbAboveAvDam()
 			self.run()
 
 	def run(self):
@@ -80,6 +81,8 @@ class provideFeedback(object):
 		# provide summary html file for Dloss metric per-dataset
 		if self.writeSumFile:
 			self.summaryFile(normType = 'Standard') 
+			self.summaryFile(metric    = 'mean',
+							 normType  = 'distance-weighted')
 			if self.checkCalphasPresent(atomObjList = self.atmsObjs) is True:
 				self.summaryFile(normType = 'Calpha normalised') 
 		
@@ -119,7 +122,8 @@ class provideFeedback(object):
 		if self.csvExtent == 'simple':
 
 			metrics = [['loss','Standard'],
-					   ['loss','reliability']]
+					   ['loss','reliability'],
+					   ['mean','distance-weighted']]
 
 			if CalphasPresent:
 				metrics += [['loss','Calpha normalised']]
@@ -564,9 +568,10 @@ class provideFeedback(object):
 	def writeDamSitesToFile(self, 
 							metric      = 'loss', 
 							normType    = 'Standard', 
-							numDamSites = 'all'):
+							numDamSites = 25):
 
 		# write top damage sites to .pdb file for each dataset
+		# 'numDamSites' takes 'all' or integer
 
 		self.damSitesPDB = []
 		for i in range(self.getNumDatasets()): 

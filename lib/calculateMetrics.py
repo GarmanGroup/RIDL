@@ -37,7 +37,9 @@ class calculateMetrics(object):
 				 doses      = [],
 				 plot       = 'no',
 				 output     = 'simple',
-				 logFile    = ''):
+				 logFile    = '',
+				 sumFiles   = True,
+				 inclFCmets = True):
 
 		self.inDir 		= inDir 		# the input file directory
 		self.outDir  	= outDir 		# the output file directory
@@ -50,7 +52,9 @@ class calculateMetrics(object):
 		self.plot       = plot 			# (bool) decide to plot per-residue summary plots per dataset
 		self.output     = output        # the amount of output to provide (either 'simple' for just Dloss
 										# info or 'full' larger selection of output files)
-		self.logFile    = logFile
+		self.logFile    = logFile       # log file for the current RIDL job
+		self.sumFiles   = sumFiles      # write summary html files and graphs (bool)
+		self.inclFCmets = inclFCmets    # generate metrics which require FC maps to be made
 		
 	def runPipeline(self,
 					map_process   = True,
@@ -67,7 +71,7 @@ class calculateMetrics(object):
 
 		# check whether valid inputs to function
 		valid = self.checkValidInputs(map_process,post_process,retrieve)
-		if valid is False: 
+		if not valid: 
 			return
 
 		# first need to run function above to read in input file containing info
@@ -76,23 +80,23 @@ class calculateMetrics(object):
 		self.logFile.writeToLog(str = ln)
 
 		success = self.readInputFile()
-		if success is False: 
+		if not success: 
 			return
 
 		success = self.checkInOutDirExist()
-		if success is False: 
+		if not success: 
 			return
 
 		self.setOutputDirs()
 
-		if map_process is True:
+		if map_process:
 			self.map_processing()
 		else:
 			ln = 'Map processing task not chosen...'
 			self.logFile.writeToLog(str = ln)
 		self.fillerLine()
 
-		if post_process is True:
+		if post_process:
 			self.post_processing()
 
 			# save metric data to pkl file
@@ -107,13 +111,13 @@ class calculateMetrics(object):
 			inputfile.write('\npklDataFile ' + pklSeries)
 			inputfile.close()
 
-			self.feedback(csvOnly = True)
+			self.feedback(csvOnly = not self.sumFiles)
 
 		else: 
 			ln = 'Post processing job not chosen...'
 			self.logFile.writeToLog(str = ln)
 
-		if retrieve is True:
+		if retrieve:
 			self.PDBmulti_retrieve()
 			self.feedback()
 
@@ -182,7 +186,7 @@ class calculateMetrics(object):
 			datasetNums
 		except UnboundLocalError:
 			found = False
-		if found is True:
+		if found:
 			self.pdbNames = [self.seriesName+num for num in datasetNums.split(',')]
 			return True
 		found = True
@@ -190,11 +194,11 @@ class calculateMetrics(object):
 			self.laterDatasets
 		except AttributeError:
 			found = False
-		if found is True:
+		if found:
 			self.pdbNames = self.laterDatasets.split(',')
 			return True
 		else:
-			if printText is True:
+			if printText:
 				err = 'Error! Unable to extract list of dataset names from input file'
 				self.logFile.writeToLog(str = err)
 			return False
@@ -205,7 +209,7 @@ class calculateMetrics(object):
 		# found and make subdirectories if present
 
 		for dir in ([[self.inDir,'Input'],[self.outDir,'Output']]):
-			if path.isdir(dir[0]) == False:
+			if not path.isdir(dir[0]):
 				err = '{} file location: {} does not exist. '.format(dir[1],dir[0])+\
 					  'Please select an appropriate directory'
 				self.logFile.writeToLog(str = err)
@@ -279,7 +283,8 @@ class calculateMetrics(object):
 										     plotScatter = False,
 										     plotHist    = self.plot,
 										     plotBar     = False,
-										     logFile     = self.logFile)
+										     logFile     = self.logFile,
+										     calcFCmap   = self.inclFCmets)
 
    			maps2DensMets.maps2atmdensity()
 
@@ -314,7 +319,7 @@ class calculateMetrics(object):
 		initialPDBlist = PDBtoList(pdbFileName = self.get1stDsetPDB())
 
 		# retrieve object lists of atoms for each damage set
-		ln = 'Reading in pkl files for higher dataset structures...'
+		ln = '\nReading in pkl files for higher dataset structures...'
 		self.logFile.writeToLog(str = ln)
 
 		dList = [] # dataset list
@@ -329,7 +334,10 @@ class calculateMetrics(object):
 			# add new retrieved damage set list to dList
 			dList.append(PDB_ret)
 		pklDir = '/'.join(pkl_filename.split('/')[:-1])+'/'
-		rmdir(pklDir)
+
+		# remove directory if it is now empty
+		if listdir(pklDir) == "":
+			rmdir(pklDir)
 
 		# create a list of atom objects with attributes as lists varying over 
 		# dose range, only including atoms present in ALL damage datasets
@@ -340,7 +348,8 @@ class calculateMetrics(object):
 										 doseList       = self.doses,
 										 initialPDBList = initialPDBlist,
 										 outputDir      = self.outputDir,
-										 seriesName     = self.seriesName)
+										 seriesName     = self.seriesName,
+										 inclFCmetrics  = self.inclFCmets)
 
 		combinedAtoms.getMultiDoseAtomList()
 
@@ -348,7 +357,7 @@ class calculateMetrics(object):
 		combinedAtoms.calcAdditionalMetrics(newMetric = 'average')
 
 		# calculate Calpha normalised metrics, if Calpha atoms exist
-		if self.checkCalphasPresent(atomObjList = combinedAtoms) is True:
+		if self.checkCalphasPresent(atomObjList = combinedAtoms):
 			for m in ('loss','mean','gain','Bfactor'):
 				combinedAtoms.calcAdditionalMetrics(metric = m)
 		
@@ -380,7 +389,7 @@ class calculateMetrics(object):
 		# be output from the run (i.e. no html summary
 		# file and no plots)
 
-		if includeTests is False:
+		if not includeTests:
 			provideFeedback(csvOnly       = csvOnly,
 							atmsObjs      = self.combinedAtoms,
 							logFile       = self.logFile,
@@ -426,7 +435,7 @@ class calculateMetrics(object):
 
 		# print a filler line to command line
 
-		if blank is False:
+		if not blank:
 			ln = '\n---------------------------------------------------------------'	
 		else:
 			ln = '\n'

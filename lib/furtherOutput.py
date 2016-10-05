@@ -250,8 +250,8 @@ class furtherAnalysis(provideFeedback):
 		# 									  plotType  = plotType,
 		# 									  saveName  = saveName)
 
-		res = ['GLU','ASP','TYR','LYS','ILE','THR']
-		ref = ['GLN','ASN','PHE','ARG','LEU','SER']
+		res = ['GLU','ASP','TYR','LYS','ILE','THR','VAL']
+		ref = ['GLN','ASN','PHE','ARG','LEU','SER','THR']
 		saveName = '{}plot_Metric-D{}_Normalisation-{}-KSstat_keyResidues'.format(plotType,self.metric,self.normType)
 
 		sideOnly = True
