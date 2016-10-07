@@ -268,7 +268,7 @@ MAPINFO
 
 		name = '{}RIDLjob.log'.format(self.outputDir)
 
-		logName = lambda x: name.strip('.log')+'_{}{}'.format(x,'.log')
+		logName = lambda x: name.replace('.log','_{}{}'.format(x,'.log'))
 		i = 1
 		while os.path.isfile(logName(i)): 
 			i += 1 
