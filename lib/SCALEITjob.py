@@ -88,6 +88,49 @@ class SCALEITjob():
 			  'Output mtz file: {}'.format(fileOut)
 		self.runLog.writeToLog(txt)
 
+		statsStr = self.parseLogForStats()
+		self.runLog.writeToLog(statsStr)
+
+	def parseLogForStats(self):
+
+		# after scaleit has run, can now parse the
+		# output log file for useful summary stats
+
+		stats = {}
+		log   = self.outputDir + self.outputLogfile
+		f     = open(log, 'r')
+		tag   = '$TABLE:Analysis v resolution'
+		tag2  = 'equivalent isotropic temperature factor'
+		
+		tagLocated = False
+		for l in f.readlines():
+
+			if tag2 in l:
+				isoBfactor = -round(float(l.split(' is ')[1]),2)
+				stats['Brel'] = isoBfactor
+
+			if tag in l:
+				tagLocated = True
+
+			if tagLocated:
+				if l.replace(' ','').startswith('THE'):
+					parts = [j for j in l.split() if j!='']
+
+					for s,i in zip(['Sc_kraut','SCALE','RFAC','Wted_R'],[4,5,6,8]):
+						stats[s] = parts[i]
+
+		if stats == {}:
+			strForLog = ' Unsuccessful in locating output stats in scaleit log file'
+		else:
+			strForLog = 'SCALEIT run statistics:\n'
+
+			for k in stats.keys():
+				strForLog += '\t{}:\t {}\n'.format(k[:6],stats[k])
+
+		self.stats = stats
+
+		return strForLog
+
 	def printPurpose(self,
 					 include = True):
 
