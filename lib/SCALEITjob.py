@@ -100,9 +100,15 @@ class SCALEITjob():
 		log   = self.outputDir + self.outputLogfile
 		f     = open(log, 'r')
 		tag   = '$TABLE:Analysis v resolution'
+		tag2  = 'equivalent isotropic temperature factor'
 		
 		tagLocated = False
 		for l in f.readlines():
+
+			if tag2 in l:
+				isoBfactor = -round(float(l.split(' is ')[1]),2)
+				stats['Brel'] = isoBfactor
+
 			if tag in l:
 				tagLocated = True
 
@@ -122,7 +128,7 @@ class SCALEITjob():
 				strForLog += '\t{}:\t {}\n'.format(k[:6],stats[k])
 
 		self.stats = stats
-		
+
 		return strForLog
 
 	def printPurpose(self,
