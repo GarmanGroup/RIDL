@@ -234,7 +234,7 @@ class processFiles():
 
 		defaults = [1,
 				    'DIFF',
-				    'NONE',
+				    'False',
 				    'TRUE',
 				    'TRUE']
 
