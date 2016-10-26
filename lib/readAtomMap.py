@@ -18,7 +18,7 @@ import math
 # check if seaborn library is present and include if so
 from checkSeabornPresent import checkSeabornPresent as checkSns
 seabornFound = checkSns()
-if seabornFound is True:
+if seabornFound:
     import seaborn as sns
 
 class maps2DensMetrics():
@@ -304,7 +304,7 @@ class maps2DensMetrics():
     def calcDensMetricsForAtom(self,
                                atom        = [],
                                plotDistn   = False,
-                               clustAnalys = True):
+                               clustAnalys = False):
 
         # calculate density metrics for a particular atom
 
@@ -367,7 +367,7 @@ class maps2DensMetrics():
 
     def calcDensMetrics(self,
                         plotDistn    = False,
-                        clustAnalys  = True,
+                        clustAnalys  = False,
                         showProgress = True,
                         parallel     = False):
 
@@ -451,7 +451,8 @@ class maps2DensMetrics():
                 fig.savefig('{}testDistnPlot-{}{}'.format(self.filesOut,atomOfInterest.getAtomID(),plotType))
 
     def plotDensScatterPlots(self,
-                             printText = False):
+                             printText   = False,
+                             clustAnalys = False):
 
         # plot scatter plots for density metrics 
 
@@ -472,10 +473,11 @@ class maps2DensMetrics():
 
         # # only include below if per-atom clusters are
         # # calculated - currently very slow
-        plotVars += [['negCluster','meandensity'],
-                     ['negCluster','mindensity'],
-                     ['totDensShift','meandensity'],
-                     ['totDensShift','mindensity']]
+        if clustAnalys:
+            plotVars += [['negCluster','meandensity'],
+                         ['negCluster','mindensity'],
+                         ['totDensShift','meandensity'],
+                         ['totDensShift','mindensity']]
 
         if self.calcFCmap:
             plotVars.append(['meandensity','wMean'])
