@@ -2,6 +2,7 @@
 import math
 import sys
 import numpy as np
+import numexpr as ne   
 
 class residue:
 
@@ -453,46 +454,56 @@ class MapInfo:
         # unit cell indices to xyz coordinates here
         # so not computed for each individual voxel
 
+    def curateSymOps(self,
+                     strIn = ''):
+
+        # take unformatted sym operations from map file
+        # header and convert to a set of usable operations
+        # but still in the form of a string
+
+        symOps = []
+        for symOp in strIn:
+            symOpLine = []
+            l = symOp.replace(' ','').split(',')
+            for lpart in l:
+                lnew = ''
+                lpart2 = lpart.replace('/','./')
+                for j,c in enumerate(lpart2):
+                    if c in ['X','Y','Z']:
+                        if j == 0:
+                            lnew += c
+                        else:
+                            try:
+                                int(lpart2[j-1])
+                                lnew += '*'+c
+                            except ValueError:
+                                lnew += c
+                    else:
+                        lnew += c
+                symOpLine.append(lnew)
+            symOps.append(symOpLine)
+        self.symOpsStr = symOps
+
     def getSymOps(self,
                   Xvals = [],
                   Yvals = [],
                   Zvals = []):
 
-        # take unformatted sym operations from map file
-        # header and convert to a set of usable operations
+        # given a series of xyz values, find symmetry equivalent
+        # points in space, using symmetry ops supplied in map 
+        # file header information. 
 
         try:
-            self.symOpsUnformatted
+            self.symOpsStr
         except AttributeError:
             return
 
-        symOpsFormatted = []
-        for symOp in self.symOpsUnformatted:
-            symOpFormatted = [[],[],[]]
-            print symOp
-            l = symOp.replace(' ','').split(',')
-            for i in range(len(Xvals)):
-                X = Xvals[i]
-                Y = Yvals[i]
-                Z = Zvals[i]   
-                for k,li in enumerate(l):
-                    lnew = ''
-                    li2 = li.replace('/','./')
-                    for j,c in enumerate(li2):
-                        if c in ['X','Y','Z']:
-                            if j == 0:
-                                lnew += c
-                            else:
-                                try:
-                                    int(li2[j-1])
-                                    lnew += '*'+c
-                                except ValueError:
-                                    lnew += c
-                        else:
-                            lnew += c
-                    symOpFormatted[k].append(eval(lnew))
-            symOpsFormatted.append(symOpFormatted)
-        return symOpsFormatted
+        xyzDic = {'X' : Xvals,'Y' : Yvals,'Z' : Zvals}
+        symOps = []
+        for symOp in self.symOpsStr:
+            symOps.append([ne.evaluate(s, local_dict = xyzDic) for s in symOp])
+
+        return symOps
 
     def reshape1dTo3d(self):
 
@@ -513,16 +524,37 @@ class MapInfo:
         # cell parameters determine the xyz position of
         # the voxel in the asymmetric unit
 
-        axes = ['fast','med','slow']
+        axs = ['fast','med','slow']
         q   = self.nxyz['ny']*self.nxyz['nx']
         k   = voxPos1d/q + 1 
         k1  = voxPos1d%q
         i   = k1%self.nxyz['nx'] + 1
         j   = k1/self.nxyz['nx'] + 1
 
-        ijk = np.array([i,j,k]) + np.array([self.start[ax] for ax in axes])
+        ijk = np.array([i,j,k]) + np.array([self.start[ax] for ax in axs])
 
-        order = [self.axis[m] for m in axes]
+        order = [self.axis[m] for m in axs]
+        ijk_ordered = [x for (y,x) in sorted(zip(order,list(ijk)))]
+
+        return ijk_ordered
+
+    def get3dVoxPosns(self,
+                      voxPos1d = []):
+
+        # for all 1d voxel positions within a list and unit 
+        # cell parameters determine the xyz position of
+        # the voxels in the asymmetric unit
+
+        axs = ['fast','med','slow']
+        q   = self.nxyz['ny']*self.nxyz['nx']
+        k   = np.array(voxPos1d)/q + 1 
+        k1  = np.mod(voxPos1d,q)
+        i   = np.mod(k1,self.nxyz['nx']) + 1
+        j   = k1/self.nxyz['nx'] + 1
+
+        ijk = np.array([i,j,k]) + np.array([[self.start[ax]] for ax in axs])
+
+        order = [self.axis[m] for m in axs]
         ijk_ordered = [x for (y,x) in sorted(zip(order,list(ijk)))]
 
         return ijk_ordered
@@ -572,23 +604,17 @@ class MapInfo:
 
         # find the cartesian xyz location for a voxel in asym unit
         # coordType takes 'cartesian' or 'fractional'
-
-        ijkFull = [[],[],[]]
-        for i in vox1Dindices:
-            ijk = self.get3dVoxPosn(i)
-            for a,b in enumerate(ijk):
-                ijkFull[a].append(b) 
-
-        xyz = self.abc2xyz(asymIndices = ijkFull,
+        
+        ijk = self.get3dVoxPosns(vox1Dindices)        
+        xyz = self.abc2xyz(asymIndices = ijk,
                            coordType   = coordType)
 
-        xyzNeat = []
         if coordType == 'cartesian':
             rnd = 2
         else:
             rnd = 3
-        for l in range(len(xyz[0])):
-            xyzNeat.append([round(xyz[m][l],rnd) for m in range(3)])
+
+        xyzNeat = np.transpose(np.around(xyz,rnd))
 
         return xyzNeat
 
