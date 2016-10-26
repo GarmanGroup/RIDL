@@ -988,10 +988,13 @@ class combinedAtomList(object):
 		return pdbOutName
 
 	def getTopNAtomsString(self,
-						   metric   = 'loss',
-						   normType = 'Standard',
-						   dataset  = 0,
-						   n        = 25):
+						   metric          = 'loss',
+						   normType        = 'Standard',
+						   incOtherMetrics = True,
+						   dataset  	   = 0,
+						   useInHTML       = True,
+						   splitBy         = ',',
+						   n        	   = 25):
 
 		# return the top n atoms within structure in terms of 
 		# metric 'metric'. 'n' takes values 'all' or an integer
@@ -1006,20 +1009,29 @@ class combinedAtomList(object):
 								 n        = n)
 		atomInfoList = []
 		for atom in topN:
-			data = atom.getAtomID()+'\t\t'
-			data += str(round(atom.densMetric['loss'][normType]['values'][dataset],2))+'\t\t'
+			data = atom.getAtomID()+splitBy
+			for norm in ('Standard','Calpha normalised'):
+				data += str(round(atom.densMetric['loss'][norm]['values'][dataset],2))+splitBy
 
 			if self.inclFCderivedMetrics:
-				data += str(round(atom.densMetric['loss']['reliability']['values'][dataset],2))+'\t\t'
+				data += str(round(atom.densMetric['loss']['reliability']['values'][dataset],2))+splitBy
 
-			for met in ('mean','gain','Bfactor'):
-				data += str(round(atom.densMetric[met][normType]['values'][dataset],2))+'\t\t'
+			if incOtherMetrics:
+				extra = []
+				for met in ('mean','gain','Bfactor'):
+					extra.append(str(round(atom.densMetric[met]['Standard']['values'][dataset],2)))
+				data += splitBy.join(extra)
 			atomInfoList.append(data)
 
-		stringOut = 'Atom-ID\t\t\tDloss\t\t'
+		if useInHTML:
+			calphaStr = 'C<sub>&#945</sub>'
+		else:
+			calphaStr = 'Calpha'
+
+		stringOut = 'Atom-ID{}Dloss{}Dloss ({}-normalised){}'.format(splitBy,splitBy,calphaStr,splitBy)
 		if self.inclFCderivedMetrics:
-			stringOut += 'Proximity\t\t'
-		stringOut += 'Dmean\t\tDgain\t\tBfactor\n'+\
+			stringOut += 'Peak Proximity{}'.format(splitBy)
+		stringOut += 'Dmean{}Dgain{}Bfactor\n'.format(splitBy,splitBy)+\
 					 '\n'.join(atomInfoList)	
 
 		return stringOut
@@ -1419,6 +1431,7 @@ class combinedAtomList(object):
 					name     = 'Residue',
 					sortby   = 'mean',
 					n        = 20,
+					numDp    = 2,
 					normType = 'Standard',
 					format   = 'txt'):
 
@@ -1429,7 +1442,7 @@ class combinedAtomList(object):
 
 		sortbyDict   = self.getStatsForList(metricList = [1,1])
 		headerOrder  = sortbyDict['returnOrder']
-		headerString = '{}\t\t{}\t\t{}\t\t{}\t\t{}\t{}\t\t{}\n'.format(name,*headerOrder)
+		headerString = '{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\n'.format(name,*headerOrder)
 		if sortby not in sortbyDict.keys(): 
 			return 'Unexpected ranking specified'
 		if n != 'all' and not isinstance(n,int): 
@@ -1440,7 +1453,7 @@ class combinedAtomList(object):
 			statsDic = stats[key]
 			statsFmtd = []		
 			for key2 in headerOrder: 
-				if isinstance(statsDic[key2],float): statsFmtd.append('{0:.3f}'.format(statsDic[key2]))
+				if isinstance(statsDic[key2],float): statsFmtd.append('{}'.format(round(statsDic[key2],numDp)))
 				else: statsFmtd.append(str(statsDic[key2]))
 			string = '\t\t'.join([str(key)]+statsFmtd)
 			list1.append(string)
@@ -2120,6 +2133,7 @@ class combinedAtomList(object):
 						 legFont    = 14,
 						 titleFont  = 20,
 						 plotTitle  = '',
+						 inclTitle  = True,
 						 calcKSstat = False,
 						 calcADstat = False):
 
@@ -2173,7 +2187,7 @@ class combinedAtomList(object):
 			atmList = self.atomList
 
 		sns.set_style("ticks")
-		sns.set_context(rc = {"figure.figsize": (9, 6)})
+		sns.set_context(rc = {"figure.figsize": (10, 7)})
 		fig = plt.figure()
 		ax  = plt.subplot(111)
 
@@ -2327,10 +2341,11 @@ class combinedAtomList(object):
 					t += '\n{} stat: {}, p-value: {}'.format(k,
 															 round(stats[k]['statistic'],3),
 															 round(stats[k]['p-value'],3))
-
 		else:
 			t = plotTitle
-		plt.title(t,fontsize = titleFont)
+
+		if inclTitle:
+			plt.title(t,fontsize = titleFont)
 
 		if not save: 
 			plt.show()
@@ -2681,6 +2696,7 @@ class combinedAtomList(object):
 					titleFont = 20,
 					figTitle  = '',
 					saveName  = '',
+					figSize   = [14,8],
 					useDoses  = True,
 					palette   = 'hls'):
 	
@@ -2739,8 +2755,11 @@ class combinedAtomList(object):
 		if len(foundAtoms) == 0:
 			print 'No atoms found..'
 			return
-			
-		yLabel = '{} D{}'.format(normType,densMet)
+		
+		if normType == 'Calpha normalised':
+			yLabel = r'$C_\alpha$-normalised D{}'.format(densMet)
+		else:
+			yLabel = r'{} D{}'.format(normType,densMet)
 
 		# determine y values here dependent 
 		# on density metric type specified 
@@ -2818,6 +2837,7 @@ class combinedAtomList(object):
 								 	 fileType    = fileType,
 					 				 saveFig     = saveFig,
 					 				 fileName    = name,
+					 				 figSize     = figSize,
 					 				 outputDir   = outputDir)
 
 		if saveFig is True:
@@ -4108,14 +4128,15 @@ class combinedAtomList(object):
 		return strA+'\n'+strB,densValsA,densValsAContacts,densValsB,scatterColor
 
 	def susceptAtmComparisonBarplot(self,
-									metric   = 'loss',
-									normType = 'Standard',
-									dataset  = 0,
-									set      = 1,
-									box      = 'Box',
-									fileType = '.svg',
-									axesFont = 18,
-									saveFig  = True):
+									metric    = 'loss',
+									normType  = 'Standard',
+									dataset   = 0,
+									set       = 1,
+									box       = 'Box',
+									fileType  = '.svg',
+									axesFont  = 18,
+									outputDir = './',
+									saveFig   = True):
 
 		# produce a barplot to compare the damage metric of 
 		# susceptible atom types at a given dataset
@@ -4160,45 +4181,32 @@ class combinedAtomList(object):
 				plotData['x'].append(atmId)
 				plotData['y'].append(foundAtm.densMetric[metric][normType]['values'][dataset])
 
-		args = [self.outputDir,
-				box,
+		args = [box,
 			    normType,
 			    metric,
 			    dataset,
 			    set]
 
-		figName = '{}SusceptAtms{}plot-{}-D{}_{}-set{}'.format(*args)
+		figName = 'SusceptAtms{}plot-{}-D{}_{}-set{}'.format(*args)
 
-		# fig = plt.figure()
-		# sns.set_style("whitegrid")
 		if box == 'Box':
 			ax = sns.boxplot(x    = "x",
 							 y    = "y",
 							 data = plotData)
 		elif box == 'Bar':
-			# ax = sns.barplot(x    = "x",
-			# 				 y    = "y",
-			# 				 data = plotData)
-
-			self.makeBarPlot(plotData = plotData,
-							 xName    = "x",
-							 yName    = "y",
-							 xLabel   = 'Atom type',
-							 yLabel   = '{} D{}'.format(normType,metric),
-							 figName  = figName,
-							 axesFont = axesFont,
-							 saveFig  = saveFig)
+			self.makeBarPlot(plotData  = plotData,
+							 xName     = "x",
+							 yName     = "y",
+							 xLabel    = 'Atom type',
+							 yLabel    = '{} D{}'.format(normType,metric),
+							 figName   = figName,
+							 axesFont  = axesFont,
+							 saveFig   = saveFig,
+							 outputDir = outputDir)
 
 		else:
 			print 'Unknown graph type - specify "Box" or "Bar"'
 			return
-
-		# plt.xlabel('Atom type', fontsize = axesFont)
-		# plt.ylabel('{} D{}'.format(normType,metric), fontsize = axesFont)
-
-		# fileName = self.checkUniqueFileName(fileName = figName,
-		# 						 			fileType = fileType)
-		# fig.savefig(fileName)
 
 	def makeBarPlot(self,
 					plotData  = {},
