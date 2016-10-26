@@ -848,8 +848,8 @@ class processFiles():
 						jobName   = self.jobName,
 						log       = self.logFile)
 
-		outcome = self.p2.runPipeline()
-		if outcome == 0:
+		success = self.p2.runPipeline()
+		if success:
 			ln = '---> Subroutine ran to completion.'
 			self.logFile.writeToLog(str = ln)
 			return True
