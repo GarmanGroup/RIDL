@@ -2,7 +2,7 @@ import time
 
 t0 = time.time()
 import matplotlib.pyplot as plt
-print 'Matplotlib import time: {}'.format(time.time()-t0)
+print 'Matplotlib import time: {}s'.format(round(time.time()-t0,3))
 from PDBFileManipulation import writePDBline_DamSite
 from matplotlib.gridspec import GridSpec
 from findMetricChange import findBchange
@@ -23,7 +23,7 @@ seabornFound = checkSns()
 if seabornFound is True:
 	t0 = time.time()
 	import seaborn as sns
-	print 'Seaborn import time: {}'.format(time.time()-t0)
+	print 'Seaborn import time: {}s'.format(round(time.time()-t0,3))
 
 class combinedAtomList(object):
 

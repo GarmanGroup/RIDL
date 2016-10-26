@@ -1,5 +1,6 @@
 from residueFormatter import densper_resatom_NOresidueclass,densper_res
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm,plotDensForAtm
+from perAtomClusterAnalysis import perAtomClusterAnalysis
 from densityAnalysisPlots import edens_scatter
 from deleteListIndices import multi_delete 
 from savevariables import save_objectlist
@@ -20,28 +21,6 @@ seabornFound = checkSns()
 if seabornFound is True:
     import seaborn as sns
 
-class voxel_density():
-
-    # A class for .map file voxel
-
-    def __init__(self,
-                 density = 0,
-                 atmnum  = 0):
-
-        self.density = density
-        self.atmnum  = atmnum
-
-class vxls_of_atm():
-    
-    # A class for collecting voxels per atom
-
-    def __init__(self,
-                 vxls   = [],
-                 atmnum = 0):
-
-        self.vxls   = vxls
-        self.atmnum = atmnum
-
 class maps2DensMetrics():
 
     # assign values within a density map to specific atoms, using
@@ -55,9 +34,8 @@ class maps2DensMetrics():
                  atomTagMap  = '',
                  densityMap  = '',
                  FCmap       = '',
-                 plotScatter = False,
+                 plotScatter = True,
                  plotHist    = False,
-                 plotBar     = False,
                  logFile     = logFile,
                  calcFCmap   = True):
 
@@ -69,7 +47,6 @@ class maps2DensMetrics():
         self.map3        = FCmap       # FC map
         self.plotScatter = plotScatter # (bool) plot scatter plots or not
         self.plotHist    = plotHist    # (bool) plot histogram plots or not
-        self.plotBar     = plotBar     # (bool) plot bar plots or not
         self.log         = logFile
         self.calcFCmap   = calcFCmap   # whether FC map should be generated
 
@@ -87,19 +64,19 @@ class maps2DensMetrics():
         self.reportDensMapInfo()
         self.checkMapCompatibility()
 
-        if self.calcFCmap is True:
+        if self.calcFCmap:
             self.readFCMap()
-        self.createVoxelList(useFCmap = self.calcFCmap)
 
-        if self.plotHist is True:
+        self.createVoxelList()
+
+        if self.plotHist:
             self.plotDensHistPlots()
-        self.calculateDensMetrics(FCweighted = self.calcFCmap)
 
-        if self.plotScatter is True:
+        self.calcDensMetrics()
+
+        if self.plotScatter:
             self.plotDensScatterPlots()
 
-        if self.plotBar is True:
-            self.plotPerResidueBoxPlots()
         self.pickleAtomList()
 
     def readPDBfile(self):
@@ -240,7 +217,7 @@ class maps2DensMetrics():
                     self.lgwrite(ln = str)
                     stop = False
                     break
-            if stop == True:
+            if stop:
                 err = 'Map grid dimensions still not same to 0dp\n'+\
                       ' --> terminating script'
                 self.lgwrite(ln = err)
@@ -254,8 +231,7 @@ class maps2DensMetrics():
         str = 'Total number of voxels assigned to atoms: {}'.format(len(self.atmmap.vxls_val))
         self.lgwrite(ln = str)
 
-    def createVoxelList(self,
-                        useFCmap = True):
+    def createVoxelList(self):
 
         # create dictionary of voxels with atom numbers as keys 
 
@@ -278,17 +254,23 @@ class maps2DensMetrics():
         self.vxlsPerAtom = vxlDic
         self.xyzsPerAtom = xyzDic # not essential for run
 
-        if useFCmap:
+        if self.calcFCmap:
             vxlDic2 = {atm:[] for atm in self.atmmap.vxls_val}
             for atm,dens in zip(self.atmmap.vxls_val,self.FCmap.vxls_val):
                 vxlDic2[atm].append(dens)
             self.FCperAtom = vxlDic2
 
-        # delete atmmap and densmap now to save memory
+        self.deleteMapsAttributes()
+
+        self.stopTimer()
+
+    def deleteMapsAttributes(self):
+
+        # delete atmmap and densmap attributes to save memory
+
         del self.atmmap
         del self.FCmap
         del self.densmap.vxls_val
-        self.stopTimer()
 
     def plotDensHistPlots(self,
                           getVoxelStats  = False,
@@ -319,11 +301,75 @@ class maps2DensMetrics():
 
         self.stopTimer()
 
-    def calculateDensMetrics(self,
-                             FCweighted   = True,
-                             plotDistn    = False,
-                             plotxyzScat  = False,
-                             showProgress = True):
+    def calcDensMetricsForAtom(self,
+                               atom        = [],
+                               plotDistn   = False,
+                               clustAnalys = True):
+
+        # calculate density metrics for a particular atom
+
+        try:
+            atomVxls = self.vxlsPerAtom[atom.atomnum]
+        except KeyError:
+            err = 'Warning!: No voxels assigned to an atom. Consider increasing '+\
+                  'per-atom search radius parameter in RIDL input .txt file.'
+            self.lgwrite(ln = err,forcePrint = True)
+            atomVxls = [np.nan]
+
+        if self.calcFCmap:
+            # calculate reliability measures based on electron 
+            # density probability at position of min density 
+            atomFCvals = self.FCperAtom[atom.atomnum]
+            atomFCvalsMaxNormalised = np.array(atomFCvals)/max(atomFCvals)
+
+            minIndex     = np.array(atomVxls).argmin()
+            reliability  = atomFCvalsMaxNormalised[minIndex]
+            FCatMin      = atomFCvals[minIndex]
+            weightedVxls = np.multiply(atomVxls,atomFCvalsMaxNormalised)
+
+        if len(atomVxls) != 0:
+            atom.meandensity   = np.mean(atomVxls)
+            atom.mediandensity = np.median(atomVxls)
+            atom.mindensity    = min(atomVxls)
+            atom.maxdensity    = max(atomVxls)
+            atom.stddensity    = np.std(atomVxls)
+            atom.min90tile     = np.percentile(atomVxls,10)
+            atom.max90tile     = np.percentile(atomVxls,90)
+            atom.min95tile     = np.percentile(atomVxls,5)
+            atom.max95tile     = np.percentile(atomVxls,95)
+            atom.numvoxels     = len(atomVxls)
+
+            if self.calcFCmap:
+                atom.reliability  = reliability
+                atom.wMean        = np.mean(weightedVxls)
+
+                if plotDistn:
+                    self.plotFCdistnPlot(atomOfInterest    = atom,
+                                         atomFCvals        = atomFCvals,
+                                         atomFCvalsMaxNorm = atomFCvalsMaxNormalised,
+                                         FCatMin           = FCatMin,
+                                         reliability       = reliability)
+
+            if clustAnalys:
+                # if 'CYS-SG' in atom.getAtomID():
+
+                clustAnalysis = perAtomClusterAnalysis(atmNum      = atom.atomnum,
+                                                       atmId       = atom.getAtomID(),
+                                                       densMapObj  = self.densmap,
+                                                       xyzsPerAtom = self.xyzsPerAtom,
+                                                       vxlsPerAtom = self.vxlsPerAtom)
+                    # print '***'
+                    # print clustAnalysis.output
+                    # print '***'
+
+                atom.negClusterVal = clustAnalysis.output[0]
+                atom.totDensShift  = clustAnalysis.output[-1]
+
+    def calcDensMetrics(self,
+                        plotDistn    = False,
+                        clustAnalys  = True,
+                        showProgress = True,
+                        parallel     = False):
 
         # determine density summary metrics per atom
 
@@ -332,79 +378,24 @@ class maps2DensMetrics():
         self.lgwrite(ln = 'Calculating electron density statistics per atom...')
 
         total = len(self.PDBarray)
-        for i,atom in enumerate(self.PDBarray):
 
-            if showProgress:
-                sys.stdout.write('\r')
-                sys.stdout.write('{}%'.format(round(100*float(i)/total,3)))
-                sys.stdout.flush()
+        if parallel:
 
-            try:
-                atomVxls = self.vxlsPerAtom[atom.atomnum]
-            except KeyError:
-                print 'Warning!: No voxels assigned to an atom. Consider increasing '+\
-                      'per-atom search radius parameter in RIDL input .txt file.'
-                atomVxls = [np.nan]
+            from test import testRun
+            testRun()
 
-            if FCweighted is True:
-                # calculate reliability measures based on electron 
-                # density probability at position of min density 
-                atomFCvals = self.FCperAtom[atom.atomnum]
-                atomFCvalsMaxNormalised = np.array(atomFCvals)/max(atomFCvals)
+        else:    
 
-                minIndex     = np.array(atomVxls).argmin()
-                reliability  = atomFCvalsMaxNormalised[minIndex]
-                FCatMin      = atomFCvals[minIndex]
-                weightedVxls = np.multiply(atomVxls,atomFCvalsMaxNormalised)
+            for i,atom in enumerate(self.PDBarray):
 
-            if len(atomVxls) != 0:
-                atom.meandensity   = np.mean(atomVxls)
-                atom.mediandensity = np.median(atomVxls)
-                atom.mindensity    = min(atomVxls)
-                atom.maxdensity    = max(atomVxls)
-                atom.stddensity    = np.std(atomVxls)
-                atom.min90tile     = np.percentile(atomVxls,10)
-                atom.max90tile     = np.percentile(atomVxls,90)
-                atom.min95tile     = np.percentile(atomVxls,5)
-                atom.max95tile     = np.percentile(atomVxls,95)
-                atom.numvoxels     = len(atomVxls)
+                if showProgress:
+                    sys.stdout.write('\r')
+                    sys.stdout.write('{}%'.format(round(100*float(i)/total,3)))
+                    sys.stdout.flush()
 
-                if FCweighted is True:
-                    atom.reliability  = reliability
-                    atom.wMean        = np.mean(weightedVxls)
-
-                    if plotDistn is True:
-                        self.plotFCdistnPlot(atomOfInterest    = atom,
-                                             atomFCvals        = atomFCvals,
-                                             atomFCvalsMaxNorm = atomFCvalsMaxNormalised,
-                                             FCatMin           = FCatMin,
-                                             reliability       = reliability)
-
-                if plotxyzScat:
-                    atmId = atom.getAtomID()
-                    # if 'B-17-GLU-N' in atmId or 'GLU-OE1' in atmId or 'GLU-OE2' in atmId or 'GLU-CD' in atmId:
-                    if 'CYS-SG' in atmId:
-                        clustAnalysis = self.plotPerAtomVoxelsScatter(atmNum = atom.atomnum,
-                                                                      atmId  = atmId,
-                                                                      atmXYZ = atom.getXYZ())
-                        atom.negCluster  = clustAnalysis[0]
-
-                # # test here - remove after use...
-                # fig = plt.figure()
-                # ax = plt.subplot(111)
-                # # plt.plot(atomFCvals,'r',label = 'FC')
-                # # plt.plot(atomVxls,'b',label = 'Fo-Fo')
-                # # plt.xlabel('Order')
-                # # plt.ylabel('Voxel value')
-                # # plt.legend()
-                # plt.scatter(atomFCvalsMaxNormalised,atomVxls)
-                # xRange = [min(atomFCvalsMaxNormalised),max(atomFCvalsMaxNormalised)]
-                # plt.plot(xRange,[atom.wMean]*2,'r')
-                # plt.plot(xRange,[atom.meandensity]*2,'g')
-                # plt.xlabel('normed-FC')
-                # plt.ylabel('Fo-Fo')
-                # plt.title('Compare Fc and Fo-Fo per atom: {}'.format(atom.getAtomID()))
-                # fig.savefig('{}FcAndFoFoPlot-{}.png'.format(self.filesOut,atom.getAtomID()))
+                self.calcDensMetricsForAtom(atom        = atom,
+                                            plotDistn   = plotDistn,
+                                            clustAnalys = clustAnalys)
 
         self.success()
         self.stopTimer()
@@ -415,351 +406,6 @@ class maps2DensMetrics():
         # get additional metrics per atom
         for atom in self.PDBarray:
             atom.getAdditionalMetrics()
-
-    def plotPerAtomVoxelsScatter(self,
-                                 atmNum        = 0,
-                                 atmId         = '',
-                                 atmXYZ        = [0.0,0.0,0.0],
-                                 showDens      = True,
-                                 showSymm      = False,
-                                 test          = 'insulin',
-                                 makePlot      = False,
-                                 report        = True,
-                                 findClusters  = True,
-                                 plotCentroids = False,
-                                 numPosClusts  = 10,
-                                 mainVecOnly   = False):
-
-        # plot a per-atom scatter plot of xyz positions of each
-        # voxel assigned to a specfied atom in 3d space        
-        # BIT BELOW IS STILL UNFINISHED AND SHOULD STAY COMMENTED
-
-        if atmNum not in self.xyzsPerAtom.keys():
-            return
-
-        makePlot = True
-        # if 'CYS-SG' in atmId or 'B-17-GLU-N' in atmId or 'GLU-OE1' in atmId or 'GLU-OE2' in atmId or 'GLU-CD' in atmId:
-        # # if 'CYS-SG' in atmId:
-        #     makePlot = False
-        # else: 
-        #     return
-
-        k = atmNum
-        X = np.array([xyz[0] for xyz in self.xyzsPerAtom[k]])
-        Y = np.array([xyz[1] for xyz in self.xyzsPerAtom[k]])
-        Z = np.array([xyz[2] for xyz in self.xyzsPerAtom[k]])
-
-        # keep densities here to 3dp since sym copies may have 
-        # differing densities to higher accuracy than this
-        density = np.round(np.array(self.vxlsPerAtom[k]),3) 
-
-        symOps = self.densmap.getSymOps(X,Y,Z)
-
-        # for any sym op that takes a point outside of unit cell,
-        # move translate this back into the unit cell of interest
-        symOps = np.mod(symOps,1).tolist()
-
-        # for case where original xyz points are close to a unit
-        # cell boundary, include additional adjacent unit cells
-        translateUnitCell = []
-        threshold = 0.01
-        for i in range(len(symOps[0][0])):
-            x = symOps[0][0][i]
-            y = symOps[0][1][i]
-            z = symOps[0][2][i]
-            trans = []
-            if x < threshold:
-                trans = [[-1],[0],[0]]
-            if x > 1-threshold:
-                trans = [[1],[0],[0]]
-            if y < threshold:
-                trans = [[0],[-1],[0]]
-            if y > 1-threshold:
-                trans = [[0],[1],[0]]
-            if z < threshold:
-                trans = [[0],[0],[-1]]
-            if z > 1-threshold:
-                trans = [[0],[0],[1]]
-            if trans != []:
-                if trans not in translateUnitCell:
-                    translateUnitCell.append(trans)
-
-        l = len(translateUnitCell)
-        if l != 0:
-            for t in translateUnitCell:
-                for sym in np.array(symOps) + t:
-                    symOps.append(sym)
-            if report:
-                print 'Necessary to consider {} adjacent unit cell(s)'.format(l)
-
-        # find suitable reference point near centre of asym unit
-        centreOfInterest = np.mean(symOps[0], axis = 1)
-        originalXYZs = np.array([[symOps[0][j][ii] for j in range(3)] for ii in range(len(X))])
-        dists = list(np.linalg.norm(originalXYZs - np.array(centreOfInterest),axis = 1))
-        del originalXYZs
-        minInd = dists.index(min(dists))
-        refPoint = [X[minInd],Y[minInd],Z[minInd]] + [density[minInd]]
-
-        keptPoints = [refPoint]
-        symOrOriginal = [0]
-
-        samexyzs = 0
-        dupcount = 0
-        for ii in range(len(X)):
-
-            symxyzs   = [[symOp[j][ii] for j in range(3)] for symOp in symOps]
-            symPoints = [sym + [density[ii]] for sym in symxyzs]
-            copy = False
-            for i,symPt in enumerate(symPoints):
-                if symPt in keptPoints:
-                    copy = True
-                    dupcount += 1
-
-                    if i == 0:
-                        symOrOriginal[keptPoints.index(symPt)] = 0
-                    break
-            if copy:
-                continue
-
-            distToFound = []
-            for pt in keptPoints:
-                distToFound.append(np.linalg.norm(np.array(symxyzs) - np.array(pt[:3]),axis = 1))
-            
-            minDist    = list(np.min(distToFound, axis = 0))
-            closestInd = minDist.index(min(minDist))
-            closestSym = symPoints[closestInd]
-
-            if min(minDist) < 1e-10:
-                samexyzs += 1 
-                # makePlot = True
-
-                # if new point is part of original asym unit, use this point instead
-                if closestInd == 0:
-                    dists = [dist[0] for dist in distToFound]
-                    nearestPtId = dists.index(min(minDist))
-                    keptPoints.pop(nearestPtId)
-                    symOrOriginal.pop(nearestPtId)
-                else:
-                    continue
-
-            keptPoints.append(closestSym)
-
-            if closestInd != 0:
-                symOrOriginal.append(1)
-            else:
-                symOrOriginal.append(0)
-
-        if report:
-            print 'Atom Identity: {}'.format(atmId)
-            print 'Number points found: {}'.format(len(keptPoints))
-            print '\tNumber that are original: {}'.format(len(symOrOriginal)-np.sum(symOrOriginal))
-            print '\tNumber that are sym copies: {}'.format(np.sum(symOrOriginal))
-            print '\tNumber of duplicate positions: {}'.format(dupcount+samexyzs)
-            print '\t\tidentical: {}'.format(dupcount)
-            print '\t\tsame xyz: {}'.format(samexyzs)
-
-        xs = [xyz[0] for xyz in keptPoints]
-        ys = [xyz[1] for xyz in keptPoints]
-        zs = [xyz[2] for xyz in keptPoints]
-        ds = [xyz[3] for xyz in keptPoints]
-
-        # cluster analysis begins here
-        if findClusters:
-            from sklearn.cluster import KMeans
-
-            posVals = [pt for pt in keptPoints if pt[3] >= 0]
-            negVals = [pt for pt in keptPoints if pt[3] < 0]
-
-            # find negative point clusters
-            if len(negVals) > 1:
-                negClustering = True
-                negKmeans = KMeans(n_clusters = 2)
-                negClusters = negKmeans.fit_predict(negVals)
-                negCluster1 = [val for i,val in enumerate(negVals) if negClusters[i] == 0]
-                negCluster2 = [val for i,val in enumerate(negVals) if negClusters[i] == 1]
-                negMean1    = np.mean([c[3] for c in negCluster1])
-                negMean2    = np.mean([c[3] for c in negCluster2])
-                negCentroids = negKmeans.cluster_centers_
-                if negMean2 > negMean1:
-                    negClustOfInterest = negCluster1
-                    mainNegCentroid = negCentroids[0, :]
-                    negClusters = np.mod(np.array(negClusters)-1,2)
-                else:
-                    negClustOfInterest = negCluster2
-                    mainNegCentroid = negCentroids[1, :]   
-            else:
-                negClustering = False
-                negClusters = [1]
-
-            # find positive point clusters
-            if len(posVals) > 1:
-
-                # reduce number of clusters if too many specified
-                if numPosClusts > len(posVals):
-                    numPosClusts = len(posVals) 
-
-                posClustering = True
-                posKmeans = KMeans(n_clusters = numPosClusts)
-                posClusters = posKmeans.fit_predict([pt[:3] for pt in posVals])
-                posClustList = []
-                for j in range(numPosClusts):
-                    posClustList.append([val for i,val in enumerate(posVals) if posClusters[i] == j])      
-                posClustMeans = [np.mean([c[3] for c in clust]) for clust in posClustList]
-                posCentroids = posKmeans.cluster_centers_
-                maxPosInd = posClustMeans.index(max(posClustMeans))
-                posClusterOfInterest = posClustList[maxPosInd]
-            else:
-                posClustering = False
-                posClusters = [1]
-
-            if posClustering and negClustering:
-                # find dominant direction of density shift from neg to pos density
-
-                if mainVecOnly:
-                    clusterLoop = [posClusterOfInterest]
-                else:
-                    clusterLoop = posClustList
-
-                resultantVectors = []
-                for clust in clusterLoop:
-                    quiverPts  = { i : [] for i in ['x','y','z','u','v','w'] }
-                    for negPt in negClustOfInterest:
-                        densDiffs  = []
-                        directions = []
-                        for posPt in clust:
-                            densDiffs.append(posPt[3]-negPt[3])
-                            vectorChange = np.array(posPt[:3])-np.array(negPt[:3])
-                            directions.append(vectorChange/np.linalg.norm(vectorChange))
-                        totalComponent = np.dot(densDiffs,directions)
-                        for n,xyz in enumerate(['x','y','z']):
-                            quiverPts[xyz].append(negPt[n])
-                        for n,uvw in enumerate(['u','v','w']):
-                            quiverPts[uvw].append(totalComponent[n])
-                    resultantVectors.append(np.mean([quiverPts[uvw] for uvw in ['u','v','w']], axis = 1))
-                vectorMagnitudes = [np.linalg.norm(vec) for vec in resultantVectors]
-                normedVectors    = [vec/length for vec,length in zip(resultantVectors,vectorMagnitudes)]
-                # weightedVectors  = [0.03*vec/max(vectorMagnitudes) for vec in resultantVectors]
-                weightedVectors  = [0.03*vec/20 for vec in resultantVectors]
-
-                print 'Vector magnitudes: {}'.format(vectorMagnitudes)
-                print 'Normed vectors: {}'.format(normedVectors)
-                print 'Magnitude-weighted vectors: {}'.format(weightedVectors)
-                del resultantVectors
-
-
-                vecStart = self.densmap.abc2xyz(asymIndices = mainNegCentroid[:3],
-                                                fracInput   = True)
-
-                # append vector positions to a pdb file 
-                fname = 'Dshift-vectors.pdb'
-                try:
-                    with open(fname) as f:
-                        for i, l in enumerate(f):
-                            pass
-                    lineCount = i + 1
-                except IOError:
-                    lineCount = 0
-                vectorPDBfile = open(fname,'a')
-
-                from classHolder import singlePDB
-                from PDBFileManipulation import writePDBline
-                vecPosAsAtom = singlePDB(atomnum    = lineCount,
-                                         residuenum = atmId.split('-')[1],
-                                         atomtype   = atmId.split('-')[3],
-                                         basetype   = 'V0',
-                                         chaintype  = atmId.split('-')[0],
-                                         X_coord    = vecStart[0],
-                                         Y_coord    = vecStart[1],
-                                         Z_coord    = vecStart[2])
-                pdbLine = writePDBline(vecPosAsAtom,1)
-                vectorPDBfile.write(pdbLine+'\n')
-
-                for i,vec in enumerate(weightedVectors):
-                    vecEnd   = self.densmap.abc2xyz(asymIndices = np.array(mainNegCentroid[:3]) + vec,
-                                                    fracInput   = True)
-                    # print 'cgo_arrow [{}],[{}],hlength=0.25,radius=0.05,hradius=0.075'.format(','.join([str(round(v,2)) for v in vecStart]),','.join([str(round(v,2)) for v in vecEnd]))
-
-                    vecPosAsAtom = singlePDB(atomnum    = lineCount+i+1,
-                                             residuenum = atmId.split('-')[1],
-                                             atomtype   = atmId.split('-')[3],
-                                             basetype   = 'V'+str(i+1),
-                                             chaintype  = atmId.split('-')[0],
-                                             X_coord    = vecEnd[0],
-                                             Y_coord    = vecEnd[1],
-                                             Z_coord    = vecEnd[2])
-                    pdbLine = writePDBline(vecPosAsAtom,1)
-                    vectorPDBfile.write(pdbLine+'\n')
-
-        # scatter plots begin here
-        if makePlot:
-            from mpl_toolkits.mplot3d import Axes3D
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection = '3d')
-
-            colors = []
-            cn,cp = 0,0
-            for d in ds:
-                if d < 0:
-                    cmap = plt.cm.Reds
-                    colors.append(cmap((negClusters[cn]+1)/float(4)))
-                    cn += 1
-                else:
-                    cmap = plt.cm.Greens
-                    colors.append(cmap((posClusters[cp]+1)/float(numPosClusts+2)))
-                    cp += 1
-
-            if showSymm:
-                ax.scatter(xs, ys, zs, c = symOrOriginal, s = 10, alpha = 0.6)
-
-            elif showDens:
-                ax.scatter(xs, ys, zs, c = colors, s = 1000*np.abs(ds), alpha = 0.6)
-
-                if findClusters:
-                    if plotCentroids:
-                        if negClustering:
-                            ax.scatter(negCentroids[:3, 0],
-                                       negCentroids[:3, 1],
-                                       negCentroids[:3, 2],
-                                       marker     = 'x',
-                                       s          = 100,
-                                       linewidths = 3,
-                                       color      = 'k')
-
-                        if posClustering:
-                            ax.scatter(posCentroids[:, 0],
-                                       posCentroids[:, 1],
-                                       posCentroids[:, 2],
-                                       marker     = 'd',
-                                       s          = 100,
-                                       linewidths = 3,
-                                       color      = 'b')
-
-                    if negClustering and posClustering:
-                        for vec,length in zip(normedVectors,vectorMagnitudes):
-                            ax.quiver(mainNegCentroid[0],
-                                      mainNegCentroid[1],
-                                      mainNegCentroid[2],
-                                      vec[0],
-                                      vec[1],
-                                      vec[2],
-                                      length=0.001*length,
-                                      pivot = 'tail',
-                                      color = 'k',
-                                      arrow_length_ratio = 0.1)
-            plt.title(atmId)
-            plt.show()
-
-        output = []
-        if findClusters:
-            if negClustering:
-                if negMean1 > negMean2:
-                    output.append(negMean2)
-                else:
-                    output.append(negMean1)
-                if posClustering:
-                    output.append(normedVectors)
-                    output.append(vectorMagnitudes)
-        return output
 
     def plotFCdistnPlot(self,
                         plot              = True,
@@ -826,8 +472,10 @@ class maps2DensMetrics():
 
         # # only include below if per-atom clusters are
         # # calculated - currently very slow
-        # plotVars += [['negCluster','meandensity'],
-        #              ['negCluster','mindensity']]
+        plotVars += [['negCluster','meandensity'],
+                     ['negCluster','mindensity'],
+                     ['totDensShift','meandensity'],
+                     ['totDensShift','mindensity']]
 
         if self.calcFCmap:
             plotVars.append(['meandensity','wMean'])
@@ -839,26 +487,6 @@ class maps2DensMetrics():
                                    PDBarray  = self.PDBarray,
                                    pdbName   = self.pdbName)
             self.lgwrite(ln = logStr)
-
-    def plotPerResidueBoxPlots(self,
-                               lineStyle = 'line'):
-
-        # perform residue analysis for datatset, outputting boxplots
-        # for each atom specific to each residue, and also a combined 
-        # boxplot across all residues in structures.
-
-        self.fillerLine(style = lineStyle)
-        for densMet in ('mean','min','max'):
-            resArray = densper_resatom_NOresidueclass(where    = self.filesOut,
-                                                      PDBarray = self.PDBarray,
-                                                      densMet  = densMet,
-                                                      pdbName  = self.pdbName)
-        densper_res(where    = self.filesOut,
-                    resArray = resArray,
-                    pdbName  = self.pdbName)
-
-        resArray = []
-        self.stopTimer()
 
     def pickleAtomList(self):
 
@@ -878,8 +506,9 @@ class maps2DensMetrics():
         # stop a timer (must run startTimer before)
 
         elapsedTime = time.time() - self.timeStart
-        if includeInLog is True:
-            self.lgwrite(ln = 'section time: {}s\n'.format(round(elapsedTime,3)))
+        if includeInLog:
+            ln = 'section time: {}s\n'.format(round(elapsedTime,3))
+            self.lgwrite(ln = ln)
         sys.stdout.flush()
 
     def success(self):
@@ -927,7 +556,4 @@ class maps2DensMetrics():
         self.lgwrite(ln = ln)
 
         self.stepNumber += 1
-
-
-
 
