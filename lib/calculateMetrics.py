@@ -11,7 +11,7 @@ from shutil import move
 from os import path,makedirs,listdir,system,remove,rmdir
 from ridlFeedback import provideFeedback
 from furtherOutput import furtherAnalysis
-print 'Total import time: {}'.format(time.time()-t0)
+print 'Total import time: {}s'.format(round(time.time()-t0,3))
 
 class calculateMetrics(object):
 
@@ -280,9 +280,7 @@ class calculateMetrics(object):
 										     atomTagMap  = mapName1,
 										     densityMap  = mapName2,
 										     FCmap 	     = mapName3,
-										     plotScatter = False,
 										     plotHist    = self.plot,
-										     plotBar     = False,
 										     logFile     = self.logFile,
 										     calcFCmap   = self.inclFCmets)
 
