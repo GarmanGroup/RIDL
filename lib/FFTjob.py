@@ -5,6 +5,7 @@ class FFTjob():
 	
 	def __init__(self,
 				 mapType   = 'DIFF',
+				 mapTag    = '',
 				 FOMweight = False,
 				 pdbFile   = '',
 				 mtzFile   = '',
@@ -13,12 +14,23 @@ class FFTjob():
 				 gridSamps = [0,0,0],
 				 labels1   = ['','','',''],
 				 labels2   = ['','','',''],
+				 F1Scale   = 1.0,
+				 F2Scale   = 1.0,
 				 runLog    = ''):
 
-		self.mapType 		= mapType
-		self.FOMweight		= FOMweight
-		self.inputMtzFile 	= mtzFile
-		self.outputMapFile 	= '{}-{}-fft.map'.format(pdbFile.split('_reordered.pdb')[0],mapType)
+		self.mapType 	  = mapType
+		self.FOMweight	  = FOMweight
+		self.inputMtzFile = mtzFile
+		self.F1Scale      = F1Scale
+		self.F2Scale      = F2Scale
+
+		# can change unique identifier for map type in file name 
+		if mapTag == '':
+			self.mapTag = mapType
+		else:
+			self.mapTag = mapTag
+
+		self.outputMapFile 	= '{}-{}-fft.map'.format(pdbFile.split('_reordered.pdb')[0],self.mapTag)
 		self.outputDir		= outputDir
 		XYZ 				= ['X','Y','Z']
 		self.fastAxis 		= XYZ[int(axes[0])-1]
@@ -43,11 +55,11 @@ class FFTjob():
 	def run(self):
 
 		inputFiles = [self.inputMtzFile]
-		if checkInputsExist(inputFiles,self.runLog) is False:
+		if not checkInputsExist(inputFiles,self.runLog):
 			return False
 		self.runFFT()
 
-		if self.jobSuccess is True:
+		if self.jobSuccess:
 			self.provideFeedback()
 			self.runLog.writeToLog('Output files:')	
 			self.runLog.writeToLog('{}'.format(self.outputMapFile))
@@ -81,10 +93,9 @@ class FFTjob():
 			phiStr  	= 'PHI={} {} PHI2={} {}\n'.format(self.PHI2,FOMstring,self.PHI2,FOMstring2)
 			# can distinguish here between SIMPLE and DIFFERENCE map types
 			if self.mapType == 'SIMPLE': 
-				F2Scale = 0.0
-			else: 
-				F2Scale = 1.0
-			scaleStr 	= 'SCALE F1 1.0 0.0 F2 {} 0.0\n'.format(F2Scale)
+				self.F2Scale = 0.0
+
+			scaleStr 	= 'SCALE F1 {} 0.0 F2 {} 0.0\n'.format(self.F1Scale,self.F2Scale)
 
 		# choose sigmaa-derived FWT and PHIC for 2FOFC map setting
 		if self.mapType == '2FOFC':
@@ -96,7 +107,7 @@ class FFTjob():
 		if self.mapType == 'FC':
 			labinStr 	= 'LABIN F1={}'.format(self.F1)
 			phiStr 		= 'PHI={}'.format(self.PHI1)
-			scaleStr 	= 'SCALE F1 1.0 0.0'
+			scaleStr 	= 'SCALE F1 {} 0.0'.format(self.F1Scale)
 
 		# include a resolution cutoff if specified (not used for Fcalc maps)
 		resStr = ''
@@ -132,7 +143,7 @@ class FFTjob():
 
 		# provide some feedback
 
-		if includeDir is False:
+		if not includeDir:
 			fileIn  = self.inputMtzFile.split('/')[-1]
 			fileOut = self.outputMapFile.split('/')[-1]
 		else:
@@ -152,15 +163,15 @@ class FFTjob():
 					 include = True):
 
 		# provide a summary of what this does 
-		# (within ETRACK) to the command line
+		# (within RIDL) to the command line
 
-		if self.mapType == 'DIFF':
+		if self.mapTag == 'DIFF':
 			ln = 'Generating Fourier difference map over crystal unit cell,\n'
-		if self.mapType == 'SIMPLE':
+		if self.mapTag == 'SIMPLE':
 			ln = 'Generating Fobs electron density map over crystal unit cell,\n'
-		if self.mapType == '2FOFC':
+		if self.mapTag == '2FOFC':
 			ln = 'Generating 2Fo-Fc electron density map over crystal unit cell,\n'
-		if self.mapType == 'FC':
+		if self.mapTag == 'FC':
 			ln = 'Generating Fcalc electron density map over crystal unit cell,\n'
 		ln += 'with same grid sampling dimensions as SFALL-output atom-tagged .map file'
 		self.runLog.writeToLog(ln)
