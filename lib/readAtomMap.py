@@ -227,7 +227,6 @@ class maps2DensMetrics():
 
         elif self.atmmap.celldims != self.densmap.celldims:
             self.lgwrite(ln = 'Not exact same map grid dimensions..')
-
             # now check if grid dims same to a specific dp and consider continuing
             stop = True
             for i in list(reversed(range(7))):
