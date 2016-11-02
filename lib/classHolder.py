@@ -129,11 +129,13 @@ class StructurePDB(object):
                 sideormain = 'sidechain'
             else:
                 sideormain = 'mainchain'
-        else:
+        elif self.basetype in self.aminoAcids:
             if self.atomtype not in self.mainchainProtein:
                 sideormain = 'sidechain'
             else:
                 sideormain = 'mainchain'
+        else:
+            sideormain = 'unknown'
         return sideormain
 
     def categorise(self):
