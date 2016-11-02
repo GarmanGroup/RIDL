@@ -623,9 +623,7 @@ class provideFeedback(object):
 			       '<div class = "col-sm-6">{}</div>\n'.format(figCalls[2])+\
 			       '<div class = "col-sm-6">{}</div>\n'.format(figCalls[3])+\
 			       '</div>\n'
-
 			summaryFile.write(info)
-
 
 		# make a set of tabs for easy navigation to each dataset
 		summaryFile.write('<h2>Per-dataset analysis</h2>\n')
@@ -973,10 +971,10 @@ class provideFeedback(object):
 												normType = normType)
 
 		pdbIn = open(self.get1stDsetPDB(), 'r')
-		fileOut = self.outputDir+self.initialPDB.strip('.pdb')+\
+		fileOut = self.outputDir+self.initialPDB.replace('.pdb','')+\
 				  '_{}D{}_{}.pdb'.format(normType.replace(" ",""),metric,dataset)
 		if singleRes != '':
-			fileOut = fileOut.strip('.pdb')+'-{}.pdb'.format(singleRes)
+			fileOut = fileOut.replace('.pdb','-{}.pdb'.format(singleRes))
 
 		pdbOut = open(fileOut,'w')
 		pdbOut.write('REMARK\tBfactor column replaced by {} D{} metric values\n'.format(normType,metric))
@@ -1031,8 +1029,8 @@ class provideFeedback(object):
 												  self.damSitesPDB[dataset]))
 		else:
 			# need to write script for pymol to run with
-			damSitesTag = (self.damSitesPDB[dataset].split('/')[-1]).strip('.pdb')
-			structureTag = self.initialPDB.strip('.pdb')
+			damSitesTag = (self.damSitesPDB[dataset].split('/')[-1]).replace('.pdb','')
+			structureTag = self.initialPDB.replace('.pdb','')
 			scriptName = self.outputDir + 'runPymolScript.pml'
 			pymolScript = open(scriptName,'w')
 

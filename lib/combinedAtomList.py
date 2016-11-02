@@ -20,7 +20,7 @@ from bioInfo import bioInfo
 
 from checkSeabornPresent import checkSeabornPresent as checkSns
 seabornFound = checkSns()
-if seabornFound is True:
+if seabornFound:
 	t0 = time.time()
 	import seaborn as sns
 	print 'Seaborn import time: {}s'.format(round(time.time()-t0,3))
@@ -75,27 +75,27 @@ class combinedAtomList(object):
 		# first check that each PDBarray contains the 
 		# same number of atoms (consistency check)
 		if len(self.datasetList) > 1:
-			if printText is True:
+			if printText:
 				ln = 'Multiple datasets detected...'
 				self.printOrWriteToLog(logFile = logFile,
 									   txt     = ln)
 			for dataset in self.datasetList:
 				if len(dataset) != len(self.datasetList[0]):
-					if printText is True:
+					if printText:
 						txt = 'Not all PDB structures have same number of atoms!\n'+\
 							  'Will only include atoms common to ALL structures...'
 						self.printOrWriteToLog(logFile = logFile, txt = txt)
 
 					break
 		elif len(self.datasetList) == 1:
-			if printText is True:
+			if printText:
 				ln = 'Single dataset detected...'
 				self.printOrWriteToLog(logFile = logFile, txt=ln)
 
 		PDBdoses = []
 		numNotFoundAtoms = 0
 
-		if printText is True:
+		if printText:
 			ln = 'Locating common atoms to ALL datasets...:'
 			self.printOrWriteToLog(logFile = logFile, txt = ln)
 
@@ -146,7 +146,7 @@ class combinedAtomList(object):
 						indexindataset.append(k)
 						found = True
 						break
-				if found is False: 
+				if not found: 
 					indexindataset.append(-1) # if atom not in dataset
 					for attr in multiDimAttrs: 
 						atomDict[attr].append(np.nan) # add dummy value if atom not found
@@ -158,7 +158,7 @@ class combinedAtomList(object):
 					self.datasetList[j].pop( indexindataset[j-1] )
 
 			if atm_counter != len(self.datasetList) and self.partialDatasets is False:
-				if printText is True:
+				if printText:
 					txt = 'Atom "{}" not found in all datasets\n'.format(atomIndentifier)+\
 					      '---> not including atom in atom list...'
 					self.printOrWriteToLog(logFile = logFile, txt = txt)
@@ -169,7 +169,7 @@ class combinedAtomList(object):
 				newatom = combinedAtom()
 				for attr in singDimAttrs+multiDimAttrs:
 					if attr[0] != '_':
-						if isinstance(atomDict[attr],list) is False:
+						if not isinstance(atomDict[attr],list):
 							setattr(newatom,attr,atomDict[attr])
 						else:
 							metName = self.findMetricName(attr)
@@ -188,25 +188,25 @@ class combinedAtomList(object):
 											  values   = atomDict['wMean'])
 
 				if atm_counter != len(self.datasetList):
-					if printText is True:
+					if printText:
 						txt = 'Atom "{}" not found in all datasets\n'.format(atomIndentifier)+\
 							  '---> including partial information in atom list...'
 						self.printOrWriteToLog(logFile = logFile, txt = txt)
 					numNotFoundAtoms += 1
 				PDBdoses.append(newatom)
 
-		if self.partialDatasets is True:
-			if printText is True:
+		if self.partialDatasets:
+			if printText:
 				ln = '# atoms not in all datasets: {}'.format(numNotFoundAtoms)
 				self.printOrWriteToLog(logFile = logFile,
 									   txt     = ln)
 		else:
-			if printText is True:
+			if printText:
 				ln = '# atoms removed since not in all datasets: {}'.format(numNotFoundAtoms)
 				self.printOrWriteToLog(logFile = logFile, 
 									   txt     = ln)
 
-		if printText is True:
+		if printText:
 			ln = '---> Finished!'
 			self.printOrWriteToLog(logFile = logFile, 
 								   txt     = ln)
@@ -278,10 +278,10 @@ class combinedAtomList(object):
 						if atom.atomtype == atomtype or atomtype == '':
 							foundAtoms.append(atom)
 		if len(foundAtoms) != 0:
-			if printOutput is True:
+			if printOutput:
 				print 'Found {} atom(s) matching description'.format(len(foundAtoms))
 			return foundAtoms
-		if printOutput is True:
+		if printOutput:
 			print 'Atom matching description not found'
 		return []
 
@@ -338,7 +338,7 @@ class combinedAtomList(object):
 			pass
 
 		if newMetric == 'Calpha normalised':
-			if printText is True:
+			if printText:
 				print 'Calculating Calpha weights at each dataset '+\
 					  'for metric: {}, normalisation: {}'.format(metric,normType)
 			CAweights = self.retrieveCalphaWeight(metric=metric)
@@ -578,7 +578,7 @@ class combinedAtomList(object):
 		# 'pairs' is list of residues and atoms of form 
 		# [['GLU','CD','CG'],['GLU','CD','OE1'],..] etc
 
-		if seabornFound is False:
+		if not seabornFound:
 			return
 
 		fileout = open('{}{}_{}-D{}-{}.txt'.format(self.outputDir,title,normType,metric,rType),'w')
@@ -587,7 +587,7 @@ class combinedAtomList(object):
 		for pair in pairs:
 			found = self.getAtom(restype = pair[0])
 
-			if found == False: 
+			if not found: 
 				continue # don't proceed if no atoms of a residue type
 
 			output = self.findMetricRatio(metric    = metric,
@@ -612,7 +612,7 @@ class combinedAtomList(object):
 		for key in foundPairs.keys():
 			xData = self.doseList
 			yData = np.mean(foundPairs[key][rType],0)
-			if errorBars is False:
+			if not errorBars:
 				plt.plot(xData,
 					     yData,
 					     label = key)
@@ -681,7 +681,7 @@ class combinedAtomList(object):
 		# (Boolian) is True if string printed to command line.
 		# if 'dataset' is 'all', take average over datasets
 
-		if firstTime is True:
+		if firstTime:
 			self.calcMetricDiffFromStructureMean(metric   = metric,
 												 normType = normType,
 												 diff     = 'std-devs')
@@ -702,7 +702,7 @@ class combinedAtomList(object):
 			for atom in aList:
 				if atom.densMetric[metric]['num stds']['values'][d] > threshold:
 					count += 1
-			if printStr is True:
+			if printStr:
 				print 'For dataset {}:'.format(d)
 				print '# atoms with {} D{} metric above {}'.format(normType,metric,threshold)+\
 					  'std dev of structure-wide mean is {}'.format(count)
@@ -734,7 +734,7 @@ class combinedAtomList(object):
 		# 'distance'). 'pairs' is list of residues and atoms of form 
 		# [['GLU','CD','CG'],['GLU','CD','OE1'],..] etc.
 
-		if seabornFound is False:
+		if not seabornFound:
 			return
 
 		foundPairs = {}
@@ -815,13 +815,13 @@ class combinedAtomList(object):
 
 		strippedName = fileName.replace(' ','') # remove whitespace
 
-		if os.path.isfile(strippedName) is False:
+		if not os.path.isfile(strippedName):
 			if strippedName.endswith(fileType):
 				return strippedName
 			else:
 				return strippedName+fileType # this may give wrong name..
 
-		fname = lambda x: strippedName.strip(fileType)+'_{}{}'.format(x,fileType)
+		fname = lambda x: strippedName.replace(fileType,'_{}{}'.format(x,fileType))
 		i = 1
 		while os.path.isfile(fname(i)): 
 			i += 1 
@@ -1064,7 +1064,7 @@ class combinedAtomList(object):
 											   dataset  = d,
 											   residue  = [res],
 											   atomtype = [atm])
-				if percent is True:
+				if percent:
 					rankList[aTag].append(rank[aTag]['Ratio'])
 				else:
 					rankList[aTag].append(rank[aTag]['Rank'])
@@ -1080,7 +1080,7 @@ class combinedAtomList(object):
 			title = figTitle
 
 		ylabel = 'Ranking'
-		if percent is True:
+		if percent:
 			ylabel += ' (%)'
 
 		name = 'Lineplot_Metric-D{}_Normalisation-{}-{}_ranking'.format(*args)
@@ -1096,7 +1096,7 @@ class combinedAtomList(object):
 					 				 fileName    = name,
 					 				 outputDir   = outputDir)
 
-		if saveFig is True:
+		if saveFig:
 			return fileName
 
 	def getAtomtypeRanking(self,
@@ -1479,7 +1479,7 @@ class combinedAtomList(object):
 		# 'stat' is either a single input (e.g. 'skew')
 		# or a list of inputs (e.g. ['skew','mean'])
 
-		if isinstance(stat,list) is False:
+		if not isinstance(stat,list):
 			stat = [stat]
 
 		statPerDset = {s : {} for s in stat}
@@ -1498,7 +1498,7 @@ class combinedAtomList(object):
 					for s in stat:
 						statPerDset[s][k].append(stats[1][k][s])
 
-		if inclPartialAtms is False:
+		if not inclPartialAtms:
 			# only include residue types that are present within 
 			# all datasets in series. This is used to remove water
 			# and ligands that only appear in subset of datasets
@@ -1526,7 +1526,7 @@ class combinedAtomList(object):
 		# produce a plot of skew versus dataset number for
 		# each residue type within the structure
 
-		if isinstance(stat,list) is False:
+		if not isinstance(stat,list):
 			stat = [stat]
 
 		statPerDset = self.getStatPerDataset(stat            = stat,
@@ -1537,7 +1537,7 @@ class combinedAtomList(object):
 		fileNames = []
 		for s in stat:
 
-			if printTxt is True:
+			if printTxt:
 				print 'Plotting stat "{}" versus dataset'.format(s)
 
 			args = [metric,
@@ -1565,7 +1565,7 @@ class combinedAtomList(object):
 					 					 outputDir   = outputDir)
 			fileNames.append(fileName)
 
-		if saveFig is True:
+		if saveFig:
 			return fileNames
 
 	def plotStatVsStat(self,
@@ -1589,9 +1589,9 @@ class combinedAtomList(object):
 		# each residue type within the structure
 		# created for the specified dataset number
 
-		if isinstance(stat1,list) is False:
+		if not isinstance(stat1,list):
 			stat1 = [stat1]
-		if isinstance(stat2,list) is False:
+		if not isinstance(stat2,list):
 			stat2 = [stat2]
 
 		statPerDset = {}
@@ -1604,7 +1604,7 @@ class combinedAtomList(object):
 		fileNames = []
 		for (s1,s2) in zip(stat1,stat2):
 
-			if printTxt is True:
+			if printTxt:
 				print 'plotting stat "{}" vs "{}" for each dataset'.format(s1,s2)
 
 			sns.set_style("whitegrid")
@@ -1670,7 +1670,7 @@ class combinedAtomList(object):
 			f.suptitle(title,
 					   fontsize = titleFont)
 
-			if saveFig is False:
+			if not saveFig:
 				plt.show()
 			else:
 				name = 'scatterplot_Metric-D{}_Normalisation-{}_{}vs{}'.format(*args)
@@ -1679,7 +1679,7 @@ class combinedAtomList(object):
 									 				fileType = fileType)
 				f.savefig(fileName)
 				fileNames.append(fileName)
-		if saveFig is True:
+		if saveFig:
 			return fileNames
 
 	def twoAtomTypeTtest(self,
@@ -1792,12 +1792,12 @@ class combinedAtomList(object):
 		# atoms differs from a normal distribution
 
 		if len(metricList) < 8:
-			if suppressText is False:
+			if not suppressText:
 				print 'Skew-test not valid when less '+\
 					  'than 8 values provided - skipping'
 			return 'n/a'
 		elif len(metricList) < 20:
-			if suppressText is False:
+			if not suppressText:
 				print 'kurtosis-test not valid when less '+\
 					  'than 20 values provided - skipping'
 			return 'n/a'
@@ -1868,7 +1868,7 @@ class combinedAtomList(object):
 			if len(atom) == 0:
 				count += 1
 		if count == len(self.aminoAcids):
-			if printText is True:
+			if printText:
 				print 'Warning: no Calpha backbone atoms found in structure!'
 				return False
 		else:
@@ -1888,7 +1888,7 @@ class combinedAtomList(object):
 		# per dataset. Depending on the metric and normalisation
 		# type chosen, a different colour scheme is chosen
 
-		if columnPerChain is True:
+		if columnPerChain:
 			chains       = self.getChains()
 			data = { c : { 'Atom'    : [],
 					 	   'Dataset' : [],
@@ -2004,7 +2004,7 @@ class combinedAtomList(object):
 
 		fig.tight_layout()
 
-		if saveFig is False:
+		if not saveFig:
 			plt.show()
 
 		else:
@@ -2077,18 +2077,18 @@ class combinedAtomList(object):
 				if np.linalg.norm(val-meanVal) > stdVal*threshold:
 					suspAtoms.append(atm.getAtomID())
 					if val < meanVal:
-						if suppressText is False:
+						if not suppressText:
 							print 'Unusually low compared to mean '+\
 								  'value ({} < {})'.format(round(val,3),
 														   round(meanVal,3))
 						highOrLow.append('low')
 					else:
-						if suppressText is False:
+						if not suppressText:
 							print 'Unusually high compared to mean '+\
 								  'value ({} > {})'.format(round(val,3),
 														   round(meanVal,3))
 						highOrLow.append('high')
-		if suppressText is False:
+		if not suppressText:
 			print '{} atoms found with suspiciously high/low damage '+\
 				  'relative to average of that atom type'
 		return suspAtoms,highOrLow
@@ -2152,7 +2152,7 @@ class combinedAtomList(object):
 		# plotted for side and main chain (proteins) and 
 		# base, phosphate, sugar (DNA/RNA)
 
-		if seabornFound is False:
+		if not seabornFound:
 			return
 
 		# attempt to find atoms of type 'resiType'
@@ -2164,12 +2164,12 @@ class combinedAtomList(object):
 				if len(atms) == 0: 
 					count += 1
 			if count > 0:
-				if printText is True:
+				if printText:
 					print 'Warning: not all selected residue/nucleotide types found!'
-				if requireAll is True:
+				if requireAll:
 					return {}
 			if count == len(resiType):
-				if printText is True:
+				if printText:
 					print 'Warning: no residues/nucleotides found for current plot'
 				return {}
 
@@ -2178,10 +2178,10 @@ class combinedAtomList(object):
 
 		if normType == 'Calpha normalised':
 			self.calcAdditionalMetrics(metric = metric)
-		if self.checkMetricPresent(metric = metric,normType = normType) is False: 
+		if not self.checkMetricPresent(metric = metric,normType = normType): 
 			return # check metric valid
 
-		if sideOnly is True:
+		if sideOnly:
 			atmList = self.getSidechainAtoms()
 		else:
 			atmList = self.atomList
@@ -2233,7 +2233,7 @@ class combinedAtomList(object):
 																	  atmList = atmList)
 					lbl  = 'Dataset {} '.format(str(valType + 1))
 
-					if resSplit is True:
+					if resSplit:
 
 						for atm in presentAtms:
 
@@ -2269,7 +2269,7 @@ class combinedAtomList(object):
 																		  atmList = atmList)
 						lbl  = 'Dataset {}, {}'.format(valType+1,res)
 
-						if resSplit is True:
+						if resSplit:
 
 							# currently should only be performed if 1 single residue type plotted 
 							# (otherwise colour scheme will loop around...)
@@ -2302,12 +2302,12 @@ class combinedAtomList(object):
 				# calculate Kolmogrov-Smirnov statistic in case where strictly 2 residue types plotted
 				vals = [datax[k]['values'] for k in datax.keys()] 
 
-				if calcKSstat is True and len( datax.keys() ) == 2:
+				if calcKSstat and len( datax.keys() ) == 2:
 					(KSstat,KSpval) = ks_2samp(*vals)
 					stats['KS'] = {'statistic' : KSstat,
 								   'p-value'   : KSpval}
 
-				if calcADstat is True and len (datax.keys() ) > 1:
+				if calcADstat and len (datax.keys() ) > 1:
 					try: 
 						(ADstat,critVals,ADpval) = anderson_ksamp(vals)
 						stats['AD'] = {'statistic' : ADstat,
@@ -2333,7 +2333,7 @@ class combinedAtomList(object):
 			t = '{} D{} per atom'.format(normType,metric)
 			if resiType != 'all':
 				t += ': {}'.format(', '.join(resiType))
-			if sideOnly is True:
+			if sideOnly:
 				t+= '; side chain only'
 
 			if stats != {}:
@@ -2358,7 +2358,7 @@ class combinedAtomList(object):
 
 			saveName = '{}DistnPlot_Residues-{}_Metric-D{}_Normalisation-{}'.format(*args)
 
-			if sideOnly is True:
+			if sideOnly:
 				saveName += '_SideChainOnly'
 
 			if valType != 'all':
@@ -2381,7 +2381,7 @@ class combinedAtomList(object):
 		# plot histogram or kde plot for datax and give current label
 		# 'nBins' is number of bins (only used if plotType is 'hist' or 'both')
 
-		if seabornFound is False:
+		if not seabornFound:
 			return
 
 		for k in datax.keys():
@@ -2414,7 +2414,7 @@ class combinedAtomList(object):
 		# calculate the Kolmogrov-Smirnov statistic at each dataset
 		# in a series to compare two specified residue types
 
-		if sideOnly is True:
+		if sideOnly:
 			atmList = self.getSidechainAtoms()
 		else:
 			atmList = self.atomList
@@ -2460,10 +2460,10 @@ class combinedAtomList(object):
 
 		if residues == 'all':
 			resList = self.getResidues()
-		elif isinstance(residues,list) is True:
+		elif isinstance(residues,list):
 			resList = residues
 
-		if isinstance(reference,list) is False:
+		if not isinstance(reference,list):
 			reference = [reference]*len(resList)
 
 		if len(reference) != len(resList):
@@ -2495,7 +2495,7 @@ class combinedAtomList(object):
 
 		if saveName == '':
 			name = '{}plot_Metric-D{}_Normalisation-{}-KSstat'.format(*args)
-			if sideOnly is True:
+			if sideOnly:
 				name += '_sideChainsOnly'
 		else:
 			name = saveName
@@ -2535,7 +2535,7 @@ class combinedAtomList(object):
 									    saveFig   = saveFig,
 									    outputDir = outputDir)
 
-		if saveFig is True:
+		if saveFig:
 			return fileName
 
 	def makeLinePlot(self,
@@ -2570,7 +2570,7 @@ class combinedAtomList(object):
 								 	 l        = .4,
 									 s        = .8)
 
-		if inclLine is True:
+		if inclLine:
 			lStyle = '-'
 		else:
 			lStyle = 'None'
@@ -2596,7 +2596,7 @@ class combinedAtomList(object):
 		numColors = len(vals2Plot.keys())
 		for i,k in enumerate(vals2Plot.keys()):
 			col = colors[i]
-			if inclErrors is False:
+			if not inclErrors:
 
 				if isinstance(vals2Plot[k],list):
 					plt.plot(x,
@@ -2632,7 +2632,7 @@ class combinedAtomList(object):
 							 label    = k,
 							 color    = col)
 
-		if fullDespine is True:
+		if fullDespine:
 			sns.despine(offset = 0, 
 						trim   = True)
 		else:
@@ -2659,7 +2659,7 @@ class combinedAtomList(object):
 				         		 save      = saveFig,
 				         		 f         = f)
 
-		if saveFig is True:
+		if saveFig:
 			return fileName
 
 	def savePlot(self,
@@ -2671,7 +2671,7 @@ class combinedAtomList(object):
 
 		# save a line plot
 
-		if save is False:
+		if not save:
 			plt.show()
 		else:
 			fileName = self.checkUniqueFileName(fileName = outputDir + name,
@@ -2704,7 +2704,7 @@ class combinedAtomList(object):
 		# for a specified atom. 'errorBars' takes values in ('NONE',
 		# 'RESNUM','ATOMTYPE')
 
-		if seabornFound is False:
+		if not seabornFound:
 			return
 
 		errorOptions = ('NONE',
@@ -2719,7 +2719,7 @@ class combinedAtomList(object):
 		# where lists of atom identities are supplied, provided all
 		# info (res num, chain, atom type, res type) are supplied.
 		# this can only be done for non-error bar plots currently
-		if isinstance(atomType,list) is False:		
+		if not isinstance(atomType,list):		
 			foundAtoms = self.getAtom(restype  = resType,
 									  resnum   = resiNum,
 									  atomtype = atomType,
@@ -2840,7 +2840,7 @@ class combinedAtomList(object):
 					 				 figSize     = figSize,
 					 				 outputDir   = outputDir)
 
-		if saveFig is True:
+		if saveFig:
 			return fileName
 
 	def plotSusceptibleAtoms(self,
@@ -2857,7 +2857,7 @@ class combinedAtomList(object):
 		# create a line plot of metric values for susceptible atoms within
 		# structure. Susceptible atoms are defined as below
 
-		if seabornFound is False:
+		if not seabornFound:
 			return
 
 		if susAtms == []: 
@@ -2886,7 +2886,7 @@ class combinedAtomList(object):
 		nsteps = len(sDic.keys())
 		for key in sDic.keys():
 			i += 1
-			if errorbars is False:
+			if not errorbars:
 				for atom in sDic[key]:
 					y = atom.densMetric[densMet][normType]['values']
 					plt.plot(x,
@@ -2919,7 +2919,7 @@ class combinedAtomList(object):
 		plt.legend()
 		f.suptitle('{} D{}: susceptible residues'.format(normType,densMet),
 			       fontsize = titleFont)
-		if saveFig is False:
+		if not saveFig:
 			plt.show()
 		else:
 			i = 0
@@ -3004,7 +3004,7 @@ class combinedAtomList(object):
 		f.suptitle('# atoms with metric value of n standard deviations from structure-wide mean',
 				   fontsize = titleFont)
 
-		if saveFig is False:
+		if not saveFig:
 			plt.show()
 		else:
 			args = [outputLoc,
@@ -3202,7 +3202,7 @@ class combinedAtomList(object):
 		# histogram/kde plot of density metric per atom.
 		# plotType is 'histogram' or 'kde'
 
-		if seabornFound is False:
+		if not seabornFound:
 			return
 
 		if plotType not in ('hist','kde','both'): 
@@ -3327,7 +3327,7 @@ class combinedAtomList(object):
 										    saveFig   = saveFig,
 										    outputDir = outputDir)
 
-		if saveFig is True:
+		if saveFig:
 			return fileName
 
 	def compareMetricsBetweenAtoms(self,
@@ -3449,7 +3449,7 @@ class combinedAtomList(object):
 		# is calculated and plotted. if 'yequalsxLine' is 
 		# True then line y=x plotted
 
-		if seabornFound is False:
+		if not seabornFound:
 			return
 
 		sns.set_context("talk")
@@ -3464,7 +3464,8 @@ class combinedAtomList(object):
 					edgecolors = '#FFFFFF',
 					cmap       = 'copper')
 
-		if lineBestFit is True: # plot line of best if specified
+		if lineBestFit: 
+			# plot line of best fit if specified
 			slope, intercept, r_value, p_value, std_err = linregress(xData,yData)
 			x = np.linspace(min(xData), max(xData),10)
 			y = slope*np.array(x) + np.array(intercept)
@@ -3475,7 +3476,8 @@ class combinedAtomList(object):
 					 linewidth = 3)
 			figtitle += ', R^2: {}'.format(round(r_value**2,2))
 
-		if yequalsxLine is True:
+		if yequalsxLine:
+			# plot y=x line if specified
 			x = np.linspace(min(xData), max(xData),10)
 			y = x
 			plt.plot(x, 
@@ -3502,7 +3504,7 @@ class combinedAtomList(object):
 								 			fileType = fileType)
 		fig.savefig(fileName)
 
-		if lineBestFit is True: 
+		if lineBestFit: 
 			return r_value**2
 
 	def damageVdistPlot(self,
@@ -3800,7 +3802,7 @@ class combinedAtomList(object):
 
 		if atmVals1 == [] or atmVals2 == []:
 
-			if printText is True:
+			if printText:
 				args = [resType1,
 						atmType1,
 						resNum1,
@@ -3826,7 +3828,7 @@ class combinedAtomList(object):
 						col.append([dens])
 					atmDens.append(col)
 		else:
-			if printText is True:
+			if printText:
 				print 'Comparing pre-determined values'
 			for atmsVals,atmDens in zip([atmVals1,atmVals2],[atmDens1,atmDens2]):
 				for val in atmsVals:
@@ -3903,7 +3905,7 @@ class combinedAtomList(object):
 		# run .densMetSurroundAtmsCorrel() method for 
 		# each dataset and plot versus dose
 
-		if errorbars is True:
+		if errorbars:
 			plotDic = {'H-bond' : [],
 					   'Other'  : []}
 		else:
@@ -3928,7 +3930,7 @@ class combinedAtomList(object):
 												    outputDir     = outputDir)
 
 
-			if hotelling is True:
+			if hotelling:
 				if i == 0:
 					HTgroup1 = [[v] for v in output[1]]
 					HTgroup2 = [[v] for v in output[3]]
@@ -3937,7 +3939,7 @@ class combinedAtomList(object):
 						for j,v in enumerate(output[n]):
 							group[j].append(v)
 
-			if errorbars is True:
+			if errorbars:
 				for n,t in zip([1,3],['H-bond','Other']):
 					plotDic[t].append(np.mean(output[n]))
 					errBars[t].append(np.std(output[n]))
@@ -3966,11 +3968,11 @@ class combinedAtomList(object):
 					 				 outputDir   = outputDir,
 					 				 palette     = 'deep')
 
-		if hotelling is True:
+		if hotelling:
 			self.hotellingTsquareTest(atmVals1  = HTgroup1,
 							 		  atmVals2  = HTgroup2)
 
-		if saveFig is True:
+		if saveFig:
 			return fileName
 
 	def densMetSurroundAtmsCorrel(self,
@@ -3992,7 +3994,7 @@ class combinedAtomList(object):
 		# and types of surrounding atoms if 'crystConts' is True then crystal
 		# contacts will also be located here
 
-		if crystConts is True:
+		if crystConts:
 			from NCONTjob import NCONTjob
 
 			ncont = NCONTjob(inputPDBfile = pdbName,
@@ -4002,7 +4004,7 @@ class combinedAtomList(object):
 							 printText    = printText)
 			success = ncont.run()
 
-			if success is False: 
+			if not success: 
 				return
 			logFile = self.outputDir+'/'+ncont.outputLogfile
 
@@ -4013,11 +4015,11 @@ class combinedAtomList(object):
 		for atom in atoms:
 			nearCarboxyl = False
 
-			if crystConts is True:
+			if crystConts:
 				atomFound = False
 				readLog = open(logFile,'r')
 				for l in readLog.readlines():
-					if atomFound is True and len(l[0:5].strip()) != 0: 
+					if atomFound and len(l[0:5].strip()) != 0: 
 						atomFound = False # reset if new atom info reached
 
 					if (atom.basetype == l[11:14] and
@@ -4028,7 +4030,7 @@ class combinedAtomList(object):
 						if printText:
 							print 'found atom: {}'.format(atom.getAtomID())
 
-					if atomFound is True:
+					if atomFound:
 						if (l[39:42] in ('GLU','ASP') and
 							l[47:50] in ['OE1','OE2','OD1','OD2'] and
 							float(l[58:62]) < distLim):
@@ -4055,7 +4057,7 @@ class combinedAtomList(object):
 							nearCarboxyl = True
 							break
 
-			if nearCarboxyl is True:
+			if nearCarboxyl:
 				groupA.append(atom)
 				groupAContacts.append(contactAtom[0])
 			else:
@@ -4113,7 +4115,7 @@ class combinedAtomList(object):
 			if printText:
 				print 'Not all {}-{} atoms experience change in solvent accessibility upon nearby decarboxylation'.format(restype,atomtype)
 
-		if plotScatter is True:
+		if plotScatter:
 			# plot the relationship between TYR-OH density and nearby carboxyl atom density
 			self.plotScatterPlot(xData    = densValsA,
 								 yData    = densValsAContacts,
@@ -4141,7 +4143,7 @@ class combinedAtomList(object):
 		# produce a barplot to compare the damage metric of 
 		# susceptible atom types at a given dataset
 
-		if seabornFound is False:
+		if not seabornFound:
 			return
 
 		if set == 1:
@@ -4268,7 +4270,7 @@ class combinedAtomList(object):
 				         		 save      = saveFig,
 				         		 f         = f)
 
-		if saveFig is True:
+		if saveFig:
 			return fileName
 
 	def compareSolvAccessWithAndWithoutGluAspGroups(self,
@@ -4296,7 +4298,7 @@ class combinedAtomList(object):
 		from ccp4Job import ccp4Job
 
 		pdbIn = open(pdbName,'r')
-		strippedPdb = pdbName.strip('.pdb')+'_noGluAspCO2groups.pdb'
+		strippedPdb = pdbName.replace('.pdb','_noGluAspCO2groups.pdb')
 		pdbOut = open(strippedPdb,'w')
 		for l in pdbIn.readlines():
 			if l[0:6].strip() not in ('ATOM','ANISOU'):
@@ -4311,7 +4313,7 @@ class combinedAtomList(object):
 		count = 0
 		for pdb in (pdbName,strippedPdb):
 			count += 1
-			commandInput1 = 'areaimol XYZIN "{}" XYZOUT "{}"'.format(pdb,pdb.strip('.pdb')+'_areaimol.pdb')
+			commandInput1 = 'areaimol XYZIN "{}" XYZOUT "{}"'.format(pdb,pdb.replace('.pdb','_areaimol.pdb'))
 			commandInput2 = 'DIFFMODE OFF\nMODE -\nNOHOH\nSMODE IMOL\nREPORT -\nCONTACT -\n'+\
 							'YES -\nRESAREA -\nYES\nPNTDEN 10\nPROBE 1.4\nOUTPUT\nEND'
 			run = ccp4Job('areaimol',commandInput1,commandInput2,self.outputDir,'areaimolRun{}.txt'.format(count),'')
@@ -4375,7 +4377,7 @@ class combinedAtomList(object):
 				print '{}: {} --> {} ... Dloss: {}'.format(*args)
 
 		rSquared = np.nan
-		if plotScatter is True:
+		if plotScatter:
 			# plot the relationship between TYR-OH density and nearby carboxyl atom density
 			rSquared = self.plotScatterPlot(xData      = plotData['x'],
 						                    yData       = plotData['y'],
@@ -4444,7 +4446,7 @@ class combinedAtomList(object):
 				distList.append(dist)
 			if len(densList) == 0: 
 				continue
-			if weighted is True:
+			if weighted:
 				meanDens = np.average(densList, weights = np.square(np.reciprocal(distList)))
 			else:
 				meanDens = np.mean(densList)
@@ -4593,7 +4595,7 @@ class combinedAtomList(object):
 										restype     = restype,
 										Bmetric     = Bmetric)
 
-		if percentChange is False:
+		if not percentChange:
 			BdamChange = [round(float(output2[k]) - float(output1[k]),2) for k in output1.keys()]
 		else:
 			BdamChange = [round((float(output2[k]) - float(output1[k]))/float(output1[k]),2) for k in output1.keys()]
@@ -4608,7 +4610,7 @@ class combinedAtomList(object):
 
 		figName = '{}Change_{}-{}_Dset-{}'.format(Bmetric,restype,atomtype,dataset)
 		yLabel  = 'Change in {}'.format(Bmetric)
-		if percentChange is True:
+		if percentChange:
 			figName = 'Relative-' + figName
 			yLabel  = 'Relative '+ yLabel
 
@@ -4648,7 +4650,7 @@ class combinedAtomList(object):
 							atomtype = atomType)
 
 		# retrieve Bdamage values from Bdamage run log file
-		if BdamChange is False:
+		if not BdamChange:
 			BdamDic = self.parseBDamageFile(BDamageFile = BDamageFile2,
 											atomtype    = atomType,
 											restype     = resType,
@@ -4664,7 +4666,7 @@ class combinedAtomList(object):
 									 	    saveFig       = saveFig,
 									 	    dataset       = dataset,
 									 	    outputDir     = outputDir)
-			if percentChange is False:
+			if not percentChange:
 				xLabel = '{} Change'.format(Bmetric)
 			else:
 				xLabel = '{} Relative Change'.format(Bmetric)
@@ -4687,7 +4689,7 @@ class combinedAtomList(object):
 							 lineBestFit = True,
 							 figtitle    = '{}-{}; Dataset {}'.format(resType,atomType,dataset),
 							 fileType    = fileType,
-							 saveTitle   = 'D{}Scatter_{}-{}_{}VsDensMetric_Dset-{}'.format(densMet,resType,atomType,xLabel.strip(' '),dataset),
+							 saveTitle   = 'D{}Scatter_{}-{}_{}VsDensMetric_Dset-{}'.format(densMet,resType,atomType,xLabel.replace(' ',''),dataset),
 							 outputDir   = outputDir)
 
 
