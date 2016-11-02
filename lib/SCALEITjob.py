@@ -8,6 +8,7 @@ class SCALEITjob():
 	def __init__(self,
 				 inputMtz  = '',
 				 outputMtz = 'scaleit.mtz',
+				 scaling   = 'ANISOTROPIC',
 				 Mtz1Label = '',
 				 Mtz2Label = '',
 				 outputDir = '',
@@ -15,6 +16,7 @@ class SCALEITjob():
 
 		self.inputMtz 	= inputMtz
 		self.outputMtz 	= outputMtz
+		self.scaling    = scaling # takes ('ANISOTROPIC','ISOTROPIC','SCALE')
 		self.Mtz1Label 	= Mtz1Label
 		self.Mtz2Label 	= Mtz2Label
 		self.outputDir 	= outputDir
@@ -24,10 +26,10 @@ class SCALEITjob():
 
 		inputFiles = [self.inputMtz]
 
-		if checkInputsExist(inputFiles,self.runLog) is False:
+		if not checkInputsExist(inputFiles,self.runLog):
 			return False
 		self.runSCALEIT()
-		if self.jobSuccess is True:
+		if self.jobSuccess:
 			self.provideFeedback()
 			return True
 		else:
@@ -51,7 +53,7 @@ class SCALEITjob():
 							 'converge NCYC 4\n'+\
 							 'converge ABS 0.001\n'+\
 							 'converge TOLR -7\n'+\
-							 'REFINE ANISOTROPIC\n'+\
+							 'REFINE {}\n'.format(self.scaling)+\
 							 'auto\n'+\
 							 'LABIN  FP=FP_{} SIGFP=SIGFP_{} -\n'.format(self.Mtz1Label,
 							 										 	 self.Mtz1Label)+\
@@ -76,7 +78,7 @@ class SCALEITjob():
 
 		# provide some feedback
 
-		if includeDir is False:
+		if not includeDir:
 			fileIn  = self.inputMtz.split('/')[-1]
 			fileOut = self.outputMtz.split('/')[-1]
 		else:

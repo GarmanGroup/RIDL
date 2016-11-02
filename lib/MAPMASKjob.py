@@ -18,7 +18,7 @@ class MAPMASKjob():
 
 		# give correct naming scheme to output map file
 
-		if switch is True:
+		if switch:
 			self.outputMapFile = self.inputMapFile.split('.map')[0]+'_switchedAxes.map'
 		else:
 			self.outputMapFile 	= self.inputMapFile.split('.map')[0]+'_cropped.map'
@@ -48,10 +48,10 @@ class MAPMASKjob():
 		axisOrder = [xyz[str(i)] for i in order]
 
 		inputFiles = [self.inputMapFile]
-		if checkInputsExist(inputFiles,self.runLog) is False:
+		if not checkInputsExist(inputFiles,self.runLog):
 			return False
 
-		if includeDir is False:
+		if not includeDir:
 			map1 = self.inputMapFile.split('/')[-1]
 		else:
 			map1 = self.inputMapFile
@@ -81,10 +81,10 @@ class MAPMASKjob():
 		self.printPurpose(mode = 'crop to asym')
 		self.defineCorrectOutputMap(False)
 		inputFiles = [self.inputMapFile]
-		if checkInputsExist(inputFiles,self.runLog) is False:
+		if not checkInputsExist(inputFiles,self.runLog):
 			return False
 
-		if includeDir is False:
+		if not includeDir:
 			map1 = self.inputMapFile.split('/')[-1]
 		else:
 			map1 = self.inputMapFile
@@ -114,11 +114,11 @@ class MAPMASKjob():
 		self.printPurpose(mode = 'crop to map')
 		self.defineCorrectOutputMap(False)
 		inputFiles = [self.inputMapFile,self.inputMapFile2]
-		if checkInputsExist(inputFiles,self.runLog) is False:
+		if not checkInputsExist(inputFiles,self.runLog):
 			 return False
 
 		maps = [self.inputMapFile,self.inputMapFile2]
-		if includeDir is False:
+		if not includeDir:
 			maps = [m.split('/')[-1] for m in maps]
 
 		self.defineCommandInput()
@@ -142,8 +142,8 @@ class MAPMASKjob():
 
 		# get feedback if successful job
 
-		if self.jobSuccess is True:
-			if includeMapInfo is True:
+		if self.jobSuccess:
+			if includeMapInfo:
 				self.feedback()
 			return True
 		else:
@@ -156,7 +156,7 @@ class MAPMASKjob():
 
 		# provide some feedback
 
-		if includeDir is False:
+		if not includeDir:
 			fileIn1  = self.inputMapFile.split('/')[-1]
 			if self.inputMapFile2 != '':
 				fileIn2  = self.inputMapFile2.split('/')[-1]
@@ -184,12 +184,12 @@ class MAPMASKjob():
 					 includeDir = False):
 
 		# provide a summary of what this does 
-		# (within ETRACK) to the command line
+		# (within RIDL) to the command line
 		
 		maps = [self.inputMapFile,
 				self.inputMapFile2]
 
-		if includeDir is False:
+		if not includeDir:
 			maps = [m.split('/')[-1] for m in maps]
 
 		if mode == 'switch axes':

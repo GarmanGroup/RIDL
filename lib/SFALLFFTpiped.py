@@ -21,10 +21,11 @@ class pipeline():
 
 
 	def __init__(self,
-				 outputDir = '',
-				 inputFile = '',
-				 jobName   = 'untitled-job',
-				 log       = ''):
+				 outputDir      = '',
+				 inputFile      = '',
+				 jobName        = 'untitled-job',
+				 log            = '',
+				 useUnscaledMtz = False):
 
 		self.outputDir	= outputDir
 		self.inputFile 	= inputFile
@@ -33,41 +34,122 @@ class pipeline():
 
 		# create log file
 		if log == '':
-			self.runLog = logFile(fileName = '{}{}_runLog1.log'.format(self.outputDir,jobName),
+			f = '{}{}_runLog1.log'.format(self.outputDir,jobName)
+			self.runLog = logFile(fileName = f,
 								  fileDir  = self.outputDir)
 		else:
 			self.runLog = log
+
+		# provide option to use non-scaleit scaled Fobs(n) for
+		# density map calculations (retrieved directly from CAD instead)
+		self.useUnscaledMtz = useUnscaledMtz
 
 	def runPipeline(self):
 
 		# run the current subroutine within this class
 
-		# read input file first
 		success = self.readInputFile()
-		if success is False:
-			return 1
+		if not success:
+			return False
 
-		# run pdbcur job 
+		if self.useUnscaledMtz:
+			self.inputMtzFile = self.inputMtzFile.replace('_SCALEIT','_CAD')
+
+		success = self.curatePdbFile()
+		if not success:
+			return False
+
+		self.renumberPDBFile()
+
+		success = self.getSpaceGroup()
+		if not success:
+			return False
+
+		success = self.getAtomTaggedMap()
+		if not success:
+			return 4
+
+		########################################################
+		# TEST BIT  - DO NOT RUN FOR NORMAL USE. 
+		# THIS WILL USE PHENIX TO GENERATE A FO-FO DIFF MTZ 
+		# AND THEN CONVERT TO MAP USING FFT. MTZ FROM CAD IS 
+		# USED AS INPUT TO PHENIX, SO NO SCALEIT SCALING DONE
+		makeFoFoMapWithPhenix = False
+		if makeFoFoMapWithPhenix:
+			mtzInput = self.inputMtzFile.replace('_SCALEIT','_CAD')
+			cmd = 	'phenix.fobs_minus_fobs_map '+\
+					'f_obs_1_file_name={} '.format(mtzInput)+\
+					'f_obs_2_file_name={} '.format(mtzInput)+\
+					'phase_source={} '.format(self.reorderedPDBFile)+\
+					'f_obs_1_label=FP_{} '.format(self.laterPDB)+\
+					'f_obs_2_label=FP_{}'.format(self.initPDB)
+			os.system(cmd+'>phenix.log')
+			self.fcalcMtz   = self.inputMtzFile
+			self.densMapMtz = self.inputMtzFile.replace('_SCALEITcombined','phenixFoFo')
+			shutil.move('FoFoPHFc.mtz',self.densMapMtz)
+			shutil.move('phenix.log','{}phenix.log'.format(self.outputDir))
+			self.densMapType = 'FC'
+			labelsLater  = ['FoFo','','','PHFc']
+			labelsInit   = ['','','','']
+			self.mapTag  = 'DIFF'
+			success = self.generateDensMap(labelsInit,labelsLater)
+		else:
+			self.mapTag = ''
+			self.fcalcMtz   = self.inputMtzFile
+			self.densMapMtz = self.inputMtzFile
+			success = self.generateDensMap()
+        ########################################################
+
+		if not success:
+			return False
+
+		if self.includeFCmaps():
+			success = self.generateFcalcMap()
+			if not success:
+				return False
+
+		success = self.cropAtmTaggedMapToAsymUnit()
+		if not success:
+			return False
+
+		if self.densMapType == 'END':
+			success = self.ensureSameMapAxesOrder()
+			if not success:
+				return False
+
+		success = self.cropMapToAtomTaggedMap(densMap = self.densityMap)
+		if not success:
+			return False
+
+		if self.includeFCmaps():
+			success = self.cropMapToAtomTaggedMap(densMap = self.FcalcMap)
+			if not success:
+				return False
+
+		self.reportCroppedMapInfo()
+		success = self.mapConsistencyCheck()
+		if not success:
+			return False
+
+		self.cleanUpDir()
+		return True
+
+	def curatePdbFile(self):
+
+		# run pdbcur job
+
 		self.printStepNumber()
 		pdbcur = PDBCURjob(inputPDBfile = self.pdbcurPDBinputFile,
 						   outputDir    = self.outputDir,
 						   runLog       = self.runLog)
 		success = pdbcur.run()
-
-		if success is False:
-			return 2
-
 		self.PDBCURoutputFile = pdbcur.outputPDBfile
+		return success
 
-		# reorder atoms in PDB file
-		self.renumberPDBFile()
+	def getAtomTaggedMap(self):
 
-		# get space group from PDB file
-		success = self.getSpaceGroup()
-		if success is False:
-			return 3
+		# run SFALL job to generate atom tagged map
 
-		# run SFALL job
 		self.printStepNumber()
 		sfall = SFALLjob(inputPDBfile   = self.reorderedPDBFile,
 						 outputDir      = self.outputDir,
@@ -76,19 +158,26 @@ class pipeline():
 						 gridDimensions = self.sfall_GRID,
 						 runLog         = self.runLog)
 		success = sfall.run()
-		if success is False:
-			return 4
 
-		# run FFT job
 		sfallMap  = mapTools(mapName = sfall.outputMapFile)
-		axes 	  = [sfallMap.fastaxis,
-					 sfallMap.medaxis,
-					 sfallMap.slowaxis]
+		self.axes 	   = [sfallMap.fastaxis,
+					 	  sfallMap.medaxis,
+					      sfallMap.slowaxis]
+		self.gridSamps = [sfallMap.gridsamp1,
+					 	  sfallMap.gridsamp2,
+					 	  sfallMap.gridsamp3]
 
-		gridSamps = [sfallMap.gridsamp1,
-					 sfallMap.gridsamp2,
-					 sfallMap.gridsamp3]
+		self.atomTaggedMap = sfall.outputMapFile
 
+		return success
+
+	def generateDensMap(self,
+						labelsInit  = [],
+						labelsLater = []):
+
+		# run FFT job to generate density map
+
+		self.printStepNumber()
 		if self.densMapType in ('DIFF','SIMPLE'):
 			tags = ['FP_',
 					'SIGFP_',
@@ -101,21 +190,22 @@ class pipeline():
 			labelsLater = ['FWT_{}'.format(self.laterPDB),'','','PHIC']
 		
 		if self.densMapType != 'END':
-			self.printStepNumber()
 			fft = FFTjob(mapType   = self.densMapType,
+						 mapTag    = self.mapTag,
 						 FOMweight = self.FOMweight,
 						 pdbFile   = self.reorderedPDBFile,
-						 mtzFile   = self.inputMtzFile,
+						 mtzFile   = self.densMapMtz,
 					     outputDir = self.outputDir,
-					     axes      = axes,
-					     gridSamps = gridSamps,
+					     axes      = self.axes,
+					     gridSamps = self.gridSamps,
 					     labels1   = labelsLater,
 					     labels2   = labelsInit,
 					     runLog    = self.runLog)
 			success = fft.run()
+			self.densityMap = fft.outputMapFile
+
 		else:
 			# run END job if required (may take time to run!!)
-			self.printStepNumber()
 			endInputPDB = self.pdbcurPDBinputFile
 			endInputMTZ = ''.join(endInputPDB.split('.')[:-1]+['.mtz'])
 			endInputEFF = ''.join(endInputPDB.split('.')[:-1]+['.eff'])
@@ -124,97 +214,65 @@ class pipeline():
 						 mtzFile   = endInputMTZ,
 						 effFile   = endInputEFF,
 						 outputDir = self.outputDir,
-						 gridSamps = gridSamps,
+						 gridSamps = self.gridSamps,
 						 runLog    = self.runLog)
 			success = end.run()
+			self.densityMap = end.outputMapFile
+		return success
 
-		if success is False:
-			return 5
+	def generateFcalcMap(self):
 
 		# generate FC map using FFT
-		if self.includeFCmaps() is True:
-			self.printStepNumber()
 
-			fft_FC = FFTjob(mapType   = 'FC',
-						    FOMweight = self.FOMweight,
-						    pdbFile   = self.reorderedPDBFile,
-						    mtzFile   = self.inputMtzFile,
-					        outputDir = self.outputDir,
-					        axes      = axes,
-					        gridSamps = gridSamps,
-					        labels1   = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset],
-					        runLog    = self.runLog)
-			success = fft_FC.run()
+		self.printStepNumber()
+		fft_FC = FFTjob(mapType   = 'FC',
+					    FOMweight = self.FOMweight,
+					    pdbFile   = self.reorderedPDBFile,
+					    mtzFile   = self.fcalcMtz,
+				        outputDir = self.outputDir,
+				        axes      = self.axes,
+				        gridSamps = self.gridSamps,
+				        labels1   = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset],
+				        runLog    = self.runLog)
+		success = fft_FC.run()
+		self.FcalcMap = fft_FC.outputMapFile
 
-			if success is False: 
-				return 6
+		return success
+
+	def cropAtmTaggedMapToAsymUnit(self):
 
 		# crop atom-tagged map to asymmetric unit:
+
 		self.printStepNumber()
-		mapmask1 = MAPMASKjob(mapFile1  = sfall.outputMapFile,
+		mapmask1 = MAPMASKjob(mapFile1  = self.atomTaggedMap,
 							  outputDir = self.outputDir,
 							  runLog    = self.runLog)
 		success = mapmask1.crop2AsymUnit()
+		self.atomTaggedMap = mapmask1.outputMapFile
 
-		if success is False:
-			return 7
+		return success
 
-		# choose correct density map to include in MAPMASK cropping below
-		if self.densMapType != 'END':
-			inputDensMap = fft.outputMapFile
-		else: 
-			inputDensMap = end.outputMapFile
+	def ensureSameMapAxesOrder(self):
 
-		# switch END map axes to match SFALL atom-tagged map if required
-		if self.densMapType == 'END':
-			mapmask_END = MAPMASKjob(mapFile1  = inputDensMap,
-									 outputDir = self.outputDir,
-									 runLog    = self.runLog)
-			success = mapmask_END.switchAxisOrder(order = axes,
-												  symGroup = self.spaceGroup)
+		# switch map axes to match SFALL atom-tagged map if 
+		# required(only typically required for END maps)
+
+			mapmask = MAPMASKjob(mapFile1  = self.densityMap,
+								 outputDir = self.outputDir,
+								 runLog    = self.runLog)
+			success = mapmask.switchAxisOrder(order    = self.axes,
+											  symGroup = self.spaceGroup)
 			
-			if success is False:
-				return 8.0
-			else: 
-				inputDensMap = mapmask_END.outputMapFile
+			self.densityMap = mapmask.outputMapFile
 
-		# crop density map to atom-tagged map over asym unit:
-		newMap = self.cropDensmapToSFALLmap(mapType = self.densMapType,
-								            densMap = inputDensMap,
-								            atmMap  = mapmask1.outputMapFile)
-
-		# crop FC map to atom-tagged map over asym unit:
-		if self.includeFCmaps() is True:
-			newMap = self.cropDensmapToSFALLmap(mapType = 'FC',
-									   			densMap = fft_FC.outputMapFile,
-									   			atmMap  = mapmask1.outputMapFile)
-
-		# print the map info (grid size, num voxels)
-		ln =  'All generated maps should now be restricted to asym unit '+\
-			  'with properties: '
-		self.runLog.writeToLog(str = ln)
-		Map = mapTools(mapName = mapmask1.outputMapFile,
-					   logFile = self.runLog)
-		Map.printMapInfo()
-
-		# perform map consistency check between cropped fft and sfall maps
-		fftMap = mapTools(newMap)
-		fftMap.readHeader()
-		sfallMap = mapTools(mapmask1.outputMapFile)
-		sfallMap.readHeader()
-		success = self.mapConsistencyCheck(sfallMap,fftMap)
-		if success is False:
-			return 10
-		else:
-			self.cleanUpDir()
-			return 0
+			return success
 
 	def readInputFile(self):
 
 		# read in input file for this subroutine
 
 		# if Input.txt not found, flag error
-		if os.path.isfile(self.inputFile) is False:
+		if not os.path.isfile(self.inputFile):
 			err = 'Required input file {} not found..'.format(self.inputFile)
 			self.runLog.writeToLog(str = err)
 			return False
@@ -299,10 +357,8 @@ class pipeline():
 			return False
 		return True
 
-	def cropDensmapToSFALLmap(self,
-							  mapType = 'DIFF',
-							  densMap = '',
-							  atmMap  = ''):
+	def cropMapToAtomTaggedMap(self,
+							   densMap = 'untitled.map'):
 
 		# crop the density map to exact same dimensions
 		# as SFALL atom-tagged map
@@ -312,29 +368,42 @@ class pipeline():
 							  outputDir = self.outputDir,
 							  runLog    = self.runLog)
 		success = mapmask2.crop2AsymUnit()
+		if not success:
+			return False
 
-		if success is False:
-			return 8.1
-
-		# run MAPMASK job to crop fft density map to same grid 
-		# sampling dimensions as SFALL atom map
+		# run MAPMASK job to crop fft density map to same
+		# grid sampling dimensions as SFALL atom map
 		mapmask3 = MAPMASKjob(mapFile1  = mapmask2.outputMapFile,
-							  mapFile2  = atmMap,
+							  mapFile2  = self.atomTaggedMap,
 							  outputDir = self.outputDir,
 							  runLog    = self.runLog)
 		success = mapmask3.cropMap2Map()
+		self.croppedDensityMap = mapmask3.outputMapFile
 
-		if success is False:
-			return 9
-		else:
-			return mapmask3.outputMapFile
+		return success
 
-	def mapConsistencyCheck(self,sfallMap,fftMap):
+	def reportCroppedMapInfo(self):
+
+		# print the map info (grid size, num voxels)
+
+		ln =  'All generated maps should now be restricted to asym unit '+\
+			  'with properties: '
+		self.runLog.writeToLog(str = ln)
+		Map = mapTools(mapName = self.atomTaggedMap,
+					   logFile = self.runLog)
+		Map.printMapInfo()
+
+	def mapConsistencyCheck(self):
 
 		# this function determines whether the atom map and density 
 		# map calculated using SFALL and FFT are compatible - meaning 
 		# the grid dimensions/filtering are the same and the ordering
 		# of the fast, medium, and slow axes are identical.
+
+		fftMap = mapTools(self.croppedDensityMap)
+		fftMap.readHeader()
+		sfallMap = mapTools(self.atomTaggedMap)
+		sfallMap.readHeader()
 
 		err = 'Checking that atom map (SFALL) and density map (FFT) are compatible...'
 		self.runLog.writeToLog(str = err)
@@ -344,7 +413,6 @@ class pipeline():
 			sfallMap.gridsamp3 != fftMap.gridsamp3):
 			err = 'Incompatible grid sampling found...'
 			self.runLog.writeToLog(str = err)
-
 			return False
 
 		if (sfallMap.fastaxis != fftMap.fastaxis or

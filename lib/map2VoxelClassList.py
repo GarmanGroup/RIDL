@@ -88,7 +88,7 @@ def readMap(dirIn    = './',
             char = unpack('c',bmf.read(1))[0]
             line += char
         symOps.append(line)
-    rho.symOpsUnformatted = symOps
+    rho.curateSymOps(symOps)
 
     # next seek start of electron density data
     bmf.seek(densitystart,0)

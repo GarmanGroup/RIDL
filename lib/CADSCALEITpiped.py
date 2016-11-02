@@ -16,6 +16,7 @@ class pipeline():
 				 outputDir = '',
 				 inputFile = '',
 				 jobName   = 'untitled-job',
+				 doScaling = True,
 				 log       = ''):
 
 		# specify where output files should be written
@@ -24,17 +25,19 @@ class pipeline():
 		self.findFilesInDir() 	
 		self.txtInputFile 		= inputFile
 		self.jobName 			= jobName
+		self.doScaling          = doScaling
 
 		if log == '':
-			self.runLog = logFile(fileName = '{}{}_runLog1.log'.format(self.outputDir,jobName),
+			f = '{}{}_runLog1.log'.format(self.outputDir,jobName)
+			self.runLog = logFile(fileName = f,
 								  fileDir  = self.outputDir)
 		else:
 			self.runLog = log
 
 		# specify output files for parts of pipeline
-		self.CADoutputMtz 		= '{}{}_CADcombined.mtz'.format(self.outputDir,self.jobName)
-		self.SCALEITinputMtz 	= self.CADoutputMtz
-		self.SCALEIToutputMtz 	= '{}{}_SCALEITcombined.mtz'.format(self.outputDir,self.jobName)
+		self.CADoutputMtz 	  = '{}{}_CADcombined.mtz'.format(self.outputDir,self.jobName)
+		self.SCALEITinputMtz  = self.CADoutputMtz
+		self.SCALEIToutputMtz = '{}{}_SCALEITcombined.mtz'.format(self.outputDir,self.jobName)
 
 	def makeOutputDir(self,
 					  dirName = './'):
@@ -54,7 +57,7 @@ class pipeline():
 		# dataset within a damage series
 
 		success = self.readInputs()	
-		if success is False:
+		if not success:
 			return 1
 
 		# copy input mtz files to working directory and rename
@@ -80,7 +83,7 @@ class pipeline():
 							   runLog          = self.runLog)	
 			success = sigmaa.run()
 
-			if success is False: 
+			if not success: 
 				return 2
 
 			# if 2FO-FC map required, use FWT column from sigmaa-output mtz (we are done here)
@@ -110,21 +113,22 @@ class pipeline():
 					 FOMWeight       = self.FFTmapWeight)
 		success = cad.run()
 
-		if success is False:
+		if not success:
 			return 3
 
  		# run SCALEIT job 
- 		self.printStepNumber()
-		scaleit = SCALEITjob(inputMtz  = self.SCALEITinputMtz,
-							 outputMtz = self.SCALEIToutputMtz,
-							 Mtz1Label = self.Mtz1LabelRename,
-							 Mtz2Label = self.Mtz2LabelRename,
-							 outputDir = self.outputDir,
-							 runLog    = self.runLog)
-		success = scaleit.run()
+ 		if self.doScaling:
+	 		self.printStepNumber()
+			scaleit = SCALEITjob(inputMtz  = self.SCALEITinputMtz,
+								 outputMtz = self.SCALEIToutputMtz,
+								 Mtz1Label = self.Mtz1LabelRename,
+								 Mtz2Label = self.Mtz2LabelRename,
+								 outputDir = self.outputDir,
+								 runLog    = self.runLog)
+			success = scaleit.run()
 
-		if success is False:
-			return 4
+			if not success:
+				return 4
 
 		# end of pipeline reached
 		self.cleanUpDir()	
@@ -135,7 +139,7 @@ class pipeline():
 		# open input file and parse inputs for the current subroutine
 
 		# if Input.txt not found, flag error
-		if self.checkFileExists(self.txtInputFile) is False:
+		if not self.checkFileExists(self.txtInputFile):
 			ln = 'Required input file {} not found..'.format(self.txtInputFile)
 			self.runLog.writeToLog(str = ln)
 			return False
@@ -244,7 +248,7 @@ class pipeline():
 
 		# check if file exists
 
-		if os.path.isfile(filename) is False:
+		if not os.path.isfile(filename):
 			err = 'File {} not found'.format(filename)
 			self.runLog.writeToLog(str = err)
 			return False

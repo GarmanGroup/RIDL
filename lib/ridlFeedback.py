@@ -81,10 +81,10 @@ class provideFeedback(object):
 		# provide summary html file for Dloss metric per-dataset
 		if self.writeSumFile:
 			self.summaryFile(normType = 'Standard') 
-			self.summaryFile(metric    = 'mean',
-							 normType  = 'distance-weighted')
-			if self.checkCalphasPresent(atomObjList = self.atmsObjs) is True:
-				self.summaryFile(normType = 'Calpha normalised') 
+			# self.summaryFile(metric    = 'mean',
+			# 				 normType  = 'distance-weighted')
+			# if self.checkCalphasPresent(atomObjList = self.atmsObjs) is True:
+			# 	self.summaryFile(normType = 'Calpha normalised') 
 		
 		if self.writeTopSites:
 			self.writeDamSitesToFile()
@@ -172,9 +172,11 @@ class provideFeedback(object):
 		self.logFile.writeToLog(str = ln)
 
 		if fileType == 'html':
-			self.summaryHTML(metric        = metric,
-							 normType      = normType,
-							 includeGraphs = self.plot)
+			# self.summaryHTML(metric        = metric,
+			# 				 normType      = normType,
+			# 				 includeGraphs = self.plot)
+			self.summaryHTML2(metric        = metric,
+							 includeGraphs  = self.plot)
 		else:
 			print 'Unknown file format. Only currently supported format is "html"'
 
@@ -236,7 +238,7 @@ class provideFeedback(object):
 					 '<li><a href = "plots/{}">Top 25 damage sites per residue/nucleotide type</a></li>'.format(figName.split('/')[-1])
 
 		# create heatmap plots (large files) if requested
-		if self.plotHeatMaps is True:
+		if self.plotHeatMaps:
 			bodyString += '<li><a href = "plots/metric_heatmap/heatmap_metric-{}_normalisation-'.format(metric)+\
 						  '{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li></ul>'.format(normType.replace(' ',''),normType,metric)
 		else: 
@@ -249,7 +251,7 @@ class provideFeedback(object):
 		# dataset is present.
 		if self.atmsObjs.getNumDatasets() == 1:
 			pass
-		elif includeGraphs is True:
+		elif includeGraphs:
 			numDamSites = 10
 
 			figCalls = []
@@ -319,7 +321,7 @@ class provideFeedback(object):
 										           dataset = i)	
 			summaryFile.write(panelStr)
 
-			if includeGraphs is True:
+			if includeGraphs:
 
 				subdir = 'metricDistn_allAtoms/'
 				outDir = self.makeNewPlotSubdir(subdir = subdir)
@@ -418,7 +420,7 @@ class provideFeedback(object):
 										           dataset = i)
 			summaryFile.write(panelStr)
 
-			if includeGraphs is True:
+			if includeGraphs:
 
 				params = [['Residues',1,'GLUASPCYSMETTYR','residue'],
 						  ['nucleotides',3,'DADCDGDT','nucleotide']]
@@ -433,7 +435,7 @@ class provideFeedback(object):
 												      outputDir = outDir,
 												      dataset   = i)
 
-					if failedPlots[paramSet[2]] is False:
+					if not failedPlots[paramSet[2]]:
 
 						args = [subdir,
 								paramSet[2],
@@ -470,7 +472,7 @@ class provideFeedback(object):
 
 				if len(suspAtoms) > 0:
 
-					if notDoneBefore is True:
+					if notDoneBefore:
 						infoString += lastInfoString + tmpInfoString
 						notDoneBefore = False
 					else:
@@ -509,11 +511,373 @@ class provideFeedback(object):
 		summaryFile.write(endString)
 		summaryFile.close()
 
+	def summaryHTML2(self, 
+					 metric        = 'loss',
+					 includeGraphs = True,
+					 imWidth       = 750):
+
+		# produce a selection of per-dataset summary statistics
+
+		calphaNorm = 'C<sub>&#945</sub>-normalised'
+		norms      = ['Standard','Calpha normalised']
+		plotNorm   = 'Calpha normalised'
+
+		numDsets = self.getNumDatasets()
+		summaryFile = open('{}summaryFile.html'.format(self.outputDir),'w')
+		summaryFile.write('<!DOCTYPE html>\n<html>\n')
+
+		# create html head 
+		headString = '<head>\n'+\
+  					 '<meta name="viewport" content="width=device-width, initial-scale=1">\n'+\
+  					 '<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">\n'+\
+  					 '<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>\n'+\
+  					 '<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>\n'+\
+  					 '<title>RIDL summary file</title>\n'+\
+  					 '<style>\ntable, th, td {\nborder: 1px solid black;\nborder-collapse: collapse;\n}\n'+\
+					 'th, td {\npadding: 5px;\ntext-align: center;\n}\n</style>\n'+\
+					 '</head>\n'
+
+		summaryFile.write(headString)
+
+		bodyString = '<body>\n'+\
+					 '<div class="container">\n'+\
+					 '<h1>RIDL summary file</h1>\n'+\
+					 'Created: {}<br>\n'.format(strftime("%Y-%m-%d %H:%M:%S", gmtime()))+\
+					 'Summary information derived from {}<br>\n'.format(self.pklSeries)+\
+					 'Email charles.bury@dtc.ox.ac.uk for queries<br>\n'+\
+					 'Number of datasets reported in file: {}<br>\n'.format(numDsets)+\
+					 'Providing analysis on each dataset individually below<br>\n'+\
+					 '<h3>Key of reported quantities</h3>\n'+\
+					 '<ul><li>mean: average of metric calculated over all atoms of a specified type</li>\n'+\
+					 '<li>std: standard deviation of metric calculated over all atoms of a specified type</li>\n'+\
+					 '<li>#atoms: total number of atoms of a specified type</li>\n'+\
+					 '<li>outliers: assuming a symmetric distn around the mode, number of atoms that fall outside this domain</li>\n'+\
+					 '<li>skew: skewness of metric distribution for atoms of specified type</li>\n'+\
+					 '<li>normality: p-value for null hypothesis that distribution of metric values is normally distributed.\n'+\
+					 'If not enough atoms are present to perform this test, "n/a" is given</li>\n</ul>'
+		summaryFile.write(bodyString)
+
+		# create plot of top n damage sites per dataset by residue type
+		figName = self.atmsObjs.getTopAtomsStackedBarplot(outputDir = self.outputPlotDir)
+
+		# provide some links to useful output files
+		bodyString = '<h3>Links to useful output files</h3><ul>\n'
+
+		for m,norm in zip([metric]*2,norms):
+			bodyString += '<li><a href = "csvFiles/{}/{}-'.format(norm.replace(' ','-'),m)+\
+					 	  '{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(norm.replace(' ',''),norm,m)
+		
+		bodyString += '<li><a href = "plots/{}">Top 25 damage sites per residue/nucleotide type</a></li>'.format(figName.split('/')[-1])
+
+		# create heatmap plots (large files) if requested
+		if self.plotHeatMaps:
+			for m,norm in zip([metric]*2,norms):
+				bodyString += '<li><a href = "plots/metric_heatmap/heatmap_metric-{}_normalisation-'.format(m)+\
+						  	  '{}.svg">{} D<sub>{}</sub> per-atom heat map</a></li></ul>'.format(norm.replace(' ',''),norm,m)
+		else: 
+			bodyString += '</ul>'
+
+		summaryFile.write(bodyString)
+
+		# find top overall damaged atoms and plot line plots 
+		# versus dataset. Only plot if more than 1 high dose
+		# dataset is present.
+		if numDsets == 1:
+			pass
+		elif includeGraphs:
+			numDamSites = 10
+
+			figCalls = []
+
+			for metric, norm in zip([metric]*2,norms):
+				for t in ['Top','Bottom']:
+
+					topAtoms = self.atmsObjs.getTopNAtoms(dataset  = 'all', 
+														  n        = numDamSites,
+													      topOrBot = t.lower())
+
+					keys = ['chain','num','res','atm']
+					info = {k : [] for k in keys}
+
+					for atm in topAtoms:
+						aInfo = atm.split('-')
+						for i,j in zip(keys,aInfo):
+							info[i].append(j)
+
+					figName = self.atmsObjs.graphMetric(atomType  = info['atm'],
+														resType   = info['res'],
+														chainType = info['chain'],
+														resiNum   = info['num'],
+														densMet   = metric,
+														normType  = norm,
+														outputDir = self.outputPlotDir,
+														saveFig   = True,
+														figTitle  = '{} {} D{} damage sites'.format(t,numDamSites,metric),
+														saveName  = 'Lineplot_Metric-D{}_Normalisation-{}_{}-atoms'.format(metric,norm,t))
+
+					figCalls.append('<img class="img-responsive" src="plots/{}" width="{}">'.format(figName.split('/')[-1],400))
+
+			info = '<div class = "row">\n'+\
+			  	   '<div class = "col-sm-6">{}</div>\n'.format(figCalls[0])+\
+			       '<div class = "col-sm-6">{}</div>\n'.format(figCalls[1])+\
+			       '<div class = "col-sm-6">{}</div>\n'.format(figCalls[2])+\
+			       '<div class = "col-sm-6">{}</div>\n'.format(figCalls[3])+\
+			       '</div>\n'
+
+			summaryFile.write(info)
+
+
+		# make a set of tabs for easy navigation to each dataset
+		summaryFile.write('<h2>Per-dataset analysis</h2>\n')
+		tabs = '<ul class="nav nav-tabs">'+\
+			   '<li class="active"><a data-toggle="tab" href="#dset-tab0">Dataset 1</a></li>'
+
+		for i in range(1,numDsets):
+			tabs += '<li><a data-toggle="tab" href="#dset-tab{}">Dataset {}</a></li>'.format(i,i+1)
+		tabs += '</ul>'
+
+		summaryFile.write(tabs)
+		summaryFile.write('<div class="tab-content">')
+
+		for i in range(numDsets):
+			if i != 0:
+				str = '<div id="dset-tab{}" class="tab-pane fade">'.format(i)
+			else:
+				str = '<div id="dset-tab{}" class="tab-pane fade in active">'.format(i)
+			summaryFile.write(str + '<hr>')
+
+			# start block of collapsible panels here
+			summaryFile.write('<div class = "panel-group" id = "datasetinfo{}">'.format(i))
+			# summaryFile.write('<h2>Dataset {}</h2>\n'.format(i+1))
+
+			t = 'Dataset info'
+			c = 'Number in series : {}<br>\n'.format(i+1)+\
+				'Dose (MGy)       : {}<br>\n'.format(self.doses[i])+\
+				'Number of atoms  : {}<br>\n'.format(self.atmsObjs.getNumAtoms())+\
+				'Fourier diff map : <a href ="../RIDL-maps/{}_density.map">Download</a><br>\n'.format(self.pdbNames[i])
+			
+			CAweights = self.atmsObjs.retrieveCalphaWeight(metric = metric)
+			c += 'Calpha weight for current dataset: {}<br>\n'.format(round(CAweights.weight[metric][i],3))
+
+			panelStr = self.writeHtmlDropDownPanel(title   = t,
+										           content = c,
+										           dataset = i)	
+			summaryFile.write(panelStr)
+
+			t = 'Structure-wide D<sub>{}</sub> summary'.format(metric)
+			overallInfo = 'Normalisation,Average,Standard Deviation'
+			for metric,norm in zip([metric]*2,norms):
+
+				# get structure-wide metric average & std dev
+				av,std = self.atmsObjs.getAverageMetricVals(densMet  = metric,
+												    	    normType = norm)
+				overallInfo += '\n{},{},{}'.format(norm.replace(' ','-'),round(av[i],3),round(std[i],3))
+			
+			c = self.convertPlainTxtTable2html(overallInfo, width = '50%', splitBy = ',')
+		 				
+			panelStr = self.writeHtmlDropDownPanel(title   = t,
+										           content = c,
+										           dataset = i)	
+			summaryFile.write(panelStr)
+
+			if includeGraphs:
+
+				subdir = 'metricDistn_allAtoms/'
+				outDir = self.makeNewPlotSubdir(subdir = subdir)
+
+				failedPlots = self.makeDistnPlots(densMet   = metric,
+											      normType  = plotNorm,
+											      plotSet   = 4,
+											      outputDir = outDir,
+											      dataset   = i)
+
+				t = 'Distribution of D<sub>{}</sub> for all refined atoms within structure'.format(metric)
+				c = '<img class="img-responsive" src="plots/{}DistnPlot_Residues-all_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}">'.format(subdir,metric,plotNorm.replace(' ',''),i,imWidth)
+				panelStr = self.writeHtmlDropDownPanel(title   = t,
+											           content = c,
+										               dataset = i)
+				summaryFile.write(panelStr)
+
+			subdir = 'zScorePlots/'
+			outDir = self.makeNewPlotSubdir(subdir = subdir)
+
+			figName = self.atmsObjs.plotNumAtomsWithMetricAboveStructureWideMean(metric   = metric,
+																				 normType = plotNorm,
+																			     dataset  = i,
+																				 outputLoc = outDir)
+
+			t = '# atoms with D<sub>{}</sub> metric above N std dev of structure-wide mean'.format(metric)
+			c = '<img class="img-responsive" src="plots/{}{}" width="{}">'.format(subdir,figName.split('/')[-1],imWidth)
+			panelStr = self.writeHtmlDropDownPanel(title   = t,
+										           content = c,
+										           dataset = i)	
+			summaryFile.write(panelStr)
+
+			# retrieve top N atoms and ranked by specified metric
+			statsOut = self.atmsObjs.getTopNAtomsString(dataset  = i,
+														metric   = metric,
+													    n        = 25)
+
+			t = 'Top hits ranked by D<sub>{}</sub> metric'.format(metric)
+			c = 'Top hits ranked by D<sub>{}</sub> metric.<br>D<sub>mean</sub> and D<sub>gain</sub> are mean '.format(metric)+\
+			    'and maximum voxel difference density values, respectively, '+\
+			    'assigned within a local region around each atom.<br>Proximity (from 0 '+\
+			    'to 1) is a measure of the closeness of the voxel exhibiting the '+\
+			    'maximum density loss D<sub>loss</sub> value from the specified atom (higher '+\
+			    'values indicate smaller distances):<br><br>\n'
+
+			c += self.convertPlainTxtTable2html(statsOut, width = '50%', splitBy = ',')
+			panelStr = self.writeHtmlDropDownPanel(title   = t,
+										           content = c,
+										           dataset = i)
+			summaryFile.write(panelStr)
+
+			statsOut = self.atmsObjs.getPerAtmtypeStats(metric   = metric,
+														normType = 'Calpha normalised',
+														dataset  = i)
+			t = 'Per-atom-type Statistics'
+			c = '{} D<sub>{}</sub> metric ranked by mean value:<br><br>\n'.format(calphaNorm,metric)
+			c += self.convertPlainTxtTable2html(statsOut[0], width = '60%')
+			panelStr = self.writeHtmlDropDownPanel(title   = t,
+										           content = c,
+										           dataset = i)
+			summaryFile.write(panelStr)
+
+			# n = self.atmsObjs.getNumAtoms()*0.05 # take top 5% of atoms here
+			# statsOut = self.atmsObjs.breakdownTopNatomsBy(metric   = metric,
+			# 											  normType = 'Calpha normalised',
+			# 											  dataset  = i,
+			# 											  n        = n)
+			# t = 'Most frequently damaged atom types'
+			# c = '{}<br><br>\n'.format(statsOut[0])
+			# c += self.convertPlainTxtTable2html(statsOut[1])
+			# panelStr = self.writeHtmlDropDownPanel(title   = t,
+			# 							           content = c,
+			# 							           dataset = i)
+			# summaryFile.write(panelStr)
+
+			statsOut = self.atmsObjs.getPerResidueStats(metric   = metric,
+													    normType = 'Calpha normalised',
+													    dataset  = i)
+			t = 'Per-residue Statistics'
+			c = '{} D<sub>{}</sub> metric ranked by mean value:<br><br>\n'.format(calphaNorm,metric)
+			c += self.convertPlainTxtTable2html(statsOut[0], width = '60%')
+			panelStr = self.writeHtmlDropDownPanel(title   = t,
+										           content = c,
+										           dataset = i)
+			summaryFile.write(panelStr)
+
+			statsOut = self.atmsObjs.getPerChainStats(metric   = metric,
+													  normType = 'Calpha normalised',
+													  dataset  = i,
+													  n        = 'all')
+			t = 'Per-chain Statistics'
+			c = '{} D<sub>{}</sub> metric ranked by mean value:<br><br>\n'.format(calphaNorm,metric)
+			c += self.convertPlainTxtTable2html(statsOut[0], width = '60%')
+			panelStr = self.writeHtmlDropDownPanel(title   = t,
+										           content = c,
+										           dataset = i)
+			summaryFile.write(panelStr)
+
+			if includeGraphs:
+
+				params = [['Residues',1,'GLUASPCYSMETTYR','residue'],
+						  ['nucleotides',3,'DADCDGDT','nucleotide']]
+
+				for paramSet in params:
+					subdir = 'metricDistn_key{}/'.format(paramSet[0])
+					outDir = self.makeNewPlotSubdir(subdir = subdir)
+
+					failedPlots = self.makeDistnPlots(densMet   = metric,
+												      normType  = 'Calpha normalised',
+												      plotSet   = paramSet[1],
+												      outputDir = outDir,
+												      dataset   = i)
+
+					if not failedPlots[paramSet[2]]:
+
+						args = [subdir,
+								paramSet[2],
+								metric,
+								'Calphanormalised',
+								i,
+								imWidth]
+
+						t = 'Distribution of D<sub>{}</sub> for known susceptible {} types\n'.format(metric,paramSet[3])
+						c = '<img class="img-responsive" src="plots/{}DistnPlot_Residues-{}_Metric-D{}_Normalisation-{}_Dataset-{}.svg" width="{}"><br>'.format(*args)
+						panelStr = self.writeHtmlDropDownPanel(title   = t,
+													           content = c,
+											                   dataset = i)
+						summaryFile.write(panelStr)
+
+			infoString = 'Atoms with unusually <font color="red">high</font> '+\
+				  		 'or <font color="blue">low</font> D<sub>{}</sub> values '.format(metric)+\
+				  		 'relative to the mean D<sub>{}</sub> value for that specific '.format(metric)+\
+				  		 'atom type will be reported.<br><br>'
+
+			lastInfoString = ''
+			suspAtomLens   = []
+			notDoneBefore  = True
+
+			for t in [6,5,4,3,2]:
+				suspAtoms,highOrLow = self.atmsObjs.detectSuspiciousAtoms(dataset   = i,
+						  										 		  metric    = metric,
+						  										 		  threshold = t)
+
+				tmpInfoString = '{} atoms found with unusually high/low D{} '.format(len(suspAtoms),metric)+\
+							    'values compared to average of that atom type '+\
+							    '(over {} standard deviations from average)'.format(t)
+
+				if len(suspAtoms) > 0:
+
+					if notDoneBefore:
+						infoString += lastInfoString + tmpInfoString
+						notDoneBefore = False
+					else:
+						infoString += tmpInfoString
+
+					infoString += ':<br>'
+					suspAtomLens.append(len(suspAtoms))
+					for s,h in zip(suspAtoms,highOrLow):
+						if h == 'high':
+							c = 'red'
+						else:
+							c = 'blue'
+						infoString += '<font color="{}">{}</font><br>'.format(c,s)
+					infoString += '<br>'
+
+				if len(suspAtomLens) > 1:
+					if suspAtomLens[-1] > 0 and suspAtomLens[-2] > 0:
+						break
+
+				lastInfoString = tmpInfoString + '<br>'
+
+			t = 'Suspicious Atoms'
+			c = infoString
+			panelStr = self.writeHtmlDropDownPanel(title   = t,
+										           content = c,
+										           dataset = i)
+			summaryFile.write(panelStr)
+
+			# end block of collapsible panels here
+			summaryFile.write('</div>')
+			summaryFile.write('</div>')
+
+		summaryFile.write('<div class="tab-content">')
+
+
+		endString = '</div>\n'+\
+					'</body>\n'+\
+					'</html>'
+
+		summaryFile.write(endString)
+		summaryFile.close()
+
 	def writeHtmlDropDownPanel(self,
 							   title      = 'untitled',
 							   header     = 'h3',
 							   content    = 'no content',
-							   panelColor = 'default',
+							   panelColor = 'alternate',
 							   dataset    = 0):
 
 		# write the info for a html collapsible panel
@@ -522,6 +886,12 @@ class provideFeedback(object):
 			self.panelIndex
 		except AttributeError:
 			self.panelIndex = 1
+
+		if panelColor == 'alternate':
+			if self.panelIndex%2 == 0:
+				panelColor = 'link'
+			else:
+				panelColor = 'info'
 
 		if self.panelIndex == 1:
 			expanded = 'in'
@@ -545,15 +915,17 @@ class provideFeedback(object):
 								  plainText      = '',
 								  numHeaderLines = 1,
 								  width          = '40%',
-								  border         = '1'):
+								  border         = '1',
+								  splitBy        = '\t\t'):
 
 		# convert a plain text table of values into a html format table
+
 		htmlTable = '<table class="table table-striped">\n'.format(border,width)
 		for i, l in enumerate(plainText.split('\n')):
 			if i < numHeaderLines:
-				newStr = '<tr><th>'+' '.join(l.split()).replace(' ','</th><th>')+'</th></tr>'
+				newStr = '<tr><th>'+'</th><th>'.join(l.split(splitBy))+'</th></tr>'
 			else:
-				newStr = '<tr><td>'+' '.join(l.split()).replace(' ','</td><td>')+'</td></tr>'
+				newStr = '<tr><td>'+'</td><td>'.join(l.split(splitBy))+'</td></tr>'
 			htmlTable += newStr+'\n'
 		htmlTable += '</table>\n'
 		return htmlTable
@@ -681,7 +1053,7 @@ class provideFeedback(object):
 					   'color red, {}\n'.format(damSitesTag)+\
 					   'color white, {}\n'.format(structureTag)
 
-			if savePic is True:
+			if savePic:
 				pass
 				# DOESN'T WORK CURRENTLY
 				pymolStr += 'ray\n png {}\nquit'.format(self.damSitesPDB[dataset].replace('.pdb','.png'))
@@ -704,6 +1076,7 @@ class provideFeedback(object):
 					   densMet    = 'loss',
 					   normType   = 'Standard',
 					   plotType   = 'both',
+					   inclTitle  = False,
 					   plotSet    = 1,
 					   calcKSstat = False,
 					   calcADstat = False,
@@ -774,6 +1147,7 @@ class provideFeedback(object):
 												  outputDir  = outputDir,
 												  printText  = False,
 												  plotTitle  = title,
+												  inclTitle  = inclTitle,
 												  calcKSstat = calcKSstat,
 												  calcADstat = calcADstat,
 												  requireAll = requireAll)	
@@ -825,7 +1199,7 @@ class provideFeedback(object):
 
 		# print a filler line to command line
 
-		if blank is False:
+		if not blank:
 			ln = '\n---------------------------------------------------------------'	
 		else:
 			ln = '\n'
@@ -837,7 +1211,7 @@ class provideFeedback(object):
 
 		self.seabornFound = checkSns(printText = False,
 									 logFile   = self.logFile)
-		if self.seabornFound is False:
+		if not self.seabornFound:
 			self.plot = False
 
 	def printNoSeabornWarning(self):
@@ -857,13 +1231,15 @@ class provideFeedback(object):
 
 		if not path.exists(dirName):
 			makedirs(dirName)
-			ln = 'New sub directory "{}" created to contain output files'.format(dirName.replace(self.outputDir,''))
+			ln = 'New sub directory "{}" '.format(dirName.replace(self.outputDir,''))+\
+				 'created to contain output files'
 			self.logFile.writeToLog(str = ln)
 
 	def makeNewPlotSubdir(self,
 						  subdir = 'untitled/'):
 
 		# make a new sub directory for plots within plots/ subdir
+		
 		outDir = self.outputPlotDir + subdir
 		self.makeOutputDir(dirName = outDir)
 
