@@ -34,7 +34,7 @@ class maps2DensMetrics():
                  atomTagMap  = '',
                  densityMap  = '',
                  FCmap       = '',
-                 plotScatter = True,
+                 plotScatter = False,
                  plotHist    = False,
                  logFile     = logFile,
                  calcFCmap   = True):
@@ -351,19 +351,19 @@ class maps2DensMetrics():
                                          reliability       = reliability)
 
             if clustAnalys:
-                # if 'CYS-SG' in atom.getAtomID():
+                # if 'MET-SD' in atom.getAtomID():
+                rnd = np.random.random()
+                if rnd < 0.05:
+                # if atom.side_or_main() == 'sidechain':
+                    print atom.getAtomID()
+                    clustAnalysis = perAtomClusterAnalysis(atmNum      = atom.atomnum,
+                                                           atmId       = atom.getAtomID(),
+                                                           densMapObj  = self.densmap,
+                                                           xyzsPerAtom = self.xyzsPerAtom,
+                                                           vxlsPerAtom = self.vxlsPerAtom)
 
-                clustAnalysis = perAtomClusterAnalysis(atmNum      = atom.atomnum,
-                                                       atmId       = atom.getAtomID(),
-                                                       densMapObj  = self.densmap,
-                                                       xyzsPerAtom = self.xyzsPerAtom,
-                                                       vxlsPerAtom = self.vxlsPerAtom)
-                    # print '***'
-                    # print clustAnalysis.output
-                    # print '***'
-
-                atom.negClusterVal = clustAnalysis.output[0]
-                atom.totDensShift  = clustAnalysis.output[-1]
+                    atom.negClusterVal = clustAnalysis.output[0]
+                    atom.totDensShift  = clustAnalysis.output[-1]
 
     def calcDensMetrics(self,
                         plotDistn    = False,
@@ -386,6 +386,7 @@ class maps2DensMetrics():
 
         else:    
 
+            # tRun=time.time()
             for i,atom in enumerate(self.PDBarray):
 
                 if showProgress:
@@ -396,6 +397,16 @@ class maps2DensMetrics():
                 self.calcDensMetricsForAtom(atom        = atom,
                                             plotDistn   = plotDistn,
                                             clustAnalys = clustAnalys)
+
+            # atomIDs = [atom.getAtomID() for atom in self.PDBarray if not np.isnan(atom.totDensShift)]
+            # shifts  = [atom.totDensShift for atom in self.PDBarray if not np.isnan(atom.totDensShift)]
+
+            # shifts, atomIDs = (list(t) for t in zip(*sorted(zip(shifts, atomIDs))))
+
+            # for s,a in zip(shifts,atomIDs):
+            #     print s,a
+
+            # print 'Run time: {}s'.format(round(time.time()-tRun,3))
 
         self.success()
         self.stopTimer()
@@ -474,8 +485,8 @@ class maps2DensMetrics():
         # # only include below if per-atom clusters are
         # # calculated - currently very slow
         if clustAnalys:
-            plotVars += [['negCluster','meandensity'],
-                         ['negCluster','mindensity'],
+            plotVars += [['negClusterVal','meandensity'],
+                         ['negClusterVal','mindensity'],
                          ['totDensShift','meandensity'],
                          ['totDensShift','mindensity']]
 
