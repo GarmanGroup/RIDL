@@ -757,8 +757,7 @@ class processFiles():
 
 		self.pipe1FileName 	= '{}{}_subroutine1.txt'.format(self.mapProcessDir,
 														   self.jobName)
-
-		props = {'mtzIn1'          : 'mtz1',
+		props = {'mtzIn1'          : 'mtz1_current',
 				 'Mtz1LabelName'   : 'mtzlabels1_current',
 				 'Mtz1LabelRename' : 'name1_current',
 				 'RfreeFlag1'      : 'RfreeFlag1_current',
