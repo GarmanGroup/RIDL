@@ -413,16 +413,21 @@ class processFiles():
 				  'please set dose inputs to NOTCALCULATED within input file.\n'
 
 		if self.dose1 != 'NOTCALCULATED':
-			err = '"dose1" input must be a positive float. '+\
-				  'Currently set as "{}" in input file.\n{}'.format(self.dose1,doseStr)
-			try:
-				float(self.dose1)
-			except ValueError:
-				self.writeError(text = err)
-				return False
-			if float(self.dose1) < 0:
-				self.writeError(text = err)
-				return False
+			if self.repeatedFile1InputsUsed:
+				doses = [self.dose1]
+			else:
+				doses = self.dose1.split(',')
+			for dose in doses:
+				err = 'Each "dose1" input must be a positive float. '+\
+				  	  'A dose is currently set as "{}" in input file.\n{}'.format(dose,doseStr)
+				try:
+					float(dose)
+				except ValueError:
+					self.writeError(text = err)
+					return False
+				if float(dose) < 0:
+					self.writeError(text = err)
+					return False
 
 		if self.dose2 != 'NOTCALCULATED':
 			if not self.multiDatasets:
