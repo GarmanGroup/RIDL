@@ -45,6 +45,8 @@ class error():
 
 		err = 'Warning! >>> {}'.format(message)
 
+		self.printError(message = err)
+
 	def printError(self,
 				   message = ''):
 

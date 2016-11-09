@@ -1011,22 +1011,30 @@ class processFiles():
 			seriesName = self.dir.split('/')[-2]
 
 			if self.multiDatasets and not self.repeatedFile1InputsUsed:
-				err =  'Must have single INITIALDATASET inputs in input '+\
-					   'file to run the metric calculation step immediately here'
-				self.writeError(text = err)
-				return False
-
+				# currently if more than one initial dataset specified then 
+				# parts of further analysis are untested. Derivation of Dloss 
+				# values should not be affected
+				err = 'More than one INITIALDATASET input specified! Taking only '+\
+					  'first coordinate file specified in input file. This file will '+\
+					  'used for the x,y,z coordinates of each input atom. If you are '+\
+					  'using outputs from RIDL other than Dloss, please contact '+\
+					  'charles.bury@dtc.ox.ac.uk for concerns over validity.'
+				self.writeError(text = err, 
+								type = 'warning')
+				initialPDB = self.name1.split(',')[0]
 			else:
-				if self.dose2 == 'NOTCALCULATED':
-					doses = ','.join( map( str, range( len( self.name2.split(',') ) ) ) )
-				else:
-					doses = self.dose2
+				initialPDB = self.name1
+
+			if self.dose2 == 'NOTCALCULATED':
+				doses = ','.join( map( str, range( len( self.name2.split(',') ) ) ) )
+			else:
+				doses = self.dose2
 
 			r.writeInputFile(inDir         = self.mapProcessDir,
 							 outDir        = self.dir,
 							 damSetName    = seriesName,
 							 laterDatasets = self.name2,
-							 initialPDB    = self.name1,
+							 initialPDB    = initialPDB,
 							 doses         = doses,
 							 outputGraphs  = self.outputGraphs)
 
@@ -1054,12 +1062,14 @@ class processFiles():
 			self.logFile.writeToLog(str = ln)
 
 	def writeError(self,
-				   text = ''):
+				   text = '',
+				   type = 'error'):
 
 		# write error message to log file
 
 		error(text = text,
-			  log  = self.logFile)
+			  log  = self.logFile,
+			  type = type)
 
 
 
