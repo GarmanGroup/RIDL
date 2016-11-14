@@ -973,16 +973,18 @@ class processFiles():
 
 	def moveInitialPDBfile(self):
 
-		# copy the initial dataset pdb file to the working 
-		# directory useful if further RIDL jobs to be run)
+		# copy the CURRENT initial dataset pdb file to the working 
+		# directory useful if further RIDL jobs to be run). 
+		# ONLY do this if file not found in directory already. This
+		# avoids PDBCUR-curated files being overwritten from other 
+		# section of pipeline. This probably needs simplifying in 
+		# the long run, but avoids difficulties when multiple initial
+		# dataset inputs have been specified in the input file
 
-		if self.repeatedFile1InputsUsed or not self.multiDatasets:
-			shutil.copy2(self.pdb1,
-						 '{}{}.pdb'.format(self.mapProcessDir,
-						 			       self.name1))
-		else:
-			for pdb in self.pdb1.split(','):
-				shutil.copy2(pdb,'{}{}.pdb'.format(self.mapProcessDir, self.name1))
+		f = '{}.pdb'.format(self.name1_current)
+		d = self.mapProcessDir
+		if f not in os.listdir(d):
+			shutil.copy2(self.pdb1_current,d+f)
 
 	def runMetricCalcStep(self,
 					      write            = True,
@@ -1021,9 +1023,6 @@ class processFiles():
 					  'charles.bury@dtc.ox.ac.uk for concerns over validity.'
 				self.writeError(text = err, 
 								type = 'warning')
-				initialPDB = self.name1.split(',')[0]
-			else:
-				initialPDB = self.name1
 
 			if self.dose2 == 'NOTCALCULATED':
 				doses = ','.join( map( str, range( len( self.name2.split(',') ) ) ) )
@@ -1034,7 +1033,7 @@ class processFiles():
 							 outDir        = self.dir,
 							 damSetName    = seriesName,
 							 laterDatasets = self.name2,
-							 initialPDB    = initialPDB,
+							 initialPDB    = self.name1,
 							 doses         = doses,
 							 outputGraphs  = self.outputGraphs)
 

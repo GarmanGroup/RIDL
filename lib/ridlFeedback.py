@@ -1168,7 +1168,7 @@ class provideFeedback(object):
 
 		# retrieve name of first dataset pdb coordinate file
 
-		pdbFile = self.inDir + self.initialPDB
+		pdbFile = self.inDir + str(self.initialPDB[0])
 
 		return pdbFile
 

@@ -178,6 +178,14 @@ class calculateMetrics(object):
 		if not self.initialPDB.endswith('.pdb'):
 			self.initialPDB += '.pdb'
 
+		newInitPdbs = []
+		for pdb in self.initialPDB.split(','):
+			if not pdb.endswith('.pdb'):
+				newInitPdbs.append(pdb+'.pdb')
+			else:
+				newInitPdbs.append(pdb)
+		self.initialPDB = newInitPdbs
+
 		# locate the correct format for the list of datasets within damage 
 		# series. Currently two formats acceptable: (a) series-name + dataset-id
 		# (per dataset), (b) input list of full dataset names (recommended).
@@ -263,20 +271,21 @@ class calculateMetrics(object):
 			  'Calculating per-atom density metrics for each dataset individually.\n'
 
 		pklFileNames = []
-		for i,dataset in enumerate(self.pdbNames):
-
+		i = 0
+		for d,initPDB in zip(self.pdbNames,self.initialPDB):
+			i += 1
 			# derive per-atom density metrics from maps
-			mapName1 = '{}_atoms.map'.format(dataset)
-			mapName2 = '{}_density.map'.format(dataset)
-			mapName3 = '{}_FC.map'.format(self.initialPDB.replace('.pdb',''))
+			mapName1 = '{}_atoms.map'.format(d)
+			mapName2 = '{}_density.map'.format(d)
+			mapName3 = initPDB.replace('.pdb','_FC.map')
 
 			txt = '\n---------------------------------\n'+\
-				  'Higher dose dataset {} starts here'.format(i+1)
+				  'Higher dose dataset {} starts here'.format(i)
 			self.logFile.writeToLog(str = txt)
 
 			maps2DensMets = maps2DensMetrics(filesIn     = self.inDir,
 										     filesOut    = self.outputDir,
-										     pdbName     = dataset,
+										     pdbName     = d,
 										     atomTagMap  = mapName1,
 										     densityMap  = mapName2,
 										     FCmap 	     = mapName3,
@@ -334,7 +343,7 @@ class calculateMetrics(object):
 		pklDir = '/'.join(pkl_filename.split('/')[:-1])+'/'
 
 		# remove directory if it is now empty
-		if listdir(pklDir) == "":
+		if listdir(pklDir) == []:
 			rmdir(pklDir)
 
 		# create a list of atom objects with attributes as lists varying over 
@@ -422,9 +431,10 @@ class calculateMetrics(object):
 
 	def get1stDsetPDB(self):
 
-		# retrieve name of first dataset pdb coordinate file
+		# retrieve name of first dataset pdb coordinate file.
+		# If multiple initial datasets input, take the first only
 
-		pdbFile = self.inDir + self.initialPDB
+		pdbFile = self.inDir + str(self.initialPDB[0])
 
 		return pdbFile
 
