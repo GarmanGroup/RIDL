@@ -413,10 +413,7 @@ class processFiles():
 				  'please set dose inputs to NOTCALCULATED within input file.\n'
 
 		if self.dose1 != 'NOTCALCULATED':
-			if self.repeatedFile1InputsUsed:
-				doses = [self.dose1]
-			else:
-				doses = self.dose1.split(',')
+			doses = self.dose1.split(',')
 			for dose in doses:
 				err = 'Each "dose1" input must be a positive float. '+\
 				  	  'A dose is currently set as "{}" in input file.\n{}'.format(dose,doseStr)
@@ -648,6 +645,7 @@ class processFiles():
 			self.logFile.writeToLog(str = ln)
 
 			self.multiDatasets = False
+
 		elif lengths[1:] != lengths[:-1]:
 			err = 'Error! Input file properties ({}) '.format(','.join(props))+\
 				  'must have same number of comma-separated inputs'
