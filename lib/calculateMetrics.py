@@ -175,16 +175,20 @@ class calculateMetrics(object):
 				self.plotHeatMaps = False
 		inputfile.close()
 
-		if not self.initialPDB.endswith('.pdb'):
-			self.initialPDB += '.pdb'
-
-		newInitPdbs = []
-		for pdb in self.initialPDB.split(','):
+		# if number of initial datasets given doesn't match
+		# number of later datasets, assume same initial dataset
+		# used for every later dataset (fix as first one given)
+		initialPDBs   = self.initialPDB.split(',')
+		numLaterDsets = len(self.laterDatasets.split(','))
+		if len(initialPDBs) != numLaterDsets:
+			initialPDBs = [initialPDBs[0]]*numLaterDsets
+		l = []
+		for pdb in initialPDBs:
 			if not pdb.endswith('.pdb'):
-				newInitPdbs.append(pdb+'.pdb')
+				l.append(pdb+'.pdb')
 			else:
-				newInitPdbs.append(pdb)
-		self.initialPDB = newInitPdbs
+				l.append(pdb)
+		self.initialPDB = l
 
 		# locate the correct format for the list of datasets within damage 
 		# series. Currently two formats acceptable: (a) series-name + dataset-id
