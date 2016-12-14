@@ -1,4 +1,5 @@
 from runRIDL_class import process
+from rigidBodyRefine import reRefine
 import argparse
 
 # an outer layer for the pipeline scripts. This allows 
@@ -10,6 +11,14 @@ import argparse
 # This is the recommended run mode for the scripts.
 
 parser = argparse.ArgumentParser(description = 'Run the RIDL pipeline from the command line.')
+
+parser.add_argument('--rigid',
+					dest   = 'performRigidBodyRefine',
+					action = 'store_const',
+					default = False,
+					const   = True,
+                    help   = 'Perform REFMAC rigid body refinement using initial '+\
+                    		 'coordinate model to generate higher dose models')
 
 parser.add_argument('-i',
 					type   = str,
@@ -114,29 +123,43 @@ else:
 	else:
 		plot = 'yes'
 
-# run the pipeline, including generating density and atom-tagged
-# maps from input pdb and mtz files (in a damage series), as 
-# specified within an input file
-if args.process:
-	p = process(inputFile           = args.inputFile,
-				proceedToMetricCalc = args.calculate,
-				outputGraphs        = plot,
-				cleanUpFinalFiles   = args.cleanUpFinalFiles,
-				printOutput         = args.suppressOutput,
-				writeSummaryFiles   = args.output)
+# decide whether rigid body refinement must be run
+# first to generate higher dose coordinate models
+if args.performRigidBodyRefine:
+	if args.inputFile == None:
+		print '\nRun error:\nMust specify input file with -i tag to perform rigid body refinement job'
+	else:
+		r=reRefine(inputFile = args.inputFile)
+		updatedInputFile = r.newInputFile
+		if args.process or args.calculate or args.output:
+			print '\nUsing newly generated RIDL input file for remainder of pipeline'
+		else:
+			print '\nUse this newly generated RIDL input file on next RIDL run'
 
-# do not run code to create atom-tagged and density maps, but 
-# proceed directly to the code to calculate per-atom damage 
-# metrics. This works provided that the map generation step
-# has been performed beforehand
+if args.process or args.calculate or args.output:
+	# run the pipeline, including generating density and atom-tagged
+	# maps from input pdb and mtz files (in a damage series), as 
+	# specified within an input file
+	if args.process:
+		p = process(inputFile           = args.inputFile,
+					proceedToMetricCalc = args.calculate,
+					outputGraphs        = plot,
+					cleanUpFinalFiles   = args.cleanUpFinalFiles,
+					printOutput         = args.suppressOutput,
+					writeSummaryFiles   = args.output)
 
-else:
-	p = process(inputFile          = args.inputFile,
-				skipToMetricCalc   = True,
-				outputGraphs       = plot,
-				cleanUpFinalFiles  = args.cleanUpFinalFiles,
-				printOutput        = args.suppressOutput,
-				skipToSummaryFiles = not args.calculate,
-				writeSummaryFiles  = args.output)
+	# do not run code to create atom-tagged and density maps, but 
+	# proceed directly to the code to calculate per-atom damage 
+	# metrics. This works provided that the map generation step
+	# has been performed beforehand
+
+	else:
+		p = process(inputFile          = args.inputFile,
+					skipToMetricCalc   = True,
+					outputGraphs       = plot,
+					cleanUpFinalFiles  = args.cleanUpFinalFiles,
+					printOutput        = args.suppressOutput,
+					skipToSummaryFiles = not args.calculate,
+					writeSummaryFiles  = args.output)
 
 
