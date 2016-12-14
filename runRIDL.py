@@ -1,5 +1,6 @@
 from runRIDL_class import process
-from rigidBodyRefine import reRefine
+from lib.checkDependencies import checkDependencies
+from lib.rigidBodyRefine import reRefine
 import argparse
 
 # an outer layer for the pipeline scripts. This allows 
@@ -11,6 +12,13 @@ import argparse
 # This is the recommended run mode for the scripts.
 
 parser = argparse.ArgumentParser(description = 'Run the RIDL pipeline from the command line.')
+
+parser.add_argument('--dependencies',
+					dest   = 'checkDependencies',
+					action = 'store_const',
+					default = False,
+					const   = True,
+                    help   = 'Check RIDL dependencies are accessible and flag if not')
 
 parser.add_argument('--rigid',
 					dest   = 'performRigidBodyRefine',
@@ -44,7 +52,7 @@ parser.add_argument('-c',
 
 parser.add_argument('-t',
 					type    = int,
-					dest    = 'integer',
+					dest    = 'template',
 					action  = 'store',
 					default = 0,
                     help    = 'Create a template input file to be completed by the user.')
@@ -102,11 +110,16 @@ parser.add_argument('-s',
 
 args = parser.parse_args()
 
+# check RIDL dependencies are present
+if args.checkDependencies:
+	checkDependencies(checkAll=True)
+
 # create a template input file to be filled in manually by the user
-if args.integer != 0:
+if args.template != 0:
 	p = process(run       = False,
 				inputFile = 'templateInputFile.txt')
 	p.writeTemplateInputFile(numHigherDoseDatasets = args.template)
+	print 'Can use -j command for help on how to complete the generated input file'
 
 # call the help information
 if args.inputFileHelp:

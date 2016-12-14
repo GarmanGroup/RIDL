@@ -55,6 +55,10 @@ The scripts require the following to run:
 
 - A list of calculated doses for the series is ideal for radiation damage analysis (but not essential). Visit www.raddo.se for full details on how to download the current version of *RADDOSE-3D*.
 
+In order to check whether the RIDL dependencies are accessible to RIDL, use:
+
+```python runRIDL.py --dependencies```
+
 ### What data are needed to run RIDL?
 
 RIDL processes a damage series collected on a single crystal, comprising of a series of increasing dose *.pdb* and *.mtz* files (e.g. *dataset1.pdb*, *dataset1.mtz*, *dataset2.pdb*, *dataset2.mtz*, ...). 
