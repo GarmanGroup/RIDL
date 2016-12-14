@@ -104,37 +104,6 @@ class process():
 		f.close()
 		print 'Template input file "{}" written'.format(self.inputFile)
 
-	def writePDBredoInputFile(self,pdb1,pdb2,inputFileDir,outputDir):
-
-		# write an input file that is suitable for a pdb_redo-downloaded damage series
-		# inputFileDir = '/Users/charlie/DPhil/PDBredo_damageSeries/??'
-		# outputDir = '/Users/charlie/DPhil/YEAR2/JAN/??'
-
-		self.setInputFile('fullInput_{}-{}DIFF.txt'.format(pdb2,pdb1))
-		f = open(self.inputFile,'w')
-		string 	 = 	'dir {}\n'.format(outputDir)+\
-					'\nINITIALDATASET\n'+\
-					'name1 {}init\n'.format(pdb1)+\
-					'mtz1 {}{}/{}.mtz\n'.format(inputFileDir,pdb1,pdb1)+\
-					'mtzlabels1 P_{}\n'.format(pdb1)+\
-					'pdb1 {}{}/{}.pdb\n'.format(inputFileDir,pdb1,pdb1)+\
-					'RfreeFlag1 FreeR_flag\n'+\
-					'\nLATERDATASET\n'+\
-					'name2 {}\n'.format(pdb2)+\
-					'mtz2 {}{}/{}.mtz\n'.format(inputFileDir,pdb2,pdb2)+\
-					'mtzlabels2 P_{}\n'.format(pdb2)+\
-					'pdb2 {}{}/{}.pdb\n'.format(inputFileDir,pdb2,pdb2)+\
-					'\nPHASEDATASET\n'+\
-					'name3 {}init\n'.format(pdb1)+\
-					'mtz3 {}{}/{}.mtz\n'.format(inputFileDir,pdb1,pdb1)+\
-					'mtzlabels3 C_{}\n'.format(pdb1)+\
-					'\nMAPINFO\n'+\
-					'sfall_VDWR 1\n'+\
-					'densMapType DIFF\n'+\
-					'FFTmapWeight True'
-		f.write(string)
-		f.close()
-
 	def howToWriteInputFile(self,
 							printStr = True):
 
@@ -176,41 +145,6 @@ MAPINFO
 			print infoString
 
 		return infoString
-
-	def writeTestInputFile(self,dataset):
-
-		# write an input file for the test case on the github README.md
-
-		inds = ['d','e','f']
-		if dataset not in range(1,4):
-			print 'Select dataset between 1-3'
-			return
-		ind = inds[dataset-1]
-
-		self.setInputFile('testInput{}.txt'.format(dataset))
-		f = open(self.inputFile,'w')
-		string 	 =  'dir ./testOutput/ETRACK/\n'+\
-					'INITIALDATASET\n'+\
-					'name1 1qidinit\n'+\
-					'mtz1 ./testOutput/1qid/1qid.mtz\n'+\
-					'mtzlabels1 P_1qid\n'+\
-					'pdb1 ./testOutput/1qid/1qid.pdb\n'+\
-					'RfreeFlag1 FreeR_flag\n'+\
-					'LATERDATASET\n'+\
-					'name2 1qi{}\n'.format(ind)+\
-					'mtz2 ./testOutput/1qi{}/1qi{}.mtz\n'.format(ind,ind)+\
-					'mtzlabels2 P_1qi{}\n'.format(ind)+\
-					'pdb2 ./testOutput/1qi{}/1qi{}.pdb\n'.format(ind,ind)+\
-					'PHASEDATASET\n'+\
-					'name3 1qidinit\n'+\
-					'mtz3 ./testOutput/1qid/1qid.mtz\n'+\
-					'mtzlabels3 C_1qid\n'+\
-					'MAPINFO\n'+\
-					'sfall_VDWR 1\n'+\
-					'densMapType DIFF\n'+\
-					'FFTmapWeight True'
-		f.write(string)
-		f.close()
 
 	def fillerLine(self):
 
