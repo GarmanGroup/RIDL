@@ -15,9 +15,9 @@ Suitable for any MX experiment in which datasets are collected on the **same cry
 
 ## How to run in brief
 
-- Compose an input file for the job (e.g. input.txt). See: *Writing the RIDL input file* section below
+- Compose an input file for the job (e.g. input.txt). See: "*Writing the RIDL input file*" section below
 
-- Check that input data are in a correct format - [see here](#what-data-are-needed-to-run-ridl?)
+- Check that input data are in a correct format. See "*What data are needed to run RIDL?*" section below
 
 - Run on command line ```python runRIDL.py -i input.txt -pco```
 
@@ -61,18 +61,18 @@ RIDL processes a damage series collected on a single crystal, comprising of a se
 
 A plain-text input file is required to specify these input *.pdb* coordinate files and *.mtz* merged structure factor files per dataset. The input file provides the information to generate Fourier differences for each high dose dataset successively within the series. See the section "*Writing the RIDL input file*" for details on how to write this input file.
 
-######Note:
+**Note:**
+
 It is **highly recommended** that the coordinate models supplied for the higher dose datasets (n > 1) contain the identical atom/residue labelling schemes and no significant conformational changes relative to the first dataset (n = 1). RIDL will sample *F<sub>obs</sub>(d<sub>n</sub>) - F<sub>obs</sub>(d<sub>1</sub>)* difference map density in the local region around each atom as defined in the higher dose dataset, large atomic displacements between different datasets resulting in incomparable regions of density space being sampled.
 
-######Recommendation:
+**Recommendation:**
+
 In practice this can be achieved by running a rigid body refinement job (through either *phenix.refine* or *refmac*) using the refined coordiate model for the first dataset with *F<sub>obs</sub>* for each higher dose dataset (n > 1) in turn. 
 
-**CASE 1:** 
-
+######CASE 1:
 This preprocessing can be run externally by the user prior to using RIDL, in which case these higher dose coordinate models must be specified in the RIDL input file - see the section "*Writing the RIDL input file*" for details on how to write this input file.
 
-**CASE 2:** 
-
+######CASE 2:
 Alternatively RIDL can perform this step itself with the following command:
 
 ```python runRIDL.py -i inputFile.txt --rigid```
