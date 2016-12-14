@@ -17,6 +17,8 @@ Suitable for any MX experiment in which datasets are collected on the **same cry
 
 - Compose an input file for the job (e.g. input.txt). See: *Writing the RIDL input file* section below
 
+- Check that input data are in a correct format - [see here](#what-data-are-needed-to-run-ridl?)
+
 - Run on command line ```python runRIDL.py -i input.txt -pco```
 
 ## Queries
@@ -53,27 +55,29 @@ The scripts require the following to run:
 
 - A list of calculated doses for the series is ideal for radiation damage analysis (but not essential). Visit www.raddo.se for full details on how to download the current version of *RADDOSE-3D*.
 
-### Running RIDL from command line
+### What data are needed to run RIDL?
 
-Assume here we have a damage series collected on a single crystal, comprising of increasing dose *.pdb* and *.mtz* files (e.g. *dataset1.pdb*, *dataset1.mtz*, *dataset2.pdb*, *dataset2.mtz*, ...)
+RIDL processes a damage series collected on a single crystal, comprising of a series of increasing dose *.pdb* and *.mtz* files (e.g. *dataset1.pdb*, *dataset1.mtz*, *dataset2.pdb*, *dataset2.mtz*, ...). 
 
-The simplest way to run the RIDL pipeline is run it directly from the command line. For a default run of RIDL (including generation of HTML-format summary file with accompanying SVG-format graphs), run:
+A plain-text input file is required to specify these input *.pdb* coordinate files and *.mtz* merged structure factor files per dataset. The input file provides the information to generate Fourier differences for each high dose dataset successively within the series. See the section "*Writing the RIDL input file*" for details on how to write this input file.
 
-```python runRIDL.py -i inputFile.txt -p -c -o```
+######Note:
+It is **highly recommended** that the coordinate models supplied for the higher dose datasets (n > 1) contain the identical atom/residue labelling schemes and no significant conformational changes relative to the first dataset (n = 1). RIDL will sample *F<sub>obs</sub>(d<sub>n</sub>) - F<sub>obs</sub>(d<sub>1</sub>)* difference map density in the local region around each atom as defined in the higher dose dataset, large atomic displacements between different datasets resulting in incomparable regions of density space being sampled.
 
-An input file *inputFile.txt* is required to specify input *.pdb* coordinate files and *.mtz* merged structure factor files per dataset. The input file provides the information to generate Fourier differences for each high dose dataset successively within the series. See the section "*Writing the RIDL input file*" for details on how to write this input file.
+######Recommendation:
+In practice this can be achieved by running a rigid body refinement job (through either *phenix.refine* or *refmac*) using the refined coordiate model for the first dataset with *F<sub>obs</sub>* for each higher dose dataset (n > 1) in turn. 
 
-Several command line flags are required to run the program:
+**CASE 1:** 
 
-- `-p` indicates that the *processing* step is to be performed, in order to generate compatible Fourier difference maps and atom-tagged maps at each dose level.
+This preprocessing can be run externally by the user prior to using RIDL, in which case these higher dose coordinate models must be specified in the RIDL input file - see the section "*Writing the RIDL input file*" for details on how to write this input file.
 
-- `-c` indicates that the *calculation* step is to be performed, in order to then calculate the per-atom *D<sub>loss</sub>* metric. By default, CSV-format files of the *D<sub>loss</sub>* metric per atom will be generated in the output directory location.
+**CASE 2:** 
 
-- `-o` indicates that the full output summary file should be generated. This is currently a HTML-format file (including bootstrap features, internet access permitting). As a warning, including this option will currently make separate SVG-format graph files (stored in output subdirectories), and dependent on (a) the number of datasets in a damage series and (b) the total number of atoms within a structure, may take time to complete.
+Alternatively RIDL can perform this step itself with the following command:
 
-- `-s` (optional) 'silent mode' can be used to prevent any text being output to the command line at run time.
+```python runRIDL.py -i inputFile.txt --rigid```
 
-- `-g` (optional) can be used to prevent any graphs from being plotted at run time (will speed up the run). 
+Here RIDL will retrieve the first dataset coordinate file and later dataset structure factor information from the RIDL input file *inputFile.txt*, and perform 10 cycles of rigid body refinement through REFMAC. Upon completion, the above command will generate an updated RIDL input file containing additional information for the newly generated higher dose coordinate models, in order to then run RIDL. Use this new RIDL input file for the following sections.
 
 ### Writing the RIDL input file
 
@@ -133,6 +137,9 @@ Property | Description
 
 The `LATERDATASET` section contains the information about the later (higher dose) dataset within the damage series. See the `INITIALDATASET` section above for details of the inputs to be specified. The main noticable difference for `LATERDATASET` is that multiple higher dose datasets can be processed successively within the same input file, by including comma-separated inputs within this section (see the input file example above). This is the recommended way to process a damage series comprising multiple higher dose datasets.
 
+**Note:**
+If running ```python runRIDL.py -i inputFile.txt --rigid``` to generate higher dose dataset coordinate models through RIDL (see section above), the `pdb2` input file information can be omitted, since this will be generated by RIDL itself and will be present in the new input file generated by RIDL in this step.
+
 The `PHASEDATASET` contains information of MTZ-format file from which the phases will be taken. These are required for generating Fourier difference maps at run time. The additional properties here are:
 
 Property | Description
@@ -141,6 +148,29 @@ Property | Description
 `phaseLabel` | model phase column label in input *.mtz* file
 
 In the above example, the first dataset *.mtz* is again chosen, and this is the recommended dataset to take. In this case, set `name3` to be the same as `name1`.
+
+### Running RIDL from command line
+
+Following from the previous section, the damage series data should be in the correct format to run RIDL.
+
+The simplest way to run the RIDL pipeline is to run it directly from the command line. For a default run of RIDL (including generation of HTML-format summary file with accompanying SVG-format graphs), run:
+
+```python runRIDL.py -i inputFile.txt -p -c -o```
+
+Several command line flags are required to run the program:
+
+- `-p` indicates that the *processing* step is to be performed, in order to generate compatible Fourier difference maps and atom-tagged maps at each dose level.
+
+- `-c` indicates that the *calculation* step is to be performed, in order to then calculate the per-atom *D<sub>loss</sub>* metric. By default, CSV-format files of the *D<sub>loss</sub>* metric per atom will be generated in the output directory location.
+
+- `-o` indicates that the full output summary file should be generated. This is currently a HTML-format file (including bootstrap features, internet access permitting). As a warning, including this option will currently make separate SVG-format graph files (stored in output subdirectories), and dependent on (a) the number of datasets in a damage series and (b) the total number of atoms within a structure, may take time to complete.
+
+- `-s` (optional) 'silent mode' can be used to prevent any text being output to the command line at run time.
+
+- `-g` (optional) can be used to prevent any graphs from being plotted at run time (will speed up the run). 
+
+- `--rigid` can be used to run to generate higher dose dataset coordinate models through a scripted REFMAC rigid body refine job (see section "What data are needed to run RIDL?" above).
+
 
 ## Inspecting the output
 
@@ -163,5 +193,20 @@ The formulation of the *D<sub>loss</sub>* metric can be found at:
 - Bury CS, et al. (2016) RNA protects a nucleoprotein complex against radiation damage. Acta Crystallogr Sect D Struct Biol 72(5):648–657.
 
 Please cite this if you would like to use these scripts for your own specific damage analysis.
+
+An accompanying scientific commentary is presented in the same journal issue:
+
+- Dauter Z (2016) Objective evaluation of radiation damage in a nucleoprotein complex. Acta Crystallogr Sect D Struct Biol 72(5):601–602.
+
+The application of *D<sub>loss</sub>* to investigate MX damage series previously deposited in the PDB can be found at:
+
+- Bury CS, Carmichael I, Garman EF (2017) OH cleavage from tyrosine: debunking a myth. J Synchrotron Radiat 24(1):1–12.
+
+The RIDL pipeline has a strong dependence on the CCP4 suite of programs to achieve its task (including use of CAD, SCALEIT, FFT, SFALL, PDBCUR, MAPMASK):
+
+- Winn MD, et al. (2011) Overview of the CCP4 suite and current developments. Acta Crystallogr D Biol Crystallogr 67(Pt 4):235–42.
+
+
+
 
 
