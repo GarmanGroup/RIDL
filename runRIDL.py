@@ -1,6 +1,8 @@
 from runRIDL_class import process
-from lib.checkDependencies import checkDependencies
-from lib.rigidBodyRefine import reRefine
+import sys
+sys.path.insert(0,'./lib')
+from checkDependencies import checkDependencies
+from rigidBodyRefine import reRefine
 import argparse
 
 # an outer layer for the pipeline scripts. This allows 
