@@ -14,25 +14,29 @@ class run():
 				 inputFileLoc   = '',
 				 logFile        = '',
 				 skipToSumFiles = False,
-				 writeSumFiles  = False):
+				 writeSumFiles  = False,
+				 inclFCmets     = False):
 
 		self.inputFileName = inputFileLoc + 'metricCalc_inputfile.txt'
 		self.logFile       = logFile
 		
 		if calculate:
-			self.runCalculateMetrics(sumFiles = writeSumFiles)
+			self.runCalculateMetrics(sumFiles   = writeSumFiles,
+									 inclFCmets = inclFCmets)
 
 		if skipToSumFiles:
 			self.runCalculateMetrics(mapProcess  = False,
 									 postProcess = False,
 									 retrieve    = True,
-									 sumFiles    = True)
+									 sumFiles    = True,
+									 inclFCmets  = inclFCmets)
 
 	def runCalculateMetrics(self,
 				            mapProcess  = True,
 				  			postProcess = True,
 				  			retrieve    = False,
-				  			sumFiles    = False):
+				  			sumFiles    = False,
+				  			inclFCmets  = False):
 
 		# run the metric calculation scripts for the currently 
 		# defined input file
@@ -43,8 +47,9 @@ class run():
 		if not exists:
 			return
 
-		eT = calculateMetrics(logFile  = self.logFile,
-							  sumFiles = sumFiles)
+		eT = calculateMetrics(logFile    = self.logFile,
+							  sumFiles   = sumFiles,
+							  inclFCmets = inclFCmets)
 
 		eT.runPipeline(map_process   = mapProcess,
 					   post_process  = postProcess,

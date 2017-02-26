@@ -34,7 +34,7 @@ class pipeline():
 
 		# create log file
 		if log == '':
-			f = '{}{}_runLog1.log'.format(self.outputDir,jobName)
+			f = '{}{}_runLog1.log'.format(self.outputDir+'RIDL-log',jobName)
 			self.runLog = logFile(fileName = f,
 								  fileDir  = self.outputDir)
 		else:
@@ -184,6 +184,7 @@ class pipeline():
 					'FOM_']
 			labelsInit 	= [i+self.initPDB for i in tags] + ['PHIC_'+self.phaseDataset]
 			labelsLater = [i+self.laterPDB for i in tags] + ['PHIC_'+self.phaseDataset]
+			# labelsLater = [i+self.laterPDB for i in tags] + ['PHIC_2'] # FOR specific test case only
 
 		if self.densMapType == '2FOFC':
 			labelsInit 	= ['']*4

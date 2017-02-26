@@ -28,7 +28,7 @@ class pipeline():
 		self.doScaling          = doScaling
 
 		if log == '':
-			f = '{}{}_runLog1.log'.format(self.outputDir,jobName)
+			f = '{}{}_runLog1.log'.format(self.outputDir+'RIDL-log',jobName)
 			self.runLog = logFile(fileName = f,
 								  fileDir  = self.outputDir)
 		else:
