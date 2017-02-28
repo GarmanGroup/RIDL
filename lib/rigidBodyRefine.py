@@ -197,7 +197,7 @@ class reRefine():
 
 		newFile = self.inputFile.replace('.txt','-RigidBodyRefine.txt')
 
-		fileIn = open(self.inputFile,'r')
+		fileIn  = open(self.inputFile,'r')
 		fileOut = open(newFile,'w')
 		for l in fileIn.readlines():
 			try:
@@ -205,12 +205,16 @@ class reRefine():
 			except IndexError:
 				continue
 			if l.split()[0] == 'pdb2':
-				ln = 'pdb2 {}\n'.format(','.join(newPDBs))
+				continue
+			if l.split()[0] == 'mtzlabels2':
+				ln = l+'pdb2 {}\n'.format(','.join(newPDBs))
 			elif l.split()[0] == 'dir':
 				ln = 'dir {}_rigidBodyRefine/\n'.format(l.split()[1][0:-1])
 			else:
 				ln = l
 			fileOut.write(ln)
+		fileIn.close()
+		fileOut.close()
 
 		print '\nNew input file has been generated: "{}"'.format(newFile)
 
