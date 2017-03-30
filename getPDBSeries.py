@@ -26,8 +26,8 @@ class getSeries():
 		if pdb_redo in ('initial','final'):
 			self.refineType = pdb_redo
 			# downloading pdb and mtz files from pdb_redo
-			downloadSuccess = self.downloadFromPDBredo()
-			if downloadSuccess is False:
+			self.downloadSuccess = self.downloadFromPDBredo()
+			if self.downloadSuccess is False:
 				print 'Cannot continue processing current PDB code files..'
 				return
 			self.parseRfactorFromPDB(self.pdbFile) # get Rfactor info
@@ -39,8 +39,8 @@ class getSeries():
 		elif pdb_redo == 'false':
 			# downloading pdb and mmcif files from PDB
 			print 'Downloading from PDB...'
-			downloadSuccess = self.downloadFromPDB()
-			if downloadSuccess is False:
+			self.downloadSuccess = self.downloadFromPDB()
+			if self.downloadSuccess is False:
 				print 'Cannot continue processing current PDB code files..'
 				return
 
@@ -114,7 +114,11 @@ class getSeries():
 
 		# want to change label names in mtz file to make unique to pdb code
 		self.changePDBredoMtzLabelInfo(pdb)
-		shutil.move('{}_editedLabels.mtz'.format(pdb),'{}.mtz'.format(pdb))
+		try:
+			shutil.move('{}_editedLabels.mtz'.format(pdb),'{}.mtz'.format(pdb))
+		except IOError:
+			print 'Error moving file to correct location'
+			return False
 		return True
 
 	def changePDBredoMtzLabelInfo(self,pdbcode):
