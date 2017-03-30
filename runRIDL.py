@@ -16,18 +16,18 @@ import argparse
 parser = argparse.ArgumentParser(description = 'Run the RIDL pipeline from the command line.')
 
 parser.add_argument('--dependencies',
-					dest   = 'checkDependencies',
-					action = 'store_const',
+					dest    = 'checkDependencies',
+					action  = 'store_const',
 					default = False,
 					const   = True,
-                    help   = 'Check RIDL dependencies are accessible and flag if not')
+                    help    = 'Check RIDL dependencies are accessible and flag if not')
 
 parser.add_argument('--rigid',
-					dest   = 'performRigidBodyRefine',
-					action = 'store_const',
+					dest    = 'performRigidBodyRefine',
+					action  = 'store_const',
 					default = False,
 					const   = True,
-                    help   = 'Perform REFMAC rigid body refinement using initial '+\
+                    help    = 'Perform REFMAC rigid body refinement using initial '+\
                     		 'coordinate model to generate higher dose models')
 
 parser.add_argument('-i',
@@ -93,6 +93,14 @@ parser.add_argument('-r',
                     		  'atom-tagged maps) will be included for each '+\
 							  'dataset within damage series.')
 
+parser.add_argument('--remove_maps',
+					dest    = 'removeMaps',
+					action  = 'store_const',
+					default = False,
+					const   = True,
+                    help    = 'Remove the RIDL-maps/ subdirectory that is created '+\
+                    		  'following a standard run.')
+
 parser.add_argument('-o',
 					dest    = 'output',
 					action  = 'store_const',
@@ -114,7 +122,7 @@ args = parser.parse_args()
 
 # check RIDL dependencies are present
 if args.checkDependencies:
-	checkDependencies(checkAll=True)
+	checkDependencies(checkAll = True)
 
 # create a template input file to be filled in manually by the user
 if args.template != 0:
@@ -138,14 +146,16 @@ else:
 	else:
 		plot = 'yes'
 
+inputFileToUse = args.inputFile
+
 # decide whether rigid body refinement must be run
 # first to generate higher dose coordinate models
 if args.performRigidBodyRefine:
-	if args.inputFile == None:
+	if inputFileToUse == None:
 		print '\nRun error:\nMust specify input file with -i tag to perform rigid body refinement job'
 	else:
-		r=reRefine(inputFile = args.inputFile)
-		updatedInputFile = r.newInputFile
+		r=reRefine(inputFile = inputFileToUse)
+		inputFileToUse = r.newInputFile
 		if args.process or args.calculate or args.output:
 			print '\nUsing newly generated RIDL input file for remainder of pipeline'
 		else:
@@ -156,12 +166,13 @@ if args.process or args.calculate or args.output:
 	# maps from input pdb and mtz files (in a damage series), as 
 	# specified within an input file
 	if args.process:
-		p = process(inputFile           = args.inputFile,
+		p = process(inputFile           = inputFileToUse,
 					proceedToMetricCalc = args.calculate,
 					outputGraphs        = plot,
 					cleanUpFinalFiles   = args.cleanUpFinalFiles,
 					printOutput         = args.suppressOutput,
-					writeSummaryFiles   = args.output)
+					writeSummaryFiles   = args.output,
+					keepMapDir          = not args.removeMaps)
 
 	# do not run code to create atom-tagged and density maps, but 
 	# proceed directly to the code to calculate per-atom damage 
@@ -169,12 +180,14 @@ if args.process or args.calculate or args.output:
 	# has been performed beforehand
 
 	else:
-		p = process(inputFile          = args.inputFile,
+		p = process(inputFile          = inputFileToUse,
 					skipToMetricCalc   = True,
 					outputGraphs       = plot,
 					cleanUpFinalFiles  = args.cleanUpFinalFiles,
 					printOutput        = args.suppressOutput,
 					skipToSummaryFiles = not args.calculate,
-					writeSummaryFiles  = args.output)
+					writeSummaryFiles  = args.output,
+					keepMapDir         = not args.removeMaps)
+
 
 
