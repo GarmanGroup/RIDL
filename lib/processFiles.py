@@ -17,7 +17,8 @@ class processFiles():
 				 cleanFinalFiles     = False,
 				 logFileObj          = '',
 				 skipToSummaryFiles  = False,
-				 writeSummaryFiles   = False):
+				 writeSummaryFiles   = False,
+				 keepMapDir          = True):
 
 		# class to read an input file and generate a set of density 
 		# and atom-tagged maps for a damage series. Can handle a single
@@ -50,17 +51,22 @@ class processFiles():
 				       'phaseLabel',
 				       'FcalcLabel']
 
+		self.includeSIGF = True # set to false to not include SIGF column in CAD run
+
 		if not skipToMetricCalc:
 			success = self.runProcessing()
 			if success:
 				if proceedToMetricCalc:
 					self.runMetricCalcStep()
+
 		else:
 			success = self.skipToMetricCalc()
 
 		if success and cleanFinalFiles:
 			if skipToMetricCalc or proceedToMetricCalc:
-				cleanUpFinalFiles(outputDir = self.dir)
+				cleanUpFinalFiles(outputDir   = self.dir,
+								  cleanMapDir = not skipToSummaryFiles,
+								  keepMapDir  = keepMapDir)
 
 		self.jobSuccess = success
 
@@ -118,6 +124,8 @@ class processFiles():
 		success = self.checkCorrectInputFormats()
 		if not success:
 			return success
+
+		self.checkForSeparateSIGFlabel()
 
 		success = self.checkMtzLabelsExist()
 		if not success:
@@ -235,7 +243,7 @@ class processFiles():
 		defaults = [1,
 				    'DIFF',
 				    'False',
-				    'TRUE',
+				    'FALSE',
 				    'TRUE']
 
 		for i,prop in enumerate(props):
@@ -472,6 +480,33 @@ class processFiles():
 
 		return True
 
+	def checkForSeparateSIGFlabel(self):
+
+		# check whether there is a separate SIGFP column label
+		# specified within the RIDL input file and factor if so
+
+		try:
+			self.mtzSIGFPlabel1
+			sep = True
+		except AttributeError:
+			self.sepSIGFPlabel1 = False
+			sep = False
+
+		if sep:
+			self.sepSIGFPlabel1 = True
+			self.props1.append('mtzSIGFPlabel1')
+
+		try:
+			self.mtzSIGFPlabel2
+			sep = True
+		except AttributeError:
+			self.sepSIGFPlabel2 = False
+			sep = False
+
+		if sep:
+			self.sepSIGFPlabel2 = True
+			self.props2.append('mtzSIGFPlabel2')
+
 	def checkMtzLabelsExist(self):
 
 		# for each mtz file input, check that the correct labels as 
@@ -481,18 +516,34 @@ class processFiles():
 		if self.multiDatasets:
 			if self.repeatedFile1InputsUsed:
 				mtzFiles  = [self.mtz1]
-				mtzLabels = [self.mtzlabels1]
+				if self.sepSIGFPlabel1:
+					mtzLabels = [[self.mtzlabels1,self.mtzSIGFPlabel1]]
+				else:
+					mtzLabels = [self.mtzlabels1]
 			else:
 				mtzFiles  = self.mtz1.split(',')
 				mtzLabels = self.mtzlabels1.split(',')
+				self.sepSIGFPlabel1 = False 
 		else:
-			mtzFiles  = self.mtz1.split(',')
-			mtzLabels = self.mtzlabels1.split(',')
+			mtzFiles  = [self.mtz1]
+			if self.sepSIGFPlabel1:
+				mtzLabels = [[self.mtzlabels1,self.mtzSIGFPlabel1]]
+			else:
+				mtzLabels = [self.mtzlabels1]
 
 		for (f, lab) in zip(mtzFiles, mtzLabels):
 			foundLabels = self.getLabelsFromMtz(fileName = f)
-			labels = ['F'+lab,
-					  'SIGF'+lab]
+
+			if self.includeSIGF:
+				if self.sepSIGFPlabel1:
+					labels = ['F'+lab[0],
+							  'SIGF'+lab[1]]
+				else:
+					labels = ['F'+lab,
+							  'SIGF'+lab]
+			else:
+				labels = ['F'+lab]
+
 			for lab in labels:
 				if lab not in foundLabels:
 					self.mtzLabelNotFound(mtzFile   = f,
@@ -503,15 +554,30 @@ class processFiles():
 		# later dataset mtz files checked here
 		if not self.multiDatasets:
 			mtzFiles  = [self.mtz2]
-			mtzLabels = [self.mtzlabels2]
+			if self.sepSIGFPlabel2:
+				mtzLabels = [[self.mtzlabels2,self.mtzSIGFPlabel2]]
+			else:
+				mtzLabels = [self.mtzlabels2]
 		else:
 			mtzFiles  = self.mtz2.split(',')
-			mtzLabels = self.mtzlabels2.split(',')
+			if self.sepSIGFPlabel2:
+				mtzLabels = [[a,b] for a,b in zip(self.mtzlabels2.split(','),self.mtzSIGFPlabel2)]
+			else:
+				mtzLabels = self.mtzlabels2.split(',')
 
 		for (f, lab) in zip(mtzFiles, mtzLabels):
 			foundLabels = self.getLabelsFromMtz(fileName = f)
-			labels = ['F'+lab,
-					  'SIGF'+lab]
+
+			if self.includeSIGF:
+				if self.sepSIGFPlabel2:
+					labels = ['F'+lab[0],
+							  'SIGF'+lab[1]]
+				else:
+					labels = ['F'+lab,
+						  'SIGF'+lab]
+			else:
+				labels = ['F'+lab]
+			
 			for lab in labels:
 				if lab not in foundLabels:
 					self.mtzLabelNotFound(mtzFile   = f,
@@ -639,11 +705,10 @@ class processFiles():
 			val = getattr(self,p)
 			lengths.append(len(val.split(',')))
 
-		self.numDsets  = lengths[0]
-		if lengths == [1]*4:
+		self.numDsets = lengths[0]
+		if lengths == [1]*len(props):
 			ln = 'Only single dataset located and will be processed'
 			self.logFile.writeToLog(str = ln)
-
 			self.multiDatasets = False
 
 		elif lengths[1:] != lengths[:-1]:
@@ -775,6 +840,16 @@ class processFiles():
 				 'densMapType'     : 'densMapType',
 				 'deleteMtzs'      : 'deleteIntermediateFiles',
 				 'FFTmapWeight'    : 'FFTmapWeight'}
+
+		if self.sepSIGFPlabel1:
+			props['Mtz1SIGFPlabel'] = 'mtzSIGFPlabel1_current'
+		else:
+			props['Mtz1SIGFPlabel'] = 'mtzlabels1_current'
+
+		if self.sepSIGFPlabel2:
+			props['Mtz2SIGFPlabel'] = 'mtzSIGFPlabel2_current'
+		else:
+			props['Mtz2SIGFPlabel'] = 'mtzlabels2_current'
 
 		fileOut1 = open(self.pipe1FileName,'w')
 		inputString = ''
@@ -1039,11 +1114,18 @@ class processFiles():
 						'{}/{}'.format(self.dir,r.inputFileName))
 
 		if run:
+
+			if self.calculateFCmaps.upper() == 'FALSE':
+				inclFCmets = False
+			else:
+				inclFCmets = True
+
 			r = run_metricCalc(inputFileLoc   = self.dir,
 							   calculate      = not self.skipToSumFiles,
 							   logFile        = self.logFile,
 							   skipToSumFiles = self.skipToSumFiles,
-							   writeSumFiles  = self.writeSumFiles)
+							   writeSumFiles  = self.writeSumFiles,
+							   inclFCmets     = inclFCmets)
 
 		return True
 
