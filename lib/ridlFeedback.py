@@ -184,9 +184,11 @@ class provideFeedback(object):
 
 			if CalphasPresent:
 				n = 'Calpha normalised'
-				metrics += [['loss',n],
-							['density_weighted_loss',n],
-							['density_weighted_mean_negOnly',n]]
+				metrics += [['loss',n]]
+
+				if self.inclFCmetrics:
+					metrics += [['density_weighted_loss',n],
+							    ['density_weighted_mean_negOnly',n]]
 		else:
 			metrics = self.atmsObjs.getDensMetrics()
 
@@ -506,10 +508,14 @@ class provideFeedback(object):
 			# (including normalisation types). atoms will be ordered
 			# by the first metric in the list
 
-			metsToPlot = [['density_weighted_mean_negOnly','Calpha normalised'],
-						  ['loss','Calpha normalised'],
-						  ['density_weighted_loss','Calpha normalised'],
-						  ['Bfactor','Standard']]
+			if self.inclFCmetrics:
+				metsToPlot = [['density_weighted_mean_negOnly','Calpha normalised'],
+							  ['loss','Calpha normalised'],
+							  ['density_weighted_loss','Calpha normalised'],
+							  ['Bfactor','Standard']]
+			else:
+				metsToPlot = [['loss','Calpha normalised'],
+							  ['Bfactor','Standard']]
 
 			firstToPlot = [primaryMetric,plotNorm]
 			if firstToPlot in metsToPlot:
