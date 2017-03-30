@@ -21,6 +21,15 @@ Suitable for any MX experiment in which datasets are collected on the **same cry
 
 - Run on command line ```python runRIDL.py -i input.txt -pco```
 
+## Quick hints:
+
+- The three steps: (i) map generation (flag: -p), (ii) density metric calculation (flag: -c), and (iii) output file generation (flag: -o) can be run all at once ```python runRIDL.py -i input.txt -pco```, or as 3 separate command line calls:
+```python runRIDL.py -i input.txt -p```
+```python runRIDL.py -i input.txt -c```
+```python runRIDL.py -i input.txt -o```
+
+- Use the additional command line flag --remove_maps to remove any generated .map files after a run has finished (useful to save room!)
+
 ## Queries
 
 Please email *charles.bury@dtc.ox.ac.uk*
@@ -54,6 +63,8 @@ The scripts require the following to run:
 - The *seaborn* python plotting library is highly recommended (use `pip install seaborn` to gain access to this plotting library). The scripts should now be able to run to completion without seaborn, however no plots will be produced at run time.
 
 - A list of calculated doses for the series is ideal for radiation damage analysis (but not essential). Visit www.raddo.se for full details on how to download the current version of *RADDOSE-3D*.
+
+- The python module *numexpr* appears to not be included on some basic python distributions, and may need installing separately.
 
 In order to check whether the RIDL dependencies are accessible to RIDL, use:
 
@@ -174,6 +185,8 @@ Several command line flags are required to run the program:
 - `-g` (optional) can be used to prevent any graphs from being plotted at run time (will speed up the run). 
 
 - `--rigid` can be used to run to generate higher dose dataset coordinate models through a scripted REFMAC rigid body refine job (see section "What data are needed to run RIDL?" above).
+
+- `--remove_maps` can be used to used remove the generated RIDL-maps/ directory that is generated at runtime. This may be useful if RIDL is to be run repeatedly and storage of many generated .map files becomes a memory burden.
 
 
 ## Inspecting the output
