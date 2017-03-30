@@ -4,26 +4,6 @@ import sys
 import numpy as np
 import numexpr as ne   
 
-class residue:
-
-    # A class for residue information
-
-    def __init__(self,
-                 name            = "",
-                 freq            = 0,
-                 res_list        = [],
-                 quantity        = 0,
-                 av_mean_density = [],
-                 atom_stand_dev  = []):
-            
-        self.name            = name
-        self.freq            = freq
-        self.res_list        = res_list
-        self.quantity        = quantity
-        self.av_mean_density = av_mean_density
-        self.atom_stand_dev  = atom_stand_dev
-
-
 class StructurePDB(object):
 
     # A class for coordinate PDB file atom
@@ -549,13 +529,12 @@ class MapInfo:
 
         axs = ['fast','med','slow']
         q   = self.nxyz['ny']*self.nxyz['nx']
-        k   = np.array(voxPos1d)/q + 1 
+        k   = np.array(voxPos1d)/q #+ 1 
         k1  = np.mod(voxPos1d,q)
-        i   = np.mod(k1,self.nxyz['nx']) + 1
-        j   = k1/self.nxyz['nx'] + 1
+        i   = np.mod(k1,self.nxyz['nx']) #+ 1
+        j   = k1/self.nxyz['nx'] #+ 1
 
         ijk = np.array([i,j,k]) + np.array([[self.start[ax]] for ax in axs])
-
         order = [self.axis[m] for m in axs]
         ijk_ordered = [x for (y,x) in sorted(zip(order,list(ijk)))]
 
@@ -614,7 +593,7 @@ class MapInfo:
         if coordType == 'cartesian':
             rnd = 2
         else:
-            rnd = 3
+            rnd = 6 
 
         xyzNeat = np.transpose(np.around(xyz,rnd))
 
