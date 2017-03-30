@@ -60,8 +60,17 @@ class combinedAtom(StructurePDB):
 		# change metrics 'normType' is 'standard' or 
 		# 'Calpha weighted'
 
-		# special case for Dloss metric (change sign of values)
-		if metric == 'loss' and normType == 'Standard':
+		# decide whether a sign change is required for particular
+		# metric values. For example Dloss will naturally give 
+		# more negative values for larger negative difference 
+		# map peaks, however these are multipled by -1, such that 
+		# higher positive Dloss values indicate a larger negative
+		# difference map peak
+		needSignChange = ['loss',
+						  'mean-negOnly',
+						  'density_weighted_mean_negOnly',
+						  'density_weighted_loss']
+		if metric in needSignChange and normType == 'Standard':
 			values = list(-np.array(values))
 
 		try:
