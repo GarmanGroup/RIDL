@@ -23,9 +23,12 @@ Suitable for any MX experiment in which datasets are collected on the **same cry
 
 ## Quick hints:
 
-- The three steps: (i) map generation (flag: -p), (ii) density metric calculation (flag: -c), and (iii) output file generation (flag: -o) can be run all at once ```python runRIDL.py -i input.txt -pco```, or as 3 separate command line calls:
+- The three steps: (i) map generation (flag: -p), (ii) density metric calculation (flag: -c), and (iii) output file generation (flag: -o) can be run all at once ```python runRIDL.py -i input.txt -pco```, or as 3 sequential command line calls:
+
 ```python runRIDL.py -i input.txt -p```
+
 ```python runRIDL.py -i input.txt -c```
+
 ```python runRIDL.py -i input.txt -o```
 
 - Use the additional command line flag --remove_maps to remove any generated .map files after a run has finished (useful to save room!)
