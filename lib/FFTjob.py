@@ -4,7 +4,7 @@ from mapTools import mapTools
 class FFTjob():
 	
 	def __init__(self,
-				 mapType   = 'DIFF',
+				 mapType   = 'DIFF-NO-SIGMA',
 				 mapTag    = '',
 				 FOMweight = False,
 				 pdbFile   = '',
@@ -95,6 +95,12 @@ class FFTjob():
 			if self.mapType == 'SIMPLE': 
 				self.F2Scale = 0.0
 
+			scaleStr 	= 'SCALE F1 {} 0.0 F2 {} 0.0\n'.format(self.F1Scale,self.F2Scale)
+
+		# if DIFFERENCE map type chosen, but no sigma columns to be used
+		if self.mapType in ('DIFF-NO-SIGMA'):
+			labinStr 	= 'LABIN F1={} F2={} '.format(self.F1,self.F2)
+			phiStr  	= 'PHI={} {} PHI2={} {}\n'.format(self.PHI1,FOMstring,self.PHI2,FOMstring2)
 			scaleStr 	= 'SCALE F1 {} 0.0 F2 {} 0.0\n'.format(self.F1Scale,self.F2Scale)
 
 		# choose sigmaa-derived FWT and PHIC for 2FOFC map setting
