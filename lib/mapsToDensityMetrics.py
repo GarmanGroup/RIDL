@@ -5,7 +5,7 @@ from deleteListIndices import multi_delete
 from savevariables import save_objectlist
 from itertools import izip as zip, count
 from PDBFileManipulation import PDBtoList
-from map2VoxelClassList import readMap
+from readMap import readMap
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt 
 from progbar import progress

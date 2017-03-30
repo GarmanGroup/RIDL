@@ -4,7 +4,7 @@ t0 = time.time()
 from combinedAtomList import combinedAtomList
 from savevariables import retrieve_objectlist,save_objectlist,saveGenericObject,retrieveGenericObject
 from PDBFileManipulation import PDBtoList,writePDBline
-from readAtomMap import maps2DensMetrics
+from mapsToDensityMetrics import maps2DensMetrics
 from time import gmtime, strftime
 from numpy import isnan
 from shutil import move
