@@ -27,7 +27,7 @@ class calculateMetrics(object):
 	# this class to work.
 
 	def __init__(self,
-				 inDir      = './',
+				 mapDir     = './',
 				 outDir     = './',
 				 pdbNames   = [],
 				 pklFiles   = [],
@@ -41,7 +41,7 @@ class calculateMetrics(object):
 				 sumFiles   = True,
 				 inclFCmets = True):
 
-		self.inDir 		= inDir 		# the input file directory
+		self.mapDir     = mapDir 		# the input map file directory
 		self.outDir  	= outDir 		# the output file directory
 		self.pdbNames 	= pdbNames 		# the list of pdb codes for series
 		self.pklFiles 	= pklFiles 		# list of pkl files from map_processing
@@ -83,7 +83,12 @@ class calculateMetrics(object):
 		if not success: 
 			return
 
-		success = self.checkInOutDirExist()
+		if map_process or post_process:
+			success = self.checkInOutDirExist()
+		elif retrieve:
+			# don't need to check map directory exists
+			# if only writing output summary information
+			success = self.checkInOutDirExist(checkMapdir = False)
 		if not success: 
 			return
 
@@ -143,10 +148,10 @@ class calculateMetrics(object):
 	def readInputFile(self,
 					  printText = True):
 
-		# read input file e_Track_input.txt to specify location 
-		# of input files and where to write output files
+		# read input file metricCalc_inputfile.txt to specify 
+		# location of input files and where to write output files
 
-		props = {'inDir'          : 'inDir',
+		props = {'inDir'          : 'mapDir',
 				 'outDir'         : 'outDir',
 				 'damageset_name' : 'seriesName',
 				 'initialPDB'     : 'initialPDB',
@@ -215,17 +220,27 @@ class calculateMetrics(object):
 				self.logFile.writeToLog(str = err)
 			return False
 
-	def checkInOutDirExist(self):
+	def checkInOutDirExist(self,
+						   checkMapdir = True,
+						   checkOutdir = True):
 
 		# check that an input/output directories have been 
 		# found and make subdirectories if present
 
-		for dir in ([[self.inDir,'Input'],[self.outDir,'Output']]):
-			if not path.isdir(dir[0]):
-				err = '{} file location: {} does not exist. '.format(dir[1],dir[0])+\
+		if checkMapdir:
+			if not path.isdir(self.mapDir):
+				err = 'Input file location: {} does not exist. '.format(self.mapDir)+\
 					  'Please select an appropriate directory'
 				self.logFile.writeToLog(str = err)
 				return False
+
+		if checkOutdir:
+			if not path.isdir(self.outDir):
+				err = 'Output file location: {} does not exist. '.format(self.outDir)+\
+					  'Please select an appropriate directory'
+				self.logFile.writeToLog(str = err)
+				return False
+
 		return True
 
 	def makeOutputDir(self,
@@ -258,7 +273,7 @@ class calculateMetrics(object):
 			  'per-atom density metrics for each refined atom in structure.\n'
 		self.logFile.writeToLog(str = txt)
 
-		txt = 'input directory:  {}\n'.format(self.inDir)+\
+		txt = 'input directory:  {}\n'.format(self.mapDir)+\
 			  'output directory: {}'.format(self.outputDir)
 		self.logFile.writeToLog(str   = txt,
 								strip = False)
@@ -287,7 +302,7 @@ class calculateMetrics(object):
 				  'Higher dose dataset {} starts here'.format(i)
 			self.logFile.writeToLog(str = txt)
 
-			maps2DensMets = maps2DensMetrics(filesIn     = self.inDir,
+			maps2DensMets = maps2DensMetrics(filesIn     = self.mapDir,
 										     filesOut    = self.outputDir,
 										     pdbName     = d,
 										     atomTagMap  = mapName1,
@@ -369,7 +384,17 @@ class calculateMetrics(object):
 
 		# calculate Calpha normalised metrics, if Calpha atoms exist
 		if self.checkCalphasPresent(atomObjList = combinedAtoms):
-			for m in ('loss','mean','gain','Bfactor'):
+
+			metricsOfInterest = ['loss',
+								 'mean',
+								 'gain',
+								 'Bfactor']
+
+			if self.inclFCmets:
+				metricsOfInterest += ['density_weighted_mean_negOnly',
+								 	  'density_weighted_loss']
+
+			for m in metricsOfInterest:
 				combinedAtoms.calcAdditionalMetrics(metric = m)
 		
 		self.combinedAtoms = combinedAtoms
@@ -410,8 +435,9 @@ class calculateMetrics(object):
 							plotHeatMaps  = self.plotHeatMaps,
 							doses         = self.doses,
 							pdbNames      = self.pdbNames,
-							inputDir      = self.inDir,
-							initialPDB    = self.initialPDB)
+							inputDir      = self.mapDir,
+							initialPDB    = self.initialPDB,
+							inclFCmetrics = self.inclFCmets)
 		else:
 			furtherAnalysis(csvOnly       = csvOnly,
 							atmsObjs      = self.combinedAtoms,
@@ -422,8 +448,9 @@ class calculateMetrics(object):
 							plotHeatMaps  = self.plotHeatMaps,
 							doses         = self.doses,
 							pdbNames      = self.pdbNames,
-							inputDir      = self.inDir,
-							initialPDB    = self.initialPDB)
+							inputDir      = self.mapDir,
+							initialPDB    = self.initialPDB,
+							inclFCmetrics = self.inclFCmetrics)
 
 	def checkCalphasPresent(self,
 							atomObjList = []):
@@ -438,7 +465,7 @@ class calculateMetrics(object):
 		# retrieve name of first dataset pdb coordinate file.
 		# If multiple initial datasets input, take the first only
 
-		pdbFile = self.inDir + str(self.initialPDB[0])
+		pdbFile = self.mapDir + str(self.initialPDB[0])
 
 		return pdbFile
 
