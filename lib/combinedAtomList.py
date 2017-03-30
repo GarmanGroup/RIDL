@@ -1,5 +1,4 @@
 import time
-
 t0 = time.time()
 import matplotlib.pyplot as plt
 print 'Matplotlib import time: {}s'.format(round(time.time()-t0,3))
@@ -18,12 +17,15 @@ import warnings
 warnings.filterwarnings('ignore')
 from bioInfo import bioInfo
 
-from checkSeabornPresent import checkSeabornPresent as checkSns
-seabornFound = checkSns()
-if seabornFound:
+from checkDependencies import checkDependencies
+c = checkDependencies()
+if c.checkSeaborn():
 	t0 = time.time()
 	import seaborn as sns
 	print 'Seaborn import time: {}s'.format(round(time.time()-t0,3))
+	seabornFound = True
+else:
+	seabornFound = False
 
 class combinedAtomList(object):
 
@@ -47,9 +49,9 @@ class combinedAtomList(object):
 		self.partialDatasets	= partialDatasets   # Bool, whether atoms only in subset of datasets are included
 		self.seriesName			= seriesName
 
-		# only include reliability and distance-weighted mean metrics 
-		# if they exist. This is only in case where FC maps have been 
-		# created within the RIDL map generation stage of th pipeline
+		# only include density-weighted metrics if they exist. 
+		# This is only in case where FC maps have been created 
+		# within the RIDL map generation stage of th pipeline
 		self.inclFCderivedMetrics = inclFCmetrics
 		
 		# if number of datasets to perform lin reg not stated then 
@@ -119,10 +121,18 @@ class combinedAtomList(object):
 						 'min90tile',
 						 'max90tile',
 						 'min95tile',
-						 'max95tile']
+						 'max95tile',
+						 'meanNegOnly',
+						 'meanPosOnly']
 
 		if self.inclFCderivedMetrics:
-			for w in ('reliability','wMean'):
+			extraMetrics = ['fracOfMaxAtomDensAtMin',
+							'densityWeightedMean',
+							'densityWeightedMin',
+							'densityWeightedMax',
+							'densityWeightedMeanNegOnly',
+							'densityWeightedMeanPosOnly']
+			for w in extraMetrics:
 				multiDimAttrs.append(w)
 
 		for atom in self.datasetList[0]:
@@ -147,12 +157,13 @@ class combinedAtomList(object):
 						found = True
 						break
 				if not found: 
-					indexindataset.append(-1) # if atom not in dataset
+					# if atom not in dataset, add dummy value 
+					indexindataset.append(-1)
 					for attr in multiDimAttrs: 
-						atomDict[attr].append(np.nan) # add dummy value if atom not found
+						atomDict[attr].append(np.nan)
 
-			# remove this located atom from the later dataset now that it
-			# has been located --> to make loop faster 
+			# remove this located atom from the later dataset now 
+			# that it has been located --> to make loop faster 
 			for j in range(1,len(indexindataset)+1):
 				if indexindataset[j-1] != -1:
 					self.datasetList[j].pop( indexindataset[j-1] )
@@ -176,16 +187,6 @@ class combinedAtomList(object):
 							newatom.getDensMetricInfo(metric   = metName,
 													  normType = 'Standard',
 													  values   = atomDict[attr])
-
-				# include reliability value also for Dloss metric
-				if self.inclFCderivedMetrics:
-					newatom.getDensMetricInfo(metric   = 'loss',
-											  normType = 'reliability',
-											  values   = atomDict['reliability'])
-
-					newatom.getDensMetricInfo(metric   = 'mean',
-											  normType = 'distance-weighted',
-											  values   = atomDict['wMean'])
 
 				if atm_counter != len(self.datasetList):
 					if printText:
@@ -230,18 +231,29 @@ class combinedAtomList(object):
 		# for each individual dataset and that to be used by dictionary of 
 		# density metrics for combinedAtom class
 
-		conversions = (['Bfactor','Bfactor'],
+		conversions = [['Bfactor','Bfactor'],
 					   ['Occupancy','occupancy'],
 					   ['meandensity','mean'],
 					   ['maxdensity','gain'],
 					   ['mindensity','loss'],
 					   ['mediandensity','median'],
-					   ['numvoxels','num-voxels'],
-					   ['stddensity','standard-deviation'],
-	    			   ['min90tile','90tile-loss'],
-	    			   ['max90tile','90tile-gain'],
-	    			   ['min95tile','95tile-loss'],
-	    			   ['max95tile','95tile-gain'])
+					   ['numvoxels','num_voxels'],
+					   ['stddensity','standard_deviation'],
+	    			   ['min90tile','90tile_loss'],
+	    			   ['max90tile','90tile_gain'],
+	    			   ['min95tile','95tile_loss'],
+	    			   ['max95tile','95tile_gain'],
+	    			   ['meanNegOnly','mean_negOnly'],
+	    			   ['meanPosOnly','mean_posOnly']]
+
+		if self.inclFCderivedMetrics:
+
+			conversions += [['fracOfMaxAtomDensAtMin','atomic_density_fraction_at_loss'],
+							['densityWeightedMean','density_weighted_mean'],
+							['densityWeightedMeanNegOnly','density_weighted_mean_negOnly'],
+							['densityWeightedMeanPosOnly','density_weighted_mean_posOnly'],
+							['densityWeightedMin','density_weighted_loss'],
+							['densityWeightedMax','density_weighted_gain']]
 
 		for conversion in conversions:
 			if metricName == conversion[0]:
@@ -341,7 +353,7 @@ class combinedAtomList(object):
 			if printText:
 				print 'Calculating Calpha weights at each dataset '+\
 					  'for metric: {}, normalisation: {}'.format(metric,normType)
-			CAweights = self.retrieveCalphaWeight(metric=metric)
+			CAweights = self.retrieveCalphaWeight(metric = metric)
 
 		# loop over all atoms in list and calculate additional 
 		# metrics for each atom in atomList
@@ -425,10 +437,6 @@ class combinedAtomList(object):
 		# 'groupBy' takes values 'none','residue','atomtype'. numDP 
 		# is number of decimal points the values in csv should be
 		# rounded to (default of 2dp)
-
-		if not self.inclFCderivedMetrics:
-			if normType in ('reliability','distance-weighted'):
-				return
 
 		csvName = '{}{}-{}.csv'.format(where,metric,normType.replace(" ",""))
 		if groupBy in ('residue','atomtype'):
@@ -1013,12 +1021,29 @@ class combinedAtomList(object):
 			for norm in ('Standard','Calpha normalised'):
 				data += str(round(atom.densMetric['loss'][norm]['values'][dataset],2))+splitBy
 
-			if self.inclFCderivedMetrics:
-				data += str(round(atom.densMetric['loss']['reliability']['values'][dataset],2))+splitBy
+
+			if metric == 'loss':
+				if self.inclFCderivedMetrics:
+					# this gives an indication of how far away the Dloss-valued voxel is from the atomic centre
+					data += str(round(atom.densMetric['loss-reliability']['Standard']['values'][dataset],2))+splitBy
 
 			if incOtherMetrics:
 				extra = []
-				for met in ('mean','gain','Bfactor'):
+
+				if metric == 'loss':
+					metricsToInclude = ['mean',
+										'gain',
+										'Bfactor']
+
+				if metric == 'density_weighted_mean_negOnly':
+					metricsToInclude = ['density_weighted_loss',
+										'loss',
+										'Bfactor']
+
+				else:
+					metricsToInclude = ['Bfactor']
+
+				for met in metricsToInclude:
 					extra.append(str(round(atom.densMetric[met]['Standard']['values'][dataset],2)))
 				data += splitBy.join(extra)
 			atomInfoList.append(data)
@@ -1028,13 +1053,96 @@ class combinedAtomList(object):
 		else:
 			calphaStr = 'Calpha'
 
-		stringOut = 'Atom-ID{}Dloss{}Dloss ({}-normalised){}'.format(splitBy,splitBy,calphaStr,splitBy)
-		if self.inclFCderivedMetrics:
-			stringOut += 'Peak Proximity{}'.format(splitBy)
-		stringOut += 'Dmean{}Dgain{}Bfactor\n'.format(splitBy,splitBy)+\
-					 '\n'.join(atomInfoList)	
+		if metric == 'loss':
+			stringOut = 'Atom-ID{}Dloss{}Dloss ({}-normalised){}'.format(splitBy,splitBy,calphaStr,splitBy)
+			if self.inclFCderivedMetrics:
+				stringOut += 'Peak Proximity{}'.format(splitBy)
+			stringOut += 'Dmean{}Dgain{}Bfactor\n'.format(splitBy,splitBy)+\
+					 	 '\n'.join(atomInfoList)
 
+		elif metric == 'density_weighted_mean_negOnly':
+			stringOut = 'Atom-ID{}DW-mean (-ve only){}DW-mean (-ve only) ({}-normalised){}'.format(splitBy,splitBy,calphaStr,splitBy)	
+			stringOut += 'DW-loss{}Dloss{}Bfactor\n'.format(splitBy,splitBy)+\
+					 	 '\n'.join(atomInfoList)
+
+		else:
+			stringOut = 'Atom-ID{}{}{}Bfactor'.format(splitBy,metric,splitBy)
 		return stringOut
+
+	def getTopNAtomsDotPlot(self,
+						    metrics   = ['loss','loss'],
+						    normTypes = ['Standard','Calpha normalised'],
+						    dataset   = 0,
+						    numHits   = 25,
+						    savePlot  = True,
+						    fileType  = '.png'):
+
+		# make a dot plot for top n atoms in structure in terms of 
+		# metric 'metric'. 'numHits' takes values 'all' or an integer
+		# Top n atoms are ranked based of the primary metric as
+		# specified by the lists 'metrics' and 'normTypes'
+
+		if len(metrics) != len(normTypes):
+			print 'getTopNAtomsDotPlot() requires "metrics" and '+\
+				  '"normTypes" inputs to be lists of same length'
+			return
+
+		primaryMetric = '{}\n({})'.format(metrics[0],normTypes[0])
+
+		topN = self.getTopNAtoms(metric   = metrics[0],
+								 normType = normTypes[0],
+								 dataset  = dataset,
+								 n        = numHits)
+
+		metricsToPlot = ['{}\n({})'.format(m,n) for m,n in zip(metrics,normTypes)]
+
+		plotData = {m:[] for m in metricsToPlot}
+		plotData['Atom ID'] = []
+
+		for atom in topN:
+			plotData['Atom ID'].append(atom.getAtomID())
+			for m,n in zip(metrics,normTypes):
+				val = atom.densMetric[m][n]['values'][dataset]
+				plotData['{}\n({})'.format(m,n)].append(val)
+
+		plotdf = DataFrame(plotData)
+
+		# Make the PairGrid		
+		g = sns.PairGrid(plotdf.sort_values(primaryMetric,
+						 ascending = False),
+		                 x_vars    = metricsToPlot,
+		                 y_vars    = ['Atom ID'],
+		                 size      = 14,
+		                 aspect    = .25)
+
+		# Draw a dot plot using the stripplot function
+		g.map(sns.stripplot,
+			  size      = 20,
+			  orient    = "h",
+			  palette   = sns.color_palette("Blues_r",numHits),
+		      edgecolor = "gray")
+
+		g.set(ylabel = "")
+
+		titles = metricsToPlot # this might need changing to give nicer labels
+		for ax, title in zip(g.axes.flat, titles):
+			ax.xaxis.grid(False)
+			ax.yaxis.grid(True)
+
+		sns.despine(left   = True,
+					bottom = True)
+
+		if savePlot:
+			plotDir = 'topNatoms/'
+			if plotDir.replace('/','') not in os.listdir(self.outputDir+'plots/'):
+				os.mkdir(self.outputDir+'plots/'+plotDir)
+
+			saveName = '{}plots/{}dotPlot_top-{}-DamSites_dset-{}{}'.format(self.outputDir,plotDir,numHits,dataset,fileType)
+			saveName = self.checkUniqueFileName(fileName = saveName,
+									 			fileType = fileType)
+			g.savefig(saveName)
+
+		return saveName
 
 	def plotAtomtypeRankingWithDataset(self,
 		 							   metric    = 'loss',
@@ -1380,6 +1488,27 @@ class combinedAtomList(object):
 									   normType = normType)
 
 		return statsString,statsDic
+
+	def getStructureStats(self,
+						  metric   = 'loss',
+						  normType = 'Standard',
+						  dataset  = 0):
+
+		# for a given metric type, determine per-chain 
+		# statistics on the distribution of damage
+
+		statsDic 	= self.getStats(metric   = metric,
+									normType = normType,
+									dataset  = dataset,
+									dic      = {'Structure':self.atomList})
+
+		statsString	= self.reportStats(stats    = statsDic,
+									   name     = 'Structure',
+									   normType = normType,
+									   n        = 1)
+
+		return statsString,statsDic
+
 
 	def getStats(self,
 				 metric   = 'loss',
@@ -2153,7 +2282,7 @@ class combinedAtomList(object):
 		# base, phosphate, sugar (DNA/RNA)
 
 		if not seabornFound:
-			return
+			return {},''
 
 		# attempt to find atoms of type 'resiType'
 		# and flag if not all found
@@ -2167,19 +2296,21 @@ class combinedAtomList(object):
 				if printText:
 					print 'Warning: not all selected residue/nucleotide types found!'
 				if requireAll:
-					return {}
+					return {},''
 			if count == len(resiType):
 				if printText:
 					print 'Warning: no residues/nucleotides found for current plot'
-				return {}
+				return {},''
 
 		if plotType not in ('hist','kde','both'): 
-			return 'Unknown plotting type selected.. cannot plot..'
+			print 'Unknown plotting type selected.. cannot plot..'
+			return {},''
 
 		if normType == 'Calpha normalised':
 			self.calcAdditionalMetrics(metric = metric)
 		if not self.checkMetricPresent(metric = metric,normType = normType): 
-			return # check metric valid
+			print 'Specified metric to plot not present..'
+			return {},''
 
 		if sideOnly:
 			atmList = self.getSidechainAtoms()
@@ -2191,12 +2322,13 @@ class combinedAtomList(object):
 		fig = plt.figure()
 		ax  = plt.subplot(111)
 
-		datax  = {}
-		stats  = {}
+		datax      = {}
+		dataxOrder = []
+		stats      = {}
 
 		if valType == 'all':
 			numDsets = self.getNumDatasets()
-			for (i, color) in zip( self.getDsetList(), sns.color_palette('Blues', numDsets) ):
+			for (i, color) in zip( self.getDsetList(), sns.color_palette('rainbow', numDsets) ):
 				presentAtms = self.getAtomListWithoutPartialAtoms(dataset = i,
 																  atmList = atmList)
 
@@ -2205,6 +2337,7 @@ class combinedAtomList(object):
 					lbl = 'Dataset {}'.format(i+1)
 					datax[lbl] = {'values' : data,
 								  'colors' : color}
+					dataxOrder.append(lbl)
 
 				else:
 					for res in resiType:
@@ -2214,6 +2347,7 @@ class combinedAtomList(object):
 							lbl = 'Dataset {},{}'.format(i+1,res)
 							datax[lbl] = {'values' : data,
 									      'colors' : color}
+							dataxOrder.append(lbl)
 
 		else:
 			self.calcAverageMetricOverDoses(metric   = metric,
@@ -2245,14 +2379,18 @@ class combinedAtomList(object):
 							except KeyError:
 								datax[lblFull] = {'values' : [vals],
 												  'colors' : ''}
+						
+							if lblFull not in dataxOrder:
+								dataxOrder.append(lblFull)
 
-						for k,col in zip( datax.keys(),sns.color_palette( 'hls', len( datax.keys() ) ) ):
+						for k,col in zip( dataxOrder,sns.color_palette( 'hls', len( dataxOrder ) ) ):
 							datax[k]['colors'] = col
 
 					else: 
 						data = [atm.densMetric[metric][normType]['values'][valType] for atm in presentAtms]
 						datax[lbl] = {'values' : data,
 									  'colors' : 'r'}
+						dataxOrder.append(lbl)
 			else:
 				for (res, color) in zip( resiType, sns.color_palette('hls', len(resiType) ) ):
 			
@@ -2263,6 +2401,7 @@ class combinedAtomList(object):
 
 						datax[lbl] = {'values' : data,
 									  'colors' : color}
+						dataxOrder.append(lbl)
 
 					else:
 						presentAtms = self.getAtomListWithoutPartialAtoms(dataset = valType,
@@ -2276,7 +2415,7 @@ class combinedAtomList(object):
 							if len(resiType) != 1:
 								print 'resSplit = True only supported here when 1 single '+\
 									  'residue type is to be plotted..'
-								return {}
+								return {},''
 
 							for atm in presentAtms:
 								if atm.basetype == res:
@@ -2289,7 +2428,10 @@ class combinedAtomList(object):
 										datax[lblFull] = {'values' : [vals],
 														  'colors' : ''}
 
-							for k,col in zip( datax.keys(),sns.color_palette( 'hls', len( datax.keys() ) ) ):
+									if lblFull not in dataxOrder:
+										dataxOrder.append(lblFull)
+
+							for k,col in zip( dataxOrder,sns.color_palette( 'hls', len( dataxOrder ) ) ):
 								datax[k]['colors'] = col
 
 						else: 
@@ -2298,6 +2440,7 @@ class combinedAtomList(object):
 							if data != []:
 								datax[lbl] = {'values' : data,
 											  'colors' : color}
+								dataxOrder.append(lbl)
 
 				# calculate Kolmogrov-Smirnov statistic in case where strictly 2 residue types plotted
 				vals = [datax[k]['values'] for k in datax.keys()] 
@@ -2316,10 +2459,11 @@ class combinedAtomList(object):
 						pass # anderson_ksamp can crash unexpectedly
 
 		if len(datax.keys()) == 0:
-			return {}
+			return {},''
 
 		self.plotHist(plotType = plotType,
-					  datax    = datax)
+					  datax    = datax,
+					  order    = dataxOrder)
 
 		plt.legend(loc = 'best',
 			   	   fontsize = legFont)
@@ -2371,12 +2515,13 @@ class combinedAtomList(object):
 									 			fileType = fileType)
 			fig.savefig(fileName)
 
-		return datax
+		return datax,fileName
 
 	def plotHist(self,
 				 plotType = 'both',
 				 nBins    = 300,
-				 datax    = {}):
+				 datax    = {},
+				 order    = []):
 
 		# plot histogram or kde plot for datax and give current label
 		# 'nBins' is number of bins (only used if plotType is 'hist' or 'both')
@@ -2384,7 +2529,10 @@ class combinedAtomList(object):
 		if not seabornFound:
 			return
 
-		for k in datax.keys():
+		if order == []:
+			order = datax.keys()
+
+		for k in order:
 			if plotType == 'hist':
 				plt.hist(datax[k]['values'],
 						 nBins,
@@ -3638,28 +3786,35 @@ class combinedAtomList(object):
 	def getAtomsWithinDist(self,
 						   atom       = '',
 						   distLimMax = 4,
-						   distLimMin = 0):
+						   distLimMin = 0,
+						   printText  = False,
+						   ignoreSame = 'res'):
 
 		# find all atoms within 'distLim' angstroms 
 		# of selected atomtype. Disregards atoms of 
-		# same exact residue
+		# same exact residue by default
 
 		nearAtmDic = {'atoms'     : [],
 					  'distances' : []}
 
 		for otheratom in self.atomList:
-			if (otheratom.getAtomID()).split('-')[:-1] == (atom.getAtomID()).split('-')[:-1]: 
-				continue
+			if ignoreSame == 'res':
+				if (otheratom.getAtomID()).split('-')[:-1] == (atom.getAtomID()).split('-')[:-1]: 
+					continue
+			elif ignoreSame == 'atom':
+				if otheratom.getAtomID() == atom.getAtomID():
+					continue
 			dist = self.getDistanceBetweenAtoms(atom1 = atom,
 												atom2 = otheratom)
 			if dist < distLimMax:
 				if dist > distLimMin:
 					nearAtmDic['atoms'].append(otheratom)
 					nearAtmDic['distances'].append(dist)
-		print '{} in total within {}-{} Angstrom of {}'.format(len(nearAtmDic['atoms']),
-															   round(distLimMin,2),
-															   round(distLimMax,2),
-															   atom.getAtomID())
+		if printText:
+			print '{} in total within {}-{} Angstrom of {}'.format(len(nearAtmDic['atoms']),
+																   round(distLimMin,2),
+																   round(distLimMax,2),
+																   atom.getAtomID())
 		return nearAtmDic
 
 	def groupAtomsByDist(self,
@@ -4047,8 +4202,8 @@ class combinedAtomList(object):
 				readLog.close()
 
 			else:
-				nearAtms = self.getAtomsWithinDist(atom    = atom,
-												   distLim = distLim)
+				nearAtms = self.getAtomsWithinDist(atom       = atom,
+												   distLimMax = distLim)
 				nearCarboxyl = False
 				for atom2 in nearAtms['atoms']:
 					if atom2.atomtype in ['OE1','OE2','OD1','OD2']:
@@ -4405,6 +4560,74 @@ class combinedAtomList(object):
 								       normType  = normType,
 								       newMetric = 'average')
 
+	def findProbHighNeighbourGivenHighAtom(self,
+										   distance = 5,
+										   densMet  = 'loss',
+										   normType = 'Standard',
+										   dataset  = 0,
+										   criteria = '1std',
+										   sign     = 'above'):
+
+		# attempts to determine the probability that given that a 
+		# randomly picked atom has a defined 'high' metric value
+		# then there exists a neighbouring atom that is also mean.
+		# Here 'high' is defined by 'criteria' as either 'mean',
+		# meaning that any value above/below the average structure 
+		# value for the metric is considered as 'high' (depending on 
+		# the specification of 'sign'), or can be set as a specific 
+		# float threshold
+
+		if criteria == 'mean' or 'std' in criteria:
+			av,std = self.getAverageMetricVals(densMet  = densMet,
+				                          	   normType = normType)
+			if criteria == 'mean':
+				thres = av[dataset]
+			elif 'std' in criteria:
+				numStd = int(criteria.replace('std',''))
+				if sign == 'above':
+					thres = av[dataset] + numStd*std[dataset]
+				else:
+					thres = av[dataset] - numStd*std[dataset]
+		else:
+			try: 
+				thres = float(criteria)
+			except ValueError:
+				print 'Unexpected assignment of "criteria" parameter'
+
+		numHighAtoms     = 0
+		numHighNearAtoms = 0
+		for atm in self.atomList:
+			atmMetric = atm.densMetric[densMet][normType]['values'][dataset]
+			if sign == 'above':
+				if atmMetric <= thres:
+					continue
+			elif sign == 'below':
+				if atmMetric >= thres:
+					continue
+			else:
+				print '"sign" parameter must take either "above" or "below"'
+				return
+			numHighAtoms += 1
+			nearAtms = self.getAtomsWithinDist(atom       = atm,
+										   	   distLimMax = distance)
+			for nearAtm in nearAtms['atoms']:
+				nearAtmMetric = nearAtm.densMetric[densMet][normType]['values'][dataset]
+				if sign == 'above':
+					if nearAtmMetric > thres:
+						numHighNearAtoms += 1
+						break
+				else:
+					if nearAtmMetric < thres:
+						numHighNearAtoms += 1
+						break
+		probHighAtom = float(numHighAtoms)/self.getNumAtoms()
+		probHighNeighbourAndHighAtom = float(numHighNearAtoms)/self.getNumAtoms()
+		probHighNeighGivenHighAtom = probHighNeighbourAndHighAtom/probHighAtom
+
+		print 'Probability of high ({} {}) neighbour atom GIVEN high atom: {}'.format(sign,thres,probHighNeighGivenHighAtom)
+		
+		return probHighNeighGivenHighAtom
+
 	def calculateLocalDloss(self,
 							resType   = '',
 							atomType  = '',
@@ -4418,7 +4641,7 @@ class combinedAtomList(object):
 		# for a given residue, calculate the average density metric 
 		# (for a specified metric) within a given region of space 
 		# around that particular residue. if 'weighted' is True 
-		# then a distance-weighted mean is instead calculated
+		# then a density-weighted mean is instead calculated
 
 		plotData = {'x' : [],
 					'y' : []}
@@ -4433,8 +4656,8 @@ class combinedAtomList(object):
 									    normType = normType)
 
 		for atm in atms:
-			nearAtms = self.getAtomsWithinDist(atom    = atm,
-											   distLim = distance)
+			nearAtms = self.getAtomsWithinDist(atom       = atm,
+											   distLimMax = distance)
 
 			densList,distList = [],[]
 			i = -1
