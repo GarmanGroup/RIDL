@@ -8,12 +8,14 @@ import numpy as np
 from logFile import logFile
 
 # reads .map file of either density or atom-tagged type
-def readMap(dirIn    = './',
-            dirOut   = './',
-            mapName  = 'untitled.map',
-            mapType  = 'atom_map',
-            atomInds = [],
-            log      = ''):
+def readMap(dirIn        = './',
+            dirOut       = './',
+            mapName      = 'untitled.map',
+            mapType      = 'atom_map',
+            atomInds     = [],
+            log          = '',
+            standardise  = False,
+            fixMaxMapVal = ''):
 
     # define 'rho' electron map object
     rho = MapInfo()
@@ -71,9 +73,18 @@ def readMap(dirIn    = './',
     # get symmetry operations from map header
     for j in range(23,58):
         if j != 53 and j < 57:
-            val = unpack('=l',bmf.read(4))[0]
+
+            if j != 55:
+                val = unpack('=l',bmf.read(4))[0]
+            else:
+                val = unpack('=f',bmf.read(4))[0]
+
             if j == 24:
                 numSymBytes = val
+
+            if j == 55:
+                mapStdev = round(val,5)
+
         elif j < 57:
             for i in range(4):
                 val = unpack('c',bmf.read(1))[0]
@@ -138,6 +149,7 @@ def readMap(dirIn    = './',
         # efficient way to read through density map file using indices of atoms
         # from atom map file above
         elif mapType in ('density_map'):
+            
             for i in range(0,len(atomInds)):
                 if i != 0:
                     bmf.read(struct_len*(atomInds[i]-atomInds[i-1] - 1))
@@ -152,8 +164,15 @@ def readMap(dirIn    = './',
             if len(density) != len(atomInds):
                 err = 'Error in processing of density map using atom-tagged map'
                 log.writeToLog(str = err)
+                sys.exit() 
 
-                sys.exit()           
+            # UNCOMMENT TO INSTEAD READ IN ALL VOXELS
+            # while True:
+            #     data = bmf.read(struct_len)
+            #     if not data: break
+            #     s = unpack(struct_fmt,data)[0]
+            #     appenddens(s)
+
         else:
             err = 'Unknown map type --> terminating script'
             log.writeToLog(str = err)
@@ -189,6 +208,19 @@ def readMap(dirIn    = './',
         err = 'Unknown map type --> terminating script'
         log.writeToLog(str = err)
         sys.exit()
+
+    # provide option to standardise density to map mean and standard deviation
+    if standardise and mapType in ('density_map'):
+        density_final = (np.array(density_final)-rho.density['mean'])/mapStdev
+        
+        if fixMaxMapVal != '':
+            density_final /= np.max(np.absolute(density_final))
+            if fixMaxMapVal == 'rand':
+                fixMaxMapVal = np.random.uniform(6,10)
+                print 'Random max map value chosen to be {}'.format(fixMaxMapVal)
+            density_final *= fixMaxMapVal
+
+        density_final = density_final.tolist()
 
     rho.vxls_val = density_final
 
