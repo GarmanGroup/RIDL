@@ -3,6 +3,7 @@ sys.path.insert(0,'./lib')
 from errors import error
 from processFiles import processFiles
 from logFile import logFile
+import shutil
 
 class process():
 
@@ -22,7 +23,8 @@ class process():
 				 cleanUpFinalFiles   = False,
 				 printOutput         = True,
 				 skipToSummaryFiles  = False,
-				 writeSummaryFiles   = False):
+				 writeSummaryFiles   = False,
+				 keepMapDir          = True):
 
 		self.inputFile           = inputFile
 		self.proceedToMetricCalc = proceedToMetricCalc
@@ -32,6 +34,7 @@ class process():
 		self.printOutput         = printOutput
 		self.skipToSummaryFiles  = skipToSummaryFiles
 		self.writeSummaryFiles   = writeSummaryFiles
+		self.keepMapDir          = keepMapDir
 
 		if run:
 			self.run()
@@ -74,7 +77,8 @@ class process():
 						   cleanFinalFiles     = self.cleanUpFinalFiles,
 						   logFileObj          = self.logFile,
 						   skipToSummaryFiles  = self.skipToSummaryFiles,
-						   writeSummaryFiles   = self.writeSummaryFiles)
+						   writeSummaryFiles   = self.writeSummaryFiles,
+						   keepMapDir          = self.keepMapDir)
 
 		return pro.jobSuccess
 
@@ -232,6 +236,7 @@ MAPINFO
 			if printToScreen:
 				print 'Output directory "{}" not found, making directory'.format(self.outputDir)
 			os.makedirs(self.outputDir)
+
 
 
 

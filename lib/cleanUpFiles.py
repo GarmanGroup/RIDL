@@ -1,13 +1,15 @@
 import os
+import shutil
 
 class cleanUpFinalFiles():
 
 	def __init__(self,
-				 autoRun        = True,
+				 cleanMapDir    = True,
 				 outputDir      = './',
 				 keepFCmap      = False,
 				 keepAtomTagMap = False,
 				 keepDensityMap = True,
+				 keepMapDir     = True,
 				 keepPdbs       = True,
 				 printText      = True):
 
@@ -20,14 +22,17 @@ class cleanUpFinalFiles():
 		self.keepDensityMap = keepDensityMap
 		self.keepPdbs       = keepPdbs
 
-		self.mapProcessDir  = '{}RIDL-maps/'.format(self.outputDir)
-		self.calculationDir = '{}RIDL-metrics/'.format(self.outputDir)
+		self.mapDir    = '{}RIDL-maps/'.format(self.outputDir)
+		self.metricDir = '{}RIDL-metrics/'.format(self.outputDir)
 
-		if autoRun is True:
-			if self.checkCorrectOutput() is True:
-				self.cleanUpMapProcessingDir()
-				if printText is True:
+		if cleanMapDir:
+			if self.checkSubdirExists(self.mapDir):
+				self.cleanUpMapDir()
+				if printText:
 					self.statePurpose()
+
+		if not keepMapDir:
+			self.removeMapDir()
 
 	def statePurpose(self):
 
@@ -35,26 +40,25 @@ class cleanUpFinalFiles():
 
 		print 'Unnecessary files removed from output directories'
 
-	def checkCorrectOutput(self):
+	def checkSubdirExists(self,
+						  subdir   = './',
+						  printTxt = True):
 
-		# check that the output directory 
-		# format seems reasonable for a run
+		# check that the output directory exists
 
-		subdirs = [self.mapProcessDir,
-				   self.calculationDir]
-		for subdir in subdirs:	  
-			if os.path.isdir(subdir) is False:
+		if not os.path.isdir(subdir):
+			if printTxt:
 				print 'Error! Subdirectory {} not found.'.format(subdir)
-				return False
+			return False
 
 		return True
 
-	def cleanUpMapProcessingDir(self):
+	def cleanUpMapDir(self):
 
 		# clean up the map processing directory by 
 		# removing unwanted end files
 
-		for f in os.listdir(self.mapProcessDir):
+		for f in os.listdir(self.mapDir):
 			self.removeFCmap(fName = f)
 			self.removeAtomtaggedMap(fName = f)
 			self.removeDensityMap(fName = f)
@@ -64,27 +68,36 @@ class cleanUpFinalFiles():
 
 		# remove file if it is a FC map
 
-		if self.keepFCmap is False:
-			if fName.endswith('_FC.map') is True:
-				os.remove(self.mapProcessDir+fName)
+		if not self.keepFCmap:
+			if fName.endswith('_FC.map'):
+				os.remove(self.mapDir+fName)
 
 	def removeAtomtaggedMap(self,
 							fName  = ''):
 
 		# remove file if it is an 'atom-tagged' map
 
-		if self.keepAtomTagMap is False:
-			if fName.endswith('_atoms.map') is True:
-				os.remove(self.mapProcessDir+fName)
+		if not self.keepAtomTagMap:
+			if fName.endswith('_atoms.map'):
+				os.remove(self.mapDir+fName)
 
 	def removeDensityMap(self,
 						 fName  = ''):
 
 		# remove file if it is an 'atom-tagged' map
 
-		if self.keepDensityMap is False:
-			if fName.endswith('_density.map') is True:
-				os.remove(self.mapProcessDir+fName)
+		if not self.keepDensityMap:
+			if fName.endswith('_density.map'):
+				os.remove(self.mapDir+fName)
+
+	def removeMapDir(self):
+
+		# give option to remove the RIDL-maps/ directory
+		# following a successful run of the pipeline
+
+		if self.checkSubdirExists(self.mapDir,printTxt=False):
+			print 'Removing RIDL-maps/ directory'
+			shutil.rmtree(self.mapDir)
 
 
 
