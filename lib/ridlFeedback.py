@@ -521,7 +521,7 @@ class provideFeedback(object):
 			if firstToPlot in metsToPlot:
 				metsToPlot.remove(firstToPlot)
 			metsToPlot = [firstToPlot] + metsToPlot
-			metsToPlot = [[m[i] for m in metsToPlot] for i in range(2)]
+			metsToPlot = [[m[j] for m in metsToPlot] for j in range(2)]
 
 			saveName = self.atmsObjs.getTopNAtomsDotPlot(dataset   = i,
 														 metrics   = metsToPlot[0],
