@@ -412,7 +412,7 @@ class provideFeedback(object):
 				'Fourier diff map : <a href ="../RIDL-maps/{}_density.map">Download</a><br>\n'.format(self.pdbNames[i])
 			
 			CAweights = self.atmsObjs.retrieveCalphaWeight(metric = primaryMetric)
-			c += 'Calpha weight for current dataset: {}<br>\n'.format(round(CAweights.weight[metric][i],3))
+			c += 'Calpha weight for current dataset: {}<br>\n'.format(round(CAweights.weight[primaryMetric][i],3))
 			self.writeHtmlDropDownPanel(title   = t,
 										content = c,
 								        dataset = i,
