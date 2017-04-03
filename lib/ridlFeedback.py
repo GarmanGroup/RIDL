@@ -576,7 +576,7 @@ class provideFeedback(object):
 
 			# per-chain statistics
 			c += '<div id="bychain{}" class="tab-pane fade">'.format(i)
-			statsOut = self.atmsObjs.getPerChainStats(metric   = metric,
+			statsOut = self.atmsObjs.getPerChainStats(metric   = primaryMetric,
 													  normType = 'Calpha normalised',
 													  dataset  = i,
 													  n        = 'all')
