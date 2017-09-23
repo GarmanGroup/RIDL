@@ -102,7 +102,7 @@ class process():
 		string   = 	'dir ???\n'+\
 					'\nINITIALDATASET\nname1 ???\nmtz1 ???\nmtzlabels1 ???\npdb1 ???\nRfreeFlag1 ???\n'+\
 					'\nLATERDATASET\nname2 {}\nmtz2 {}\nmtzlabels2 {}\npdb2 {}\n'.format(*highDoseStrs)+\
-					'\nPHASEDATASET\nname3 ???\nmtz3 ???\nmtzlabels3 ???\n'+\
+					'\nPHASEDATASET\nname3 ???\nmtz3 ???\nphaseLabel ???\nFcalcLabel ???'+\
 					'\nMAPINFO\nsfall_VDWR 1\ndensMapType DIFF\nFFTmapWeight False\ndeleteIntermediateFiles TRUE'
 		f.write(string)
 		f.close()
@@ -127,23 +127,25 @@ FILELOCATION
 INITIALDATASET
 	name1 		: assign a name to your low dose damage set
 	mtz1  		: full path to the low dose mtz file
-	mtzlabels1	: F & SIGF column labels (look in low dose mtz file), if "FP_X" then type "P_X"
+	mtzlabels1	: F & SIGF column labels (look in low dose mtz file), if "FP_X" then type "FP_X"
 	pdb1 		: full path to the low dose pdb file
 	RfreeFlag1 	: the Rfree flag label within the low dose mtz file (e.g. "FreeR_flag")
 
 LATERDATASET
 	name2 		: assign a name to your high dose damage set (e.g. a pdb code "1qid")
 	mtz2 		: full path to the high dose mtz file
-	mtzlabels2 	: F & SIGF column labels (look in high dose mtz file), if "FP_X" then type "P_X"
+	mtzlabels2 	: F & SIGF column labels (look in high dose mtz file), if "FP_X" then type "FP_X"
 	pdb2 		: full path to the high dose pdb file
 
 PHASEDATASET
 	name3 		: assign a name to your low dose damage set (same as INITIALDATASET above)
 	mtz3 		: full path to the low dose mtz file (same as INITIALDATASET above)
-	mtzlabels3 	: PHI phase column labels (look in low dose mtz file), if "PHIC_X" then type "C_X"
+	phaseLabel 	: PHI phase column labels (look in low dose mtz file), if "PHIC_X" then type "PHIC_X"
+	FcalcLabel  : calculated structure amplitudes from same file as above, if "FC_X" then type "FC_X"
 
 MAPINFO
-	For difference map analysis, do not change these parameters
+	For difference map analysis, do not change these parameters, contact the author for further
+	information before varying these
 	"""
 		if printStr:
 			print infoString
