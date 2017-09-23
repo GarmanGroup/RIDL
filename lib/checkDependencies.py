@@ -45,7 +45,7 @@ class checkDependencies():
 					  ' not successfully located\nSee above for details.'
 
 	def checkCCP4(self,
-				  printText = False,
+				  printText = True,
 				  logFile   = ''):
 
 		# check whether ccp4 program suite 
@@ -57,24 +57,21 @@ class checkDependencies():
 			self.printOrWriteToLog(logFile = logFile,
 							  	   txt     = ln)
 
-		t = 'testccp4works.txt'
-		os.system('aimless &> {}'.format(t))
-		l = open(t,'r').readlines()[0]
-		if l == 'sh: aimless: command not found\n':
-			err = 'CCP4 program suite not found..\n'
+		if 'ccp4' not in os.environ["PATH"]:
+			err = 'CCP4 program suite not found in PATH..\n'
 			self.printOrWriteToLog(logFile = logFile,
-						  	       txt     = err)
+					  	       	   txt     = err)
 			return False
-
-		if printText is True:	
-			ln = '---> success!\n'
-			self.printOrWriteToLog(logFile = logFile,
-							  	   txt     = ln)
+		else:
+			if printText is True:
+				ln = '---> success!\n'
+				self.printOrWriteToLog(logFile = logFile,
+								  	   txt     = ln)
 
 		return True
 
 	def checkPythonPackage(self,
-					       printText   = False,
+					       printText   = True,
 					       logFile     = '',
 					       packageName = 'seaborn'):
 
@@ -106,7 +103,7 @@ class checkDependencies():
 		return True
 
 	def checkSeaborn(self,
-					 printText = False,
+					 printText = True,
 					 logFile   = ''):
 
 		# check whether seaborn is present and flag if not.
