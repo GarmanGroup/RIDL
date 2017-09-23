@@ -6,7 +6,8 @@ class CalphaWeight(object):
 	def __init__(self, atomList = []):
 
 		self.atomList 	= atomList  # list of atoms over multiple doses
-		self.weight 	= {}  		# dictionary of weightings per metric type (mean, gain etc.)
+		self.meanweight = {}  		# dictionary of weightings per metric type (mean, gain etc.)
+		self.stdweight 	= {}  		# dictionary of weightings per metric type (mean, gain etc.)
 
 	def calculateWeights(self,metric):
 		# collect the Calpha atoms and for each dataset number determine
@@ -25,14 +26,15 @@ class CalphaWeight(object):
 
 		# calculate the weighting for each dataset and for each density
 		# metric individually here
-		self.weight[metric] = np.mean([atom.densMetric[metric]['Standard']['values'] for atom in CalphaAtoms],0)
+		self.meanweight[metric] = np.nanmean([atom.densMetric[metric]['Standard']['values'] for atom in CalphaAtoms],0)
+		self.stdweight[metric] = np.nanstd([atom.densMetric[metric]['Standard']['values'] for atom in CalphaAtoms],0)
 
 	def printWeights(self,metric):
 		# print the Calpha weights per dataset to command line
 
 		# don't run function if weights have not been calculated yet
 		try:
-			self.weight[metric]
+			self.meanweight[metric]
 		except AttributeError:
 			print 'Need to calculate the weights for metric "{}" first (use calculateWeights method)'.format(metric)
 			return 
