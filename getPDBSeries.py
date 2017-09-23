@@ -55,18 +55,21 @@ class getSeries():
 			self.runREFMAC('RIGID',0)
 			self.parseRfactorFromPDB('{}/{}'.format(self.outputDir,self.refmacPDBout))
 
-			print 'running rigid body refmac... 10 cycles'
-			self.runREFMAC('RIGID',10)
-			self.parseRfactorFromPDB('{}/{}'.format(self.outputDir,self.refmacPDBout))
+			doExtraRefinement = False
+			if doExtraRefinement:
 
-			# run restrained refinement refmac jobs
-			print 'running restrained refmac... 0 cycles'
-			self.runREFMAC('REST',0)
-			self.parseRfactorFromPDB('{}/{}'.format(self.outputDir,self.refmacPDBout))
+				print 'running rigid body refmac... 10 cycles'
+				self.runREFMAC('RIGID',10)
+				self.parseRfactorFromPDB('{}/{}'.format(self.outputDir,self.refmacPDBout))
 
-			print 'running restrained refmac... 10 cycles'
-			self.runREFMAC('REST',10)
-			self.parseRfactorFromPDB('{}/{}'.format(self.outputDir,self.refmacPDBout))
+				# run restrained refinement refmac jobs
+				print 'running restrained refmac... 0 cycles'
+				self.runREFMAC('REST',0)
+				self.parseRfactorFromPDB('{}/{}'.format(self.outputDir,self.refmacPDBout))
+
+				print 'running restrained refmac... 10 cycles'
+				self.runREFMAC('REST',10)
+				self.parseRfactorFromPDB('{}/{}'.format(self.outputDir,self.refmacPDBout))
 
 			# compare Rfactors to those in downloaded PDB header
 			print 'values stated in downloaded .pdb header'
@@ -77,8 +80,13 @@ class getSeries():
 
 	def downloadFromPDB(self):
 		# download the coordinate pdb file and mmcif structure factor files from PDB
-		os.system('curl "http://www.rcsb.org/pdb/files/{}.pdb" -o "{}"'.format((self.datasetName).upper(),self.pdbFile))
-		os.system('curl "http://www.rcsb.org/pdb/files/{}" -o "{}"'.format(self.mmcifFile,self.mmcifFile))
+		
+		#OLD BELOW:
+		# os.system('curl "http://www.rcsb.org/pdb/files/{}.pdb" -o "{}"'.format((self.datasetName).upper(),self.pdbFile))
+		# os.system('curl "http://www.rcsb.org/pdb/files/{}" -o "{}"'.format(self.mmcifFile,self.mmcifFile))
+
+		os.system('curl "https://files.rcsb.org/download/{}.pdb" -k -o "{}"'.format((self.datasetName).upper(),self.pdbFile))
+		os.system('curl "https://files.rcsb.org/download/{}" -k -o "{}"'.format(self.mmcifFile,self.mmcifFile))
 
 		# check if files downloaded
 		if (self.checkFileExists('{}'.format(self.pdbFile)) is False or
@@ -128,7 +136,7 @@ class getSeries():
 		self.jobName = 'sftools'
 
 		# run sftools from comman line
-		self.commandInput1 = '/Applications/ccp4-6.5/bin/sftools'
+		self.commandInput1 = 'sftools'
 		self.commandInput2 = 'mode batch\n'+\
 							 'read {}.mtz mtz\n'.format(pdbcode)+\
 							 'set types col "FP"\n'+\
@@ -165,10 +173,11 @@ class getSeries():
 
 		# check if input mmcif file exist
 		if self.checkFileExists('{}/{}'.format(self.outputDir,self.mmcifFile)) is False:			
-			return											  
+			print 'could not find correct cif file to convert to mtz'
+			return
 
 		# run Cif2Mtz from command line
-		self.commandInput1 = '/Applications/ccp4-6.5/bin/cif2mtz '+\
+		self.commandInput1 = 'cif2mtz '+\
 							 'HKLIN {}/{} '.format(self.outputDir,self.mmcifFile)+\
 						     'HKLOUT {}/{} '.format(self.outputDir,self.mtzFile)
 		self.commandInput2 = 'END'
@@ -287,6 +296,8 @@ class getSeries():
 		RvalFlag = 'R VALUE     (WORKING + TEST SET) :'
 		RfreeFlag = 'FREE R VALUE                     :'
 		fileOpen = open(fileName,'r')
+		Rvalue = 'N/A'
+		Rfree = 'N/A'
 		for line in fileOpen.readlines():
 			if RvalFlag in line:
 				Rvalue = float(line.split(RvalFlag)[1])
