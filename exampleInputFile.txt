@@ -3,7 +3,7 @@ dir ./testOutput/RIDL-example/
 INITIALDATASET
 name1 1qid
 mtz1 ./testOutput/1qid/1qid.mtz
-mtzlabels1 P_1qid
+mtzlabels1 FP_1qid
 pdb1 ./testOutput/1qid/1qid.pdb
 RfreeFlag1 FreeR_flag
 dose1 1
@@ -11,7 +11,7 @@ dose1 1
 LATERDATASET
 name2 1qie,1qif
 mtz2 ./testOutput/1qie/1qie.mtz,./testOutput/1qif/1qif.mtz
-mtzlabels2 P_1qie,P_1qif
+mtzlabels2 FP_1qie,FP_1qif
 pdb2 ./testOutput/1qie/1qie.pdb,./testOutput/1qif/1qif.pdb
 dose2 2,3
 
