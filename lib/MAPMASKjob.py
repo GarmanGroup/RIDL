@@ -42,10 +42,11 @@ class MAPMASKjob():
 		# switch the axis order of an input .map file. 
 		# order = [1,2,3] for example
 
-		self.printPurpose(mode = 'switch axes')
 		self.defineCorrectOutputMap(True)
 		xyz = {'1':'X','2':'Y','3':'Z'}
 		axisOrder = [xyz[str(i)] for i in order]
+
+		self.printPurpose(mode = 'switch axes',axisOrder=axisOrder)
 
 		inputFiles = [self.inputMapFile]
 		if not checkInputsExist(inputFiles,self.runLog):
@@ -181,7 +182,8 @@ class MAPMASKjob():
 	def printPurpose(self,
 					 include    = True,
 					 mode       = 'switch axes',
-					 includeDir = False):
+					 includeDir = False,
+					 axisOrder  = []):
 
 		# provide a summary of what this does 
 		# (within RIDL) to the command line
