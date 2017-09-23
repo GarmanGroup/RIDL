@@ -116,7 +116,8 @@ class combinedAtom(StructurePDB):
 
 	def CalphaWeightedDensChange(self,
 								 CalphaWeights = [],
-								 metric        = 'loss'):
+								 metric        = 'loss',
+								 version       = 2):
 
 		# calculates the Calpha weighted density metrics for metric "metric",
 		# compensating for the overall background degregation of the electron 
@@ -126,17 +127,25 @@ class combinedAtom(StructurePDB):
 		# - see the CalphaWeights class for details on how to calculate these
 
 		try:
-			CalphaWeights.weight[metric]
+			CalphaWeights.meanweight[metric]
 		except AttributeError:
 			print 'Calpha weights not yet calculated for metric "{}"\n'.format(metric)+\
 				  'Need to calculate first this weight first --> see CalphaWeight class'
 			return
 
-		weight = CalphaWeights.weight[metric]
 		metricVals = self.densMetric[metric]['Standard']['values']
+
+		if version == 1:
+			weight = CalphaWeights.meanweight[metric]
+			vals = list(np.sign(weight)*np.divide(metricVals-weight,weight))
+		else:
+			weight1 = CalphaWeights.meanweight[metric]
+			weight2 = CalphaWeights.stdweight[metric]
+			vals = list(np.sign(weight1)*np.divide(metricVals-weight1,weight2))
+
 		self.getDensMetricInfo(metric   = metric,
 							   normType = 'Calpha normalised',
-							   values   = list(np.sign(weight)*np.divide(metricVals-weight,weight)))
+							   values   = vals)
 
 	def calcFirstDatasetSubtractedMetric(self,
 										 normType = 'Standard',
@@ -259,13 +268,13 @@ class combinedAtom(StructurePDB):
 
 	def findSolventAccessibility(self,
 								 inputPDBfile = 'untitled.pdb',
-								 printText    = False):
+								 printText    = True):
 
 		# read in a pdb file output by ccp4 program 'areaimol' 
 		# (run independently) which calculates solvent accessibility
 		# for each atom within a pdb file and writes value in Bfactor column
 
-		openFile =  open(str(inputPDBfile), "r")
+		openFile = open(str(inputPDBfile), "r")
 		for line in openFile.readlines():
 			if (self.atomtype == str(line[12:16].strip())
 				and self.residuenum == str(line[22:27].strip())
