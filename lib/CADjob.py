@@ -82,8 +82,8 @@ class CADjob():
 		self.commandInput2 	=	'title CAD JOB\n'+\
 								'monitor BRIEF\n'+\
 								'labin file 1 - \n'+\
-								'E1 = F{} - \n'.format(self.labels[0])+\
-								'E2 = SIGF{} '.format(self.labels[0])+\
+								'E1 = {} - \n'.format(self.labels[0])+\
+								'E2 = SIG{} '.format(self.labels[0])+\
 								'{} \n'.format(self.FOMtag['in'])+\
 								'labout file 1 - \n'+\
 								'E1 = FP_{} - \n'.format(self.renameLabels[0])+\
@@ -94,8 +94,8 @@ class CADjob():
 								'E2 = Q '+\
 								'{} \n'.format(self.FOMtag['type'])+\
 								'labin file 2 - \n'+\
-								'E1 = F{} - \n'.format(self.labels[1])+\
-								'E2 = SIGF{} \n'.format(self.labels[1])+\
+								'E1 = {} - \n'.format(self.labels[1])+\
+								'E2 = SIG{} \n'.format(self.labels[1])+\
 								'labout file 2 - \n'+\
 								'E1 = FP_{} - \n'.format(self.renameLabels[1])+\
 								'E2 = SIGFP_{} \n'.format(self.renameLabels[1])+\

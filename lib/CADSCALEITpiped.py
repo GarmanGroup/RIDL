@@ -80,10 +80,10 @@ class pipeline():
 							   RfreeFlag       = self.RfreeFlag1,
 							   inputPDB        = self.inputPDBfile,
 							   outputDir       = self.outputDir,
-							   runLog          = self.runLog)	
+							   runLog          = self.runLog)
 			success = sigmaa.run()
 
-			if not success: 
+			if not success:
 				return 2
 
 			# if 2FO-FC map required, use FWT column from sigmaa-output mtz (we are done here)

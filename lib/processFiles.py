@@ -536,13 +536,13 @@ class processFiles():
 
 			if self.includeSIGF:
 				if self.sepSIGFPlabel1:
-					labels = ['F'+lab[0],
-							  'SIGF'+lab[1]]
+					labels = [lab[0],
+							  lab[1]]
 				else:
-					labels = ['F'+lab,
-							  'SIGF'+lab]
+					labels = [lab,
+							  'SIG'+lab]
 			else:
-				labels = ['F'+lab]
+				labels = [lab]
 
 			for lab in labels:
 				if lab not in foundLabels:
@@ -570,13 +570,13 @@ class processFiles():
 
 			if self.includeSIGF:
 				if self.sepSIGFPlabel2:
-					labels = ['F'+lab[0],
-							  'SIGF'+lab[1]]
+					labels = [lab[0],
+							  lab[1]]
 				else:
-					labels = ['F'+lab,
-						  'SIGF'+lab]
+					labels = [lab,
+						      'SIG'+lab]
 			else:
-				labels = ['F'+lab]
+				labels = [lab]
 			
 			for lab in labels:
 				if lab not in foundLabels:
@@ -591,7 +591,7 @@ class processFiles():
 				mtzFiles  = self.mtz3.split(',')
 				phaseLabels = self.phaseLabel.split(',')
 				FcalcLabels = self.FcalcLabel.split(',')
-			else:	
+			else:
 				mtzFiles    = [self.mtz3]
 				phaseLabels = [self.phaseLabel]
 				FcalcLabels = [self.FcalcLabel]
