@@ -206,8 +206,10 @@ MAPINFO
 		self.quickParseInputFile()
 		self.checkOutputDirExists(printToScreen = self.printOutput)
 
-		logDir = self.outputDir.strip('/')+'/RIDL-log/'
-
+		if self.outputDir[-1] == '/':
+			logDir = self.outputDir[:-1]+'/RIDL-log/'
+		else:
+			logDir = self.outputDir+'/RIDL-log/'
 
 		if not os.path.exists(logDir):
 			os.makedirs(logDir)
