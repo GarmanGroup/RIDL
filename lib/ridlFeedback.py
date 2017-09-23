@@ -162,8 +162,7 @@ class provideFeedback(object):
 
 		if self.csvExtent == 'simple':
 			n = 'Standard'
-			metrics = [['loss',n],
-					   ['mean',n]]
+			metrics = [['loss',n]]
 
 			if inclMeanMet:
 				metrics += [['mean',n]]
