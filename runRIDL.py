@@ -11,6 +11,10 @@ import argparse
 #
 #   python runRIDL.py -i [inputfilename.txt] -pc
 #
+# or:
+#
+#   python runRIDL.py -i [inputfilename.txt] -pco
+#
 # This is the recommended run mode for the scripts.
 
 ln = 'Run the RIDL pipeline from the command line.'
