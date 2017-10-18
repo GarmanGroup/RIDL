@@ -51,7 +51,8 @@ class processFiles():
 				       'phaseLabel',
 				       'FcalcLabel']
 
-		self.includeSIGF = True # set to false to not include SIGF column in CAD run
+        # set to false to not include SIGF column in CAD run
+		self.includeSIGF = True
 
 		if not skipToMetricCalc:
 			success = self.runProcessing()
@@ -235,15 +236,21 @@ class processFiles():
 		# and set to default values if not specified
 
 		props = ['sfall_VDWR',
+				 'mapResLimits',
+				 'scaleType',
 				 'densMapType',
 				 'FFTmapWeight',
 				 'calculateFCmaps',
-				 'deleteIntermediateFiles']
+				 'deleteIntermediateFiles',
+				 'useLaterCellDims']
 
 		defaults = [1,
+					',',
+					'ANISOTROPIC',
 				    'DIFF',
 				    'False',
 				    'FALSE',
+				    'TRUE',
 				    'TRUE']
 
 		for i,prop in enumerate(props):
@@ -561,7 +568,7 @@ class processFiles():
 		else:
 			mtzFiles  = self.mtz2.split(',')
 			if self.sepSIGFPlabel2:
-				mtzLabels = [[a,b] for a,b in zip(self.mtzlabels2.split(','),self.mtzSIGFPlabel2)]
+				mtzLabels = [[a,b] for a,b in zip(self.mtzlabels2.split(','),self.mtzSIGFPlabel2.split(','))]
 			else:
 				mtzLabels = self.mtzlabels2.split(',')
 
@@ -839,6 +846,7 @@ class processFiles():
 				 'inputPDBfile'    : 'pdb2_current',
 				 'densMapType'     : 'densMapType',
 				 'deleteMtzs'      : 'deleteIntermediateFiles',
+				 'scaleType'       : 'scaleType',
 				 'FFTmapWeight'    : 'FFTmapWeight'}
 
 		if self.sepSIGFPlabel1:
@@ -883,10 +891,13 @@ class processFiles():
 				 'laterPDB'        : 'name2_current',
 				 'phaseDataset'    : 'name3_current',
 				 'sfall_VDWR'      : 'sfall_VDWR',
+				 'scaleType'       : 'scaleType',
+				 'mapResLimits'    : 'mapResLimits',
 				 'mtzIN'           : 'mtzIn',
 				 'densMapType'     : 'densMapType',
 				 'FFTmapWeight'    : 'FFTmapWeight',
-				 'calculateFCmaps' : 'calculateFCmaps'}
+				 'calculateFCmaps' : 'calculateFCmaps',
+				 'useLaterCellDims' : 'useLaterCellDims'}
 
 		fileOut2 = open(self.pipe2FileName,'w')
 		inputString = ''
@@ -993,7 +1004,7 @@ class processFiles():
 			mapFiles += ['{}{}-FC-{}_cropped_cropped.map'.format(self.mapProcessDir,
 																 self.dsetName,
 																 densMapProg)]
-			renameMaps += ['{}{}_FC.map'.format(*renameParams2)]
+			renameMaps += ['{}{}_FC.map'.format(*renameParams)]
 
 		pdbFiles  = ['{}{}_reordered.pdb'.format(*params)]
 		renamePDB = ['{}{}.pdb'.format(*renameParams)]

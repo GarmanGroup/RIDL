@@ -16,6 +16,8 @@ class FFTjob():
 				 labels2   = ['','','',''],
 				 F1Scale   = 1.0,
 				 F2Scale   = 1.0,
+				 highResCutoff = '',
+				 lowResCutoff = '',
 				 runLog    = ''):
 
 		self.mapType 	  = mapType
@@ -24,7 +26,7 @@ class FFTjob():
 		self.F1Scale      = F1Scale
 		self.F2Scale      = F2Scale
 
-		# can change unique identifier for map type in file name 
+		# can change unique identifier for map type in file name
 		if mapTag == '':
 			self.mapTag = mapType
 		else:
@@ -49,8 +51,8 @@ class FFTjob():
 		self.PHI2 			= labels2[3]
 		self.runLog 		= runLog
 
-		self.highResCutoff  = ''
-		self.lowResCutoff   = ''
+		self.highResCutoff  = highResCutoff
+		self.lowResCutoff   = lowResCutoff
 
 	def run(self):
 

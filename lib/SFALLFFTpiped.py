@@ -24,8 +24,7 @@ class pipeline():
 				 outputDir      = '',
 				 inputFile      = '',
 				 jobName        = 'untitled-job',
-				 log            = '',
-				 useUnscaledMtz = False):
+				 log            = ''):
 
 		self.outputDir	= outputDir
 		self.inputFile 	= inputFile
@@ -40,10 +39,6 @@ class pipeline():
 		else:
 			self.runLog = log
 
-		# provide option to use non-scaleit scaled Fobs(n) for
-		# density map calculations (retrieved directly from CAD instead)
-		self.useUnscaledMtz = useUnscaledMtz
-
 	def runPipeline(self):
 
 		# run the current subroutine within this class
@@ -52,7 +47,7 @@ class pipeline():
 		if not success:
 			return False
 
-		if self.useUnscaledMtz:
+		if self.scaleType in ('NONE', 'PHENIX'):
 			self.inputMtzFile = self.inputMtzFile.replace('_SCALEIT','_CAD')
 
 		success = self.curatePdbFile()
@@ -69,36 +64,16 @@ class pipeline():
 		if not success:
 			return 4
 
-		########################################################
-		# TEST BIT  - DO NOT RUN FOR NORMAL USE. 
-		# THIS WILL USE PHENIX TO GENERATE A FO-FO DIFF MTZ 
-		# AND THEN CONVERT TO MAP USING FFT. MTZ FROM CAD IS 
-		# USED AS INPUT TO PHENIX, SO NO SCALEIT SCALING DONE
 		makeFoFoMapWithPhenix = False
+		if self.scaleType == 'PHENIX':
+			makeFoFoMapWithPhenix = True
 		if makeFoFoMapWithPhenix:
-			mtzInput = self.inputMtzFile.replace('_SCALEIT','_CAD')
-			cmd = 	'phenix.fobs_minus_fobs_map '+\
-					'f_obs_1_file_name={} '.format(mtzInput)+\
-					'f_obs_2_file_name={} '.format(mtzInput)+\
-					'phase_source={} '.format(self.reorderedPDBFile)+\
-					'f_obs_1_label=FP_{} '.format(self.laterPDB)+\
-					'f_obs_2_label=FP_{}'.format(self.initPDB)
-			os.system(cmd+'>phenix.log')
-			self.fcalcMtz   = self.inputMtzFile
-			self.densMapMtz = self.inputMtzFile.replace('_SCALEITcombined','phenixFoFo')
-			shutil.move('FoFoPHFc.mtz',self.densMapMtz)
-			shutil.move('phenix.log','{}phenix.log'.format(self.outputDir))
-			self.densMapType = 'FC'
-			labelsLater  = ['FoFo','','','PHFc']
-			labelsInit   = ['','','','']
-			self.mapTag  = 'DIFF'
-			success = self.generateDensMap(labelsInit,labelsLater)
+			self.generatePhenixDensMap()
 		else:
 			self.mapTag = ''
 			self.fcalcMtz   = self.inputMtzFile
 			self.densMapMtz = self.inputMtzFile
-			success = self.generateDensMap()
-        ########################################################
+			success = self.generateCCP4DensMap()
 
 		if not success:
 			return False
@@ -171,9 +146,31 @@ class pipeline():
 
 		return success
 
-	def generateDensMap(self,
-						labelsInit  = [],
-						labelsLater = []):
+	def generatePhenixDensMap():
+
+    	# run phenix.fobs_minus_fobs to generate difference map
+		
+		cmd = 	'phenix.fobs_minus_fobs_map '+\
+				'f_obs_1_file_name={} '.format(self.inputMtzFile)+\
+				'f_obs_2_file_name={} '.format(self.inputMtzFile)+\
+				'phase_source={} '.format(self.reorderedPDBFile)+\
+				'f_obs_1_label=FP_{} '.format(self.laterPDB)+\
+				'f_obs_2_label=FP_{}'.format(self.initPDB)
+
+		os.system(cmd+'>phenix.log')
+		self.fcalcMtz   = self.inputMtzFile
+		self.densMapMtz = self.inputMtzFile.replace('_CADcombined','phenixFoFo')
+		shutil.move('FoFoPHFc.mtz',self.densMapMtz)
+		shutil.move('phenix.log','{}phenix.log'.format(self.outputDir))
+		self.densMapType = 'FC'
+		labelsLater  = ['FoFo','','','PHFc']
+		labelsInit   = ['','','','']
+		self.mapTag  = 'DIFF'
+		success = self.generateCCP4DensMap(labelsInit,labelsLater)
+
+	def generateCCP4DensMap(self,
+						    labelsInit  = [],
+						    labelsLater = []):
 
 		# run FFT job to generate density map
 
@@ -186,23 +183,48 @@ class pipeline():
 			labelsLater = [i+self.laterPDB for i in tags] + ['PHIC_'+self.phaseDataset]
 
 		if self.densMapType == '2FOFC':
-			labelsInit 	= ['']*4
-			labelsLater = ['FWT_{}'.format(self.laterPDB),'','','PHIC']
+			if self.useLaterCellDims.upper() == 'TRUE':
+				labelsInit = ['']*4
+				labelsLater = ['FWT{}'.format(self.laterPDB),'','','PHIC']
+			else:
+				labelsLater = ['']*4
+				labelsInit = ['FWT{}'.format(self.laterPDB),'','','PHIC']
 		
 		if self.densMapType != 'END':
-			fft = FFTjob(mapType   = self.densMapType,
-						 mapTag    = self.mapTag,
-						 FOMweight = self.FOMweight,
-						 pdbFile   = self.reorderedPDBFile,
-						 mtzFile   = self.densMapMtz,
-					     outputDir = self.outputDir,
-					     axes      = self.axes,
-					     gridSamps = self.gridSamps,
-					     labels1   = labelsLater,
-					     labels2   = labelsInit,
-					     runLog    = self.runLog)
+			if self.useLaterCellDims.upper() == 'TRUE':
+				fft = FFTjob(mapType       = self.densMapType,
+							 mapTag        = self.mapTag,
+							 FOMweight     = self.FOMweight,
+							 pdbFile       = self.reorderedPDBFile,
+							 mtzFile       = self.densMapMtz,
+						     outputDir     = self.outputDir,
+						     axes          = self.axes,
+						     gridSamps     = self.gridSamps,
+						     labels1       = labelsLater,
+						     labels2       = labelsInit,
+						     lowResCutoff  = self.mapResLimits.split(',')[1],
+						     highResCutoff = self.mapResLimits.split(',')[0],
+						     runLog        = self.runLog)
+			else:
+				fft = FFTjob(mapType       = self.densMapType,
+							 mapTag        = self.mapTag,
+							 FOMweight     = self.FOMweight,
+							 pdbFile       = self.reorderedPDBFile,
+							 mtzFile       = self.densMapMtz,
+						     outputDir     = self.outputDir,
+						     axes          = self.axes,
+						     gridSamps     = self.gridSamps,
+						     labels1       = labelsInit,
+						     labels2       = labelsLater,
+						     lowResCutoff  = self.mapResLimits.split(',')[1],
+						     highResCutoff = self.mapResLimits.split(',')[0],
+						     runLog        = self.runLog)
 			success = fft.run()
 			self.densityMap = fft.outputMapFile
+
+			if success and self.useLaterCellDims.upper() != 'TRUE':
+				m = self.multipleMapByFactor(map=self.densityMap)
+				self.densityMap = m
 
 		else:
 			# run END job if required (may take time to run!!)
@@ -220,22 +242,72 @@ class pipeline():
 			self.densityMap = end.outputMapFile
 		return success
 
-	def generateFcalcMap(self):
+	def generateFcalcMap(self,
+						 method = 'FFT2'):
 
 		# generate FC map using FFT
 
 		self.printStepNumber()
-		fft_FC = FFTjob(mapType   = 'FC',
-					    FOMweight = self.FOMweight,
-					    pdbFile   = self.reorderedPDBFile,
-					    mtzFile   = self.fcalcMtz,
-				        outputDir = self.outputDir,
-				        axes      = self.axes,
-				        gridSamps = self.gridSamps,
-				        labels1   = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset],
-				        runLog    = self.runLog)
-		success = fft_FC.run()
-		self.FcalcMap = fft_FC.outputMapFile
+		if method == 'FFT':
+			fft_FC = FFTjob(mapType   = 'FC',
+						    FOMweight = self.FOMweight,
+						    pdbFile   = self.reorderedPDBFile,
+						    mtzFile   = self.fcalcMtz,
+					        outputDir = self.outputDir,
+					        axes      = self.axes,
+					        gridSamps = self.gridSamps,
+					        labels1   = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset],
+					        runLog    = self.runLog)
+			success = fft_FC.run()
+			self.FcalcMap = fft_FC.outputMapFile
+
+		elif method == 'SFALL':
+			sfall = SFALLjob(inputPDBfile   = self.reorderedPDBFile,
+						     outputDir      = self.outputDir,
+						     VDWR           = self.sfall_VDWR,
+						     symmetrygroup  = self.spaceGroup,
+						     gridDimensions = self.sfall_GRID,
+						     task           = 'fcalc mtz',
+						     runLog         = self.runLog)
+			success = sfall.run()
+			FcalcMtz = sfall.outputMtzFile
+
+			fft_FC = FFTjob(mapType   = 'FC',
+				    		FOMweight = self.FOMweight,
+						    pdbFile   = self.reorderedPDBFile,
+						    mtzFile   = FcalcMtz,
+					        outputDir = self.outputDir,
+					        axes      = self.axes,
+					        gridSamps = self.gridSamps,
+					        labels1   = ['FCalc','','','PHICalc'],
+					        runLog    = self.runLog)
+			
+			success = fft_FC.run()
+			self.FcalcMap = fft_FC.outputMapFile
+
+		elif method == 'FFT2':
+			tags = ['FP_', 'SIGFP_', 'FOM_']
+			labels1 = [i+self.laterPDB for i in tags] + ['PHIC_'+self.phaseDataset]
+			labels2 = ['FC_{}'.format(self.phaseDataset),'','','PHIC_'+self.phaseDataset]
+			fft_FC = FFTjob(mapType   = 'DIFF',
+				            mapTag    = 'FC',
+						    FOMweight = self.FOMweight,
+						    pdbFile   = self.reorderedPDBFile,
+						    mtzFile   = self.fcalcMtz,
+					        outputDir = self.outputDir,
+					        axes      = self.axes,
+					        gridSamps = self.gridSamps,
+					        F1Scale   = 0.0,
+					        labels1   = labels1,
+					        labels2   = labels2,
+					        runLog    = self.runLog)
+			success = fft_FC.run()
+
+			tmpMap = fft_FC.outputMapFile
+
+			if success:
+				m = self.multipleMapByFactor(map=tmpMap)
+				self.FcalcMap = m
 
 		return success
 
@@ -257,15 +329,30 @@ class pipeline():
 		# switch map axes to match SFALL atom-tagged map if 
 		# required(only typically required for END maps)
 
-			mapmask = MAPMASKjob(mapFile1  = self.densityMap,
-								 outputDir = self.outputDir,
-								 runLog    = self.runLog)
-			success = mapmask.switchAxisOrder(order    = self.axes,
-											  symGroup = self.spaceGroup)
-			
-			self.densityMap = mapmask.outputMapFile
+		mapmask = MAPMASKjob(mapFile1  = self.densityMap,
+							 outputDir = self.outputDir,
+							 runLog    = self.runLog)
+		success = mapmask.switchAxisOrder(order    = self.axes,
+										  symGroup = self.spaceGroup)
+		
+		self.densityMap = mapmask.outputMapFile
 
-			return success
+		return success
+
+	def multipleMapByFactor(self,
+							factor = -1.0,
+							map = './untitled.map'):
+
+		# multiple all points in a density map by a value.
+		# useful to switch positive and negative in a map
+
+		mapmask = MAPMASKjob(mapFile1  = map,
+							 outputDir = self.outputDir,
+							 runLog    = self.runLog)
+		mapmask.multipleByFactor(factor = factor,
+								 symGroup = self.spaceGroup)
+		
+		return mapmask.outputMapFile
 
 	def readInputFile(self):
 
@@ -278,17 +365,20 @@ class pipeline():
 			return False
 
 		inputFile = open(self.inputFile,'r')
-		props = {'pdbIN'           : 'pdbcurPDBinputFile',
-				 'runname'         : 'runName',
-				 'sfall_VDWR'      : 'sfall_VDWR',
-				 'mtzIN'           : 'inputMtzFile',
-				 'foldername'      : 'outputDir',
-				 'initialPDB'      : 'initPDB',
-				 'laterPDB'        : 'laterPDB',
-				 'phaseDataset'    : 'phaseDataset',
-				 'densMapType'     : 'densMapType',
-				 'FFTmapWeight'    : 'FOMweight',
-				 'calculateFCmaps' : 'FCmaps'}
+		props = {'pdbIN'            : 'pdbcurPDBinputFile',
+				 'runname'          : 'runName',
+				 'sfall_VDWR'       : 'sfall_VDWR',
+				 'scaleType'        : 'scaleType',
+				 'mapResLimits'     : 'mapResLimits',
+				 'mtzIN'            : 'inputMtzFile',
+				 'foldername'       : 'outputDir',
+				 'initialPDB'       : 'initPDB',
+				 'laterPDB'         : 'laterPDB',
+				 'phaseDataset'     : 'phaseDataset',
+				 'densMapType'      : 'densMapType',
+				 'FFTmapWeight'     : 'FOMweight',
+				 'calculateFCmaps'  : 'FCmaps',
+				 'useLaterCellDims' : 'useLaterCellDims'}
 
 		self.sfall_GRID = []
 		for l in inputFile.readlines():

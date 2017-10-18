@@ -16,7 +16,6 @@ class pipeline():
 				 outputDir = '',
 				 inputFile = '',
 				 jobName   = 'untitled-job',
-				 doScaling = True,
 				 log       = ''):
 
 		# specify where output files should be written
@@ -25,7 +24,6 @@ class pipeline():
 		self.findFilesInDir() 	
 		self.txtInputFile 		= inputFile
 		self.jobName 			= jobName
-		self.doScaling          = doScaling
 
 		if log == '':
 			f = '{}{}_runLog1.log'.format(self.outputDir+'RIDL-log',jobName)
@@ -56,7 +54,7 @@ class pipeline():
 		# mtz information for a low and high dose 
 		# dataset within a damage series
 
-		success = self.readInputs()	
+		success = self.readInputs()
 		if not success:
 			return 1
 
@@ -69,7 +67,8 @@ class pipeline():
 			if self.densMapType == '2FOFC':
 				mtzLbls_in  = self.Mtz2LabelName
 				mtzLbls_out = self.Mtz2LabelRename
-			else: 
+
+			else:
 				mtzLbls_in  = self.Mtz1LabelName
 				mtzLbls_out = self.Mtz1LabelName
 
@@ -116,14 +115,15 @@ class pipeline():
 		if not success:
 			return 3
 
- 		# run SCALEIT job 
- 		if self.doScaling:
+ 		# run SCALEIT job
+ 		if self.scaleType != 'NONE':
 	 		self.printStepNumber()
 			scaleit = SCALEITjob(inputMtz  = self.SCALEITinputMtz,
 								 outputMtz = self.SCALEIToutputMtz,
 								 Mtz1Label = self.Mtz1LabelRename,
 								 Mtz2Label = self.Mtz2LabelRename,
 								 outputDir = self.outputDir,
+								 scaling   = self.scaleType,
 								 runLog    = self.runLog)
 			success = scaleit.run()
 
@@ -131,7 +131,7 @@ class pipeline():
 				return 4
 
 		# end of pipeline reached
-		self.cleanUpDir()	
+		self.cleanUpDir()
 		return 0
 
 	def readInputs(self):
@@ -175,6 +175,7 @@ class pipeline():
 						 'Mtz3LabelRename',
 						 'inputPDBfile',
 						 'densMapType',
+						 'scaleType',
 						 'deleteMtzs']
 
 		for prop in requiredProps:

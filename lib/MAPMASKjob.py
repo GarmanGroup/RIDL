@@ -14,14 +14,18 @@ class MAPMASKjob():
 		self.outputDir 		= outputDir
 		self.runLog			= runLog
 		
-	def defineCorrectOutputMap(self,switch):
+	def defineCorrectOutputMap(self,
+							   switch = False,
+							   factorMultiply = False):
 
 		# give correct naming scheme to output map file
 
 		if switch:
 			self.outputMapFile = self.inputMapFile.split('.map')[0]+'_switchedAxes.map'
+		elif not factorMultiply:
+			self.outputMapFile = self.inputMapFile.split('.map')[0]+'_cropped.map'
 		else:
-			self.outputMapFile 	= self.inputMapFile.split('.map')[0]+'_cropped.map'
+			self.outputMapFile = self.inputMapFile
 
 	def defineCommandInput(self):
 
@@ -42,7 +46,7 @@ class MAPMASKjob():
 		# switch the axis order of an input .map file. 
 		# order = [1,2,3] for example
 
-		self.defineCorrectOutputMap(True)
+		self.defineCorrectOutputMap(switch=True)
 		xyz = {'1':'X','2':'Y','3':'Z'}
 		axisOrder = [xyz[str(i)] for i in order]
 
@@ -80,7 +84,7 @@ class MAPMASKjob():
 
 		# fillerLine()
 		self.printPurpose(mode = 'crop to asym')
-		self.defineCorrectOutputMap(False)
+		self.defineCorrectOutputMap()
 		inputFiles = [self.inputMapFile]
 		if not checkInputsExist(inputFiles,self.runLog):
 			return False
@@ -113,7 +117,7 @@ class MAPMASKjob():
 
 		# fillerLine()
 		self.printPurpose(mode = 'crop to map')
-		self.defineCorrectOutputMap(False)
+		self.defineCorrectOutputMap()
 		inputFiles = [self.inputMapFile,self.inputMapFile2]
 		if not checkInputsExist(inputFiles,self.runLog):
 			 return False
@@ -128,6 +132,42 @@ class MAPMASKjob():
 
 		# run MAPMASK job
 		job = ccp4Job(jobName       = 'MAPMASK_cropMap2Map',
+					  commandInput1 = self.commandInput1,
+					  commandInput2 = self.commandInput2,
+					  outputDir     = self.outputDir,
+					  outputLog     = self.outputLogfile,
+					  outputFile    = self.outputMapFile)
+
+		self.jobSuccess = job.checkJobSuccess()
+		success = self.provideFeedback()
+		return success
+
+	def multipleByFactor(self,
+						 includeDir = False,
+						 factor = -1.0,
+						 symGroup = ""):
+
+		# multiple all points in a density
+		# map file by a constant factor
+
+		self.printPurpose(mode = 'Multiply by factor')
+		self.defineCorrectOutputMap(factorMultiply=True)
+		inputFiles = [self.inputMapFile]
+		if not checkInputsExist(inputFiles,self.runLog):
+			return False
+
+		if not includeDir:
+			map1 = self.inputMapFile.split('/')[-1]
+		else:
+			map1 = self.inputMapFile
+
+		self.defineCommandInput()
+
+		self.commandInput2 = 'SYMMETRY {}\nSCALE -\nFACTOR {} 0.0\nEND'.format(symGroup,factor)
+		self.outputLogfile = 'MAPMASKlogfile.txt'
+
+		# run MAPMASK job
+		job = ccp4Job(jobName       = 'MAPMASK_multipyByFactor',
 					  commandInput1 = self.commandInput1,
 					  commandInput2 = self.commandInput2,
 					  outputDir     = self.outputDir,
@@ -200,7 +240,6 @@ class MAPMASKjob():
 			ln = 'Cropping map "{}" to asym unit'.format(maps[0])
 		if mode == 'crop to map':
 			ln = 'Cropping map "{}" to map "{}"'.format(*maps)
+		if mode == 'Multiply by factor':
+			ln = 'Multiple map by a constant factor'
 		self.runLog.writeToLog(ln)
-
-
-
