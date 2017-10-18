@@ -8,7 +8,7 @@ def edens_scatter(outputDir = './',
                   metrics   = ['meandensity','mindensity'],
                   PDBarray  = [],
                   pdbName   = 'untitled',
-                  fileType  = '.png',
+                  fileType  = '.svg',
                   printText = False,
                   savefig   = True,
                   titleFont = 20,
@@ -67,6 +67,7 @@ def edens_scatter(outputDir = './',
     plt.xlabel('{} density'.format(metrics[0]),fontsize = axesFont)   
     plt.ylabel('{} density'.format(metrics[1]),fontsize = axesFont)
 
+    sns.despine()
     subdir    = 'plots'
     subsubdir = 'metricVmetric-scatterplots'
 
