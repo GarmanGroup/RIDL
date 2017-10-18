@@ -296,7 +296,8 @@ class calculateMetrics(object):
 			# derive per-atom density metrics from maps
 			mapName1 = '{}_atoms.map'.format(d)
 			mapName2 = '{}_density.map'.format(d)
-			mapName3 = initPDB.replace('.pdb','_FC.map')
+			# mapName3 = initPDB.replace('.pdb','_FC.map')
+			mapName3 = '{}_FC.map'.format(d)
 
 			txt = '\n---------------------------------\n'+\
 				  'Higher dose dataset {} starts here'.format(i)
