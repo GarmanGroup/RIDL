@@ -1,66 +1,41 @@
 class bioInfo():
 
-	# contains basic information on amino acids etc
+    # contains basic information on amino acids etc
 
-	def __init__(self):
-		pass
+    def __init__(self):
+        pass
 
-	def getAminoAcids(self):
+    def getAminoAcids(self):
 
-		# return ordered list of amino acids
-		lst = ['ALA',
-		  	   'ARG',
-		  	   'ASN',
-		  	   'ASP',
-		  	   'CYS',
-		 	   'GLN',
-		 	   'GLU',
-		 	   'GLY',
-		 	   'HIS',
-		 	   'ILE',
-		  	   'LEU',
-		  	   'LYS',
-		  	   'MET',
-		  	   'PHE',
-		  	   'PRO',
-		  	   'SER',
-		  	   'THR',
-		  	   'TRP',
-		  	   'TYR',
-		  	   'VAL']
+        # return ordered list of amino acids
+        lst = ['ALA', 'ARG', 'ASN', 'ASP',
+               'CYS', 'GLN', 'GLU', 'GLY',
+               'HIS', 'ILE', 'LEU', 'LYS',
+               'MET', 'PHE', 'PRO', 'SER',
+               'THR', 'TRP', 'TYR', 'VAL']
 
-		return lst
+        return lst
 
-	def getNucleotides(self):
+    def getNucleotides(self):
 
-		# return ordered list of nucleic acid identifiers
+        # return ordered list of nucleic acid identifiers
 
-		lst = ['A',
-			   'C',
-			   'G',
-			   'T',
-			   'U']
+        lst = ['A', 'C', 'G', 'T', 'U']
 
-		return lst
+        return lst
 
-	def getDNA(self):
+    def getDNA(self):
 
-		# return ordered list of DNA bases
+        # return ordered list of DNA bases
 
-		lst = ['DA',
-			   'DC',
-			   'DG',
-			   'DT']
+        lst = ['DA', 'DC', 'DG', 'DT']
 
-		return lst
+        return lst
 
-	def getRNA(self):
+    def getRNA(self):
 
-		# return ordered list of RNA bases
+        # return ordered list of RNA bases
 
-		lst = ['A',
-			   'C',
-			   'G',
-			   'U']
-			   
-		return lst
+        lst = ['A', 'C', 'G', 'U']
+
+        return lst

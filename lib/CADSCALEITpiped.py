@@ -1,272 +1,273 @@
 import os.path
-from time import gmtime, strftime
 from CADjob import CADjob
 from SCALEITjob import SCALEITjob
 from logFile import logFile
 from SIGMAAjob import SIGMAAjob
 import shutil
 
+
 class pipeline():
 
-	# class to run CAD job to combine F and SIGF columns from
-	# two merged mtz files, then to scale the 2nd datasets F 
-	# structure factors against the 1st datasets
-	
-	def __init__(self,
-				 outputDir = '',
-				 inputFile = '',
-				 jobName   = 'untitled-job',
-				 log       = ''):
+    # class to run CAD job to combine F and SIGF columns from
+    # two merged mtz files, then to scale the 2nd datasets F
+    # structure factors against the 1st datasets
 
-		# specify where output files should be written
-		self.outputDir 			= outputDir
-		self.makeOutputDir(dirName = self.outputDir)
-		self.findFilesInDir() 	
-		self.txtInputFile 		= inputFile
-		self.jobName 			= jobName
+    def __init__(self,
+                 outputDir='', inputFile='',
+                 jobName='untitled-job', log=''):
 
-		if log == '':
-			f = '{}{}_runLog1.log'.format(self.outputDir+'RIDL-log',jobName)
-			self.runLog = logFile(fileName = f,
-								  fileDir  = self.outputDir)
-		else:
-			self.runLog = log
+        # specify where output files should be written
+        self.outputDir = outputDir
+        self.makeOutputDir(dirName=self.outputDir)
+        self.findFilesInDir()
+        self.txtInputFile = inputFile
+        self.jobName = jobName
 
-		# specify output files for parts of pipeline
-		self.CADoutputMtz 	  = '{}{}_CADcombined.mtz'.format(self.outputDir,self.jobName)
-		self.SCALEITinputMtz  = self.CADoutputMtz
-		self.SCALEIToutputMtz = '{}{}_SCALEITcombined.mtz'.format(self.outputDir,self.jobName)
+        if log == '':
+            f = '{}{}_runLog1.log'.format(self.outputDir+'RIDL-log', jobName)
+            self.runLog = logFile(fileName=f,
+                                  fileDir=self.outputDir)
+        else:
+            self.runLog = log
 
-	def makeOutputDir(self,
-					  dirName = './'):
+        # specify output files for parts of pipeline
+        self.CADoutputMtz = '{}{}_CADcombined.mtz'.format(
+            self.outputDir, self.jobName)
+        self.SCALEITinputMtz = self.CADoutputMtz
+        self.SCALEIToutputMtz = '{}{}_SCALEITcombined.mtz'.format(
+            self.outputDir, self.jobName)
 
-		# if the above sub directory does not exist, make it
+    def makeOutputDir(self,
+                      dirName='./'):
 
-		if not os.path.exists(dirName):
-			os.makedirs(dirName)
-			ln = 'New sub directory "{}" created to contain output files'.format(dirName)
-			self.runLog.writeToLog(str = ln)
+        # if the above sub directory does not exist, make it
 
-	def runPipeline(self):
+        if not os.path.exists(dirName):
+            os.makedirs(dirName)
+            self.runLog.writeToLog(
+                str='New sub directory "{}" '.format(dirName) +
+                    'created to contain output files')
 
-		# run the current subroutine to parse an input 
-		# file and run CAD and SCALEIT to combine the 
-		# mtz information for a low and high dose 
-		# dataset within a damage series
+    def runPipeline(self):
 
-		success = self.readInputs()
-		if not success:
-			return 1
+        # run the current subroutine to parse an input
+        # file and run CAD and SCALEIT to combine the
+        # mtz information for a low and high dose
+        # dataset within a damage series
 
-		# copy input mtz files to working directory and rename
-		self.moveInputMtzs()
+        success = self.readInputs()
+        if not success:
+            return 1
 
-		# run SIGMAA job if required to generate a new FOM weight column
-		if self.FFTmapWeight == 'recalculate':
+        # copy input mtz files to working directory and rename
+        self.moveInputMtzs()
 
-			if self.densMapType == '2FOFC':
-				mtzLbls_in  = self.Mtz2LabelName
-				mtzLbls_out = self.Mtz2LabelRename
+        # run SIGMAA job if required to generate a new FOM weight column
+        if self.FFTmapWeight == 'recalculate':
 
-			else:
-				mtzLbls_in  = self.Mtz1LabelName
-				mtzLbls_out = self.Mtz1LabelName
+            if self.densMapType == '2FOFC':
+                mtzLbls_in = self.Mtz2LabelName
+                mtzLbls_out = self.Mtz2LabelRename
 
-			self.printStepNumber()
-			sigmaa = SIGMAAjob(inputMtz 	   = self.SIGMAAinputMtz,
-							   MtzLabelNameIn  = mtzLbls_in,
-							   MtzLabelNameOut = mtzLbls_out,
-							   RfreeFlag       = self.RfreeFlag1,
-							   inputPDB        = self.inputPDBfile,
-							   outputDir       = self.outputDir,
-							   runLog          = self.runLog)
-			success = sigmaa.run()
+            else:
+                mtzLbls_in = self.Mtz1LabelName
+                mtzLbls_out = self.Mtz1LabelName
 
-			if not success:
-				return 2
+            self.printStepNumber()
+            sigmaa = SIGMAAjob(inputMtz=self.SIGMAAinputMtz,
+                               MtzLabelNameIn=mtzLbls_in,
+                               MtzLabelNameOut=mtzLbls_out,
+                               RfreeFlag=self.RfreeFlag1,
+                               inputPDB=self.inputPDBfile,
+                               outputDir=self.outputDir,
+                               runLog=self.runLog)
+            success = sigmaa.run()
 
-			# if 2FO-FC map required, use FWT column from sigmaa-output mtz (we are done here)
-			if self.densMapType == '2FOFC':
-				self.cleanUpDir()
-				return 0
+            if not success:
+                return 2
 
-			self.CADinputMtz1 = sigmaa.outputMtz
-		else:
-			self.CADinputMtz1 = self.SIGMAAinputMtz
+            # if 2FO-FC map required, use FWT column from
+            # sigmaa-output mtz (we are done here)
+            if self.densMapType == '2FOFC':
+                self.cleanUpDir()
+                return 0
 
-		# run CAD job
-		self.printStepNumber()
-		cad = CADjob(inputMtz1       = self.CADinputMtz1,
-			         inputMtz2       = self.CADinputMtz2,
-			         inputMtz3       = self.CADinputMtz3,
-					 Mtz1LabelName   = self.Mtz1LabelName,
-					 Mtz2LabelName   = self.Mtz2LabelName,
-					 Mtz3phaseLabel  = self.Mtz3phaseLabel,
-					 Mtz3FcalcLabel  = self.Mtz3FcalcLabel,
-					 Mtz1LabelRename = self.Mtz1LabelRename,
-					 Mtz2LabelRename = self.Mtz2LabelRename,
-					 Mtz3LabelRename = self.Mtz3LabelRename,
-					 outputMtz       = self.CADoutputMtz,
-					 outputDir       = self.outputDir,
-					 runLog          = self.runLog,
-					 FOMWeight       = self.FFTmapWeight)
-		success = cad.run()
+            self.CADinputMtz1 = sigmaa.outputMtz
+        else:
+            self.CADinputMtz1 = self.SIGMAAinputMtz
 
-		if not success:
-			return 3
+        # run CAD job
+        self.printStepNumber()
+        cad = CADjob(inputMtz1=self.CADinputMtz1,
+                     inputMtz2=self.CADinputMtz2,
+                     inputMtz3=self.CADinputMtz3,
+                     Mtz1LabelName=self.Mtz1LabelName,
+                     Mtz2LabelName=self.Mtz2LabelName,
+                     Mtz3phaseLabel=self.Mtz3phaseLabel,
+                     Mtz3FcalcLabel=self.Mtz3FcalcLabel,
+                     Mtz1LabelRename=self.Mtz1LabelRename,
+                     Mtz2LabelRename=self.Mtz2LabelRename,
+                     Mtz3LabelRename=self.Mtz3LabelRename,
+                     outputMtz=self.CADoutputMtz,
+                     outputDir=self.outputDir,
+                     runLog=self.runLog,
+                     FOMWeight=self.FFTmapWeight)
+        success = cad.run()
 
- 		# run SCALEIT job
- 		if self.scaleType != 'NONE':
-	 		self.printStepNumber()
-			scaleit = SCALEITjob(inputMtz  = self.SCALEITinputMtz,
-								 outputMtz = self.SCALEIToutputMtz,
-								 Mtz1Label = self.Mtz1LabelRename,
-								 Mtz2Label = self.Mtz2LabelRename,
-								 outputDir = self.outputDir,
-								 scaling   = self.scaleType,
-								 runLog    = self.runLog)
-			success = scaleit.run()
+        if not success:
+            return 3
 
-			if not success:
-				return 4
+        # run SCALEIT job
+        if self.scaleType != 'NONE':
+            self.printStepNumber()
+            scaleit = SCALEITjob(inputMtz=self.SCALEITinputMtz,
+                                 outputMtz=self.SCALEIToutputMtz,
+                                 Mtz1Label=self.Mtz1LabelRename,
+                                 Mtz2Label=self.Mtz2LabelRename,
+                                 outputDir=self.outputDir,
+                                 scaling=self.scaleType,
+                                 runLog=self.runLog)
+            success = scaleit.run()
 
-		# end of pipeline reached
-		self.cleanUpDir()
-		return 0
+            if not success:
+                return 4
 
-	def readInputs(self):
+        # end of pipeline reached
+        self.cleanUpDir()
+        return 0
 
-		# open input file and parse inputs for the current subroutine
+    def readInputs(self):
 
-		# if Input.txt not found, flag error
-		if not self.checkFileExists(self.txtInputFile):
-			ln = 'Required input file {} not found..'.format(self.txtInputFile)
-			self.runLog.writeToLog(str = ln)
-			return False
+        # open input file and parse inputs for the current subroutine
 
-		ln = 'Reading inputs from {}'.format(self.txtInputFile)
-		self.runLog.writeToLog(str = ln)
+        # if Input.txt not found, flag error
+        if not self.checkFileExists(self.txtInputFile):
+            self.runLog.writeToLog(
+                str='Required input file {} not found..'.format(
+                    self.txtInputFile))
+            return False
 
-		# parse input file
-		inputFile = open(self.txtInputFile,'r')
-		for l in inputFile.readlines():
-			try:
-				l.split()[1]
-			except IndexError:
-				continue # ignore blank lines
-			if l.strip()[0] == '#':
-				continue # ignore commented lines
-			if l.split()[0] == 'END':
-				break
-			setattr(self,l.split()[0],l.split()[1])
-		inputFile.close()
+        self.runLog.writeToLog(
+            str='Reading inputs from {}'.format(
+                self.txtInputFile))
 
-		# check that all required properties have been found
-		requiredProps = ['mtzIn1',
-						 'Mtz1LabelName',
-						 'RfreeFlag1',
-						 'Mtz1LabelRename',
-						 'mtzIn2',
-						 'Mtz2LabelName',
-						 'Mtz2LabelRename',
-						 'mtzIn3',
-						 'Mtz3phaseLabel',
-						 'Mtz3FcalcLabel',
-						 'Mtz3LabelRename',
-						 'inputPDBfile',
-						 'densMapType',
-						 'scaleType',
-						 'deleteMtzs']
+        # parse input file (ignore blank/comment lines)
+        inputFile = open(self.txtInputFile, 'r')
+        for l in inputFile.readlines():
+            try:
+                l.split()[1]
+            except IndexError:
+                continue
+            if l.strip()[0] == '#':
+                continue
+            if l.split()[0] == 'END':
+                break
+            setattr(self, l.split()[0], l.split()[1])
+        inputFile.close()
 
-		for prop in requiredProps:
-			try:
-				getattr(self,prop)
-			except AttributeError:
-				err = 'Necessary input not found: {}.'.format(prop)
-				self.runLog.writeToLog(str = err)
-				return False
-		return True
+        # check that all required properties have been found
+        requiredProps = ['mtzIn1', 'Mtz1LabelName',
+                         'RfreeFlag1', 'Mtz1LabelRename',
+                         'mtzIn2', 'Mtz2LabelName',
+                         'Mtz2LabelRename', 'mtzIn3',
+                         'Mtz3phaseLabel', 'Mtz3FcalcLabel',
+                         'Mtz3LabelRename', 'inputPDBfile',
+                         'densMapType', 'scaleType',
+                         'deleteMtzs']
 
-	def moveInputMtzs(self):
+        for prop in requiredProps:
+            try:
+                getattr(self, prop)
+            except AttributeError:
+                self.runLog.writeToLog(
+                    str='Necessary input not found: {}.'.format(prop))
+                return False
+        return True
 
-		# move input mtz files to working directory and rename as suitable
+    def moveInputMtzs(self):
 
-		if self.densMapType == '2FOFC':
-			self.SIGMAAinputMtz  = '{}{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
-			shutil.copy2(self.mtzIn2,self.SIGMAAinputMtz)
-		else:
-			self.SIGMAAinputMtz  = '{}{}.mtz'.format(self.outputDir,self.Mtz1LabelRename.strip())
-			self.CADinputMtz2 	 = '{}{}.mtz'.format(self.outputDir,self.Mtz2LabelRename.strip())
-			self.CADinputMtz3    = '{}{}.mtz'.format(self.outputDir,self.Mtz3LabelRename.strip())
-			shutil.copy2(self.mtzIn1,self.SIGMAAinputMtz)
-			shutil.copy2(self.mtzIn2,self.CADinputMtz2)
-			shutil.copy2(self.mtzIn3,self.CADinputMtz3)
+        # move input mtz files to working directory and rename as suitable
 
-	def deleteNonFinalMtzs(self):
+        if self.densMapType == '2FOFC':
+            self.SIGMAAinputMtz = '{}{}.mtz'.format(
+                self.outputDir, self.Mtz2LabelRename.strip())
+            shutil.copy2(self.mtzIn2, self.SIGMAAinputMtz)
 
-		# delete all non-final mtz files within run
-		#(such as those output by CAD before SCALEIT etc).
-		# Not current used at runtime!
-		return
-		
-		# give option to delete all mtz files within output directory except the final 
-		# resulting mtz for job - used to save room if necessary
-		if self.deleteMtzs.lower() != 'true': 
-			return
-		if self.densMapType == '2FOFC':
-			fileEnd = 'sigmaa.mtz'
-		else:
-			fileEnd = 'SCALEITcombined.mtz'
-		for f in os.listdir(self.outputDir): 
-			if (f.endswith('.mtz') and not f.endswith(fileEnd)) or f.endswith('.tmp'):
-				os.remove(self.outputDir+f)
+        else:
+            self.SIGMAAinputMtz = '{}{}.mtz'.format(
+                self.outputDir, self.Mtz1LabelRename.strip())
+            self.CADinputMtz2 = '{}{}.mtz'.format(
+                self.outputDir, self.Mtz2LabelRename.strip())
+            self.CADinputMtz3 = '{}{}.mtz'.format(
+                self.outputDir, self.Mtz3LabelRename.strip())
+            shutil.copy2(self.mtzIn1, self.SIGMAAinputMtz)
+            shutil.copy2(self.mtzIn2, self.CADinputMtz2)
+            shutil.copy2(self.mtzIn3, self.CADinputMtz3)
 
-	def cleanUpDir(self):
+    def deleteNonFinalMtzs(self):
 
-		# give option to clean up working directory 
+        # delete all non-final mtz files within run
+        # (such as those output by CAD before SCALEIT etc).
+        # Not current used at runtime!
+        return
 
-		# delete non-final mtz files
-		ln = '\nCleaning up working directory...'
-		self.runLog.writeToLog(str = ln)
+        # give option to delete all mtz files within
+        # output directory except the final resulting
+        # mtz for job - used to save room if necessary
+        if self.deleteMtzs.lower() != 'true':
+            return
+        if self.densMapType == '2FOFC':
+            fileEnd = 'sigmaa.mtz'
+        else:
+            fileEnd = 'SCALEITcombined.mtz'
+        for f in os.listdir(self.outputDir):
+            if ((f.endswith('.mtz') and not f.endswith(fileEnd)) or
+               f.endswith('.tmp')):
+                os.remove(self.outputDir+f)
 
-		self.deleteNonFinalMtzs()
+    def cleanUpDir(self):
 
-		# move txt files to subdir
-		self.makeOutputDir(dirName = '{}txtFiles/'.format(self.outputDir))
+        # give option to clean up working directory
 
-		for file in os.listdir(self.outputDir): 
-			if file.endswith('.txt') and file not in self.filesInDir:
-				args = [self.outputDir,file]
-				shutil.move('{}{}'.format(*args),'{}txtFiles/{}'.format(*args))
-				
-	def findFilesInDir(self):
+        # delete non-final mtz files
+        self.runLog.writeToLog(str='\nCleaning up working directory...')
 
-		# find files initially in working directory
+        self.deleteNonFinalMtzs()
 
-		self.filesInDir = os.listdir(self.outputDir)
+        # move txt files to subdir
+        self.makeOutputDir(dirName='{}txtFiles/'.format(self.outputDir))
 
-	def checkFileExists(self,filename):
+        for file in os.listdir(self.outputDir):
+            if file.endswith('.txt') and file not in self.filesInDir:
+                args = [self.outputDir, file]
+                shutil.move('{}{}'.format(*args),
+                            '{}txtFiles/{}'.format(*args))
 
-		# check if file exists
+    def findFilesInDir(self):
 
-		if not os.path.isfile(filename):
-			err = 'File {} not found'.format(filename)
-			self.runLog.writeToLog(str = err)
-			return False
-		else:
-			return True
+        # find files initially in working directory
 
-	def printStepNumber(self):
+        self.filesInDir = os.listdir(self.outputDir)
 
-		# print a string indicating the current pipeline 
-		# step number directory to the command line
+    def checkFileExists(self, filename):
 
-		try:
-			self.stepNumber
-		except AttributeError:
-			self.stepNumber = 1
-		ln =  '\n_______'+\
-			  '\nSTEP {})'.format(self.stepNumber)
-		self.runLog.writeToLog(str = ln)
+        # check if file exists
 
-		self.stepNumber += 1
+        if not os.path.isfile(filename):
+            self.runLog.writeToLog(str='File {} not found'.format(filename))
+            return False
+        else:
+            return True
+
+    def printStepNumber(self):
+
+        # print a string indicating the current pipeline
+        # step number directory to the command line
+
+        try:
+            self.stepNumber
+        except AttributeError:
+            self.stepNumber = 1
+        self.runLog.writeToLog(
+            str='\n_______\nSTEP {})'.format(self.stepNumber))
+        self.stepNumber += 1
