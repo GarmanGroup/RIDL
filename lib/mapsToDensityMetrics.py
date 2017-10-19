@@ -1,7 +1,6 @@
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm,plotDensForAtm
 from perAtomClusterAnalysis import perAtomClusterAnalysis
 from densityAnalysisPlots import edens_scatter
-from deleteListIndices import multi_delete 
 from savevariables import save_objectlist
 from itertools import izip as zip, count
 from PDBFileManipulation import PDBtoList

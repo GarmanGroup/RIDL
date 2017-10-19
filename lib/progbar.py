@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
-
 import sys
 
-# simple progress bar:
+
 def progress(count, total, suffix=''):
+    # a simple progress bar
+
     bar_len = 60
     filled_len = int(round(bar_len * count / float(total)))
 

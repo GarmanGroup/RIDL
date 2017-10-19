@@ -1,66 +1,63 @@
 from time import gmtime, strftime
 
+
 class logFile():
 
-	def __init__(self,
-				 fileName      = 'untitled-log',
-				 fileDir       = '',
-				 printToScreen = True):
+    def __init__(self,
+                 fileName='untitled-log', fileDir='', printToScreen=True):
 
-		self.logFile = fileName
-		self.createLogFile()
-		self.fileDir = fileDir # where majority of files come from
-		self.allocateDir()
-		self.printToScreen = printToScreen
+        self.logFile = fileName
+        self.createLogFile()
 
-	def createLogFile(self):
+        # fileDir is where majority of files come from
+        self.fileDir = fileDir
+        self.allocateDir()
+        self.printToScreen = printToScreen
 
-		# create a log file
+    def createLogFile(self):
 
-		log = open(self.logFile,'w')
-		log.write('Created at: {}\n'.format(self.getTime()))
-		log.close()
+        # create a log file
 
-	def allocateDir(self):
+        log = open(self.logFile, 'w')
+        log.write('Created at: {}\n'.format(self.getTime()))
+        log.close()
 
-		# this is the specified directory where most 
-		# files have come from. This is written at the 
-		# top of the log file to avoid repetition.
+    def allocateDir(self):
 
-		log = open(self.logFile,'a')
-		log.write('All files come from the following directory '+\
-				  'unless otherwise given:\n"{}"\n'.format(self.fileDir))
-		log.close()
+        # this is the specified directory where most
+        # files have come from. This is written at the
+        # top of the log file to avoid repetition.
 
-	def writeToLog(self,
-				   str        = '',
-				   strip      = True,
-				   forcePrint = False,
-				   timeStamp  = False):
+        log = open(self.logFile, 'a')
+        log.write('All files come from the following directory ' +
+                  'unless otherwise given:\n"{}"\n'.format(self.fileDir))
+        log.close()
 
-		# write string to current log file
+    def writeToLog(self,
+                   str='', strip=True, forcePrint=False, timeStamp=False):
 
-		# strip away the common directory name 
-		logstring = str
-		if strip is True:
-			if 'Working directory set to' not in str:
-				logstring = str.replace(self.fileDir,'')
+        # write string to current log file
 
-		if timeStamp is True:
-			logstring = '{}\t{}'.format(self.getTime(),logstring)
+        # strip away the common directory name
+        logstring = str
+        if strip:
+            if 'Working directory set to' not in str:
+                logstring = str.replace(self.fileDir, '')
 
-		with open(self.logFile, "a") as logfile:
-			logfile.write('{}\n'.format(logstring))
+        if timeStamp is True:
+            logstring = '{}\t{}'.format(self.getTime(), logstring)
 
-			if self.printToScreen is True or forcePrint is True:
-				if logstring.startswith('Running'):
-					print '\n'+logstring
-				else:
-					print logstring
+        with open(self.logFile, "a") as logfile:
+            logfile.write('{}\n'.format(logstring))
 
-	def getTime(self):
+            if self.printToScreen or forcePrint:
+                if logstring.startswith('Running'):
+                    print '\n'+logstring
+                else:
+                    print logstring
 
-		# get the current date and time
+    def getTime(self):
 
-		return strftime("%Y-%m-%d %H:%M:%S", gmtime())
+        # get the current date and time
 
+        return strftime("%Y-%m-%d %H:%M:%S", gmtime())

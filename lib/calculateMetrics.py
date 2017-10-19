@@ -23,10 +23,10 @@ class calculateMetrics(object):
     # this class to work.
 
     def __init__(self,
-                 mapDir='./', outDir='./', pdbNames=[],
-                 pklFiles=[], initialPDB="", seriesName="untitled-series",
-                 pklSeries="", doses=[], plot='no', output='simple',
-                 logFile='', sumFiles=True,  inclFCmets=True):
+                 mapDir='./', outDir='./', pdbNames=[], pklFiles=[],
+                 initialPDB="", seriesName="untitled-series", pklSeries="",
+                 doses=[], plot='no', output='simple', logFile='',
+                 sumFiles=True,  inclFCmets=True):
 
         # the input map file directory
         self.mapDir = mapDir
@@ -424,30 +424,20 @@ class calculateMetrics(object):
         # file and no plots)
 
         if not includeTests:
-            provideFeedback(csvOnly=csvOnly,
-                            atmsObjs=self.combinedAtoms,
-                            logFile=self.logFile,
-                            outputDir=self.outputDir,
-                            outputPlotDir=self.outputPlotDir,
-                            pklSeries=self.pklSeries,
+            provideFeedback(csvOnly=csvOnly, atmsObjs=self.combinedAtoms,
+                            logFile=self.logFile, outputDir=self.outputDir,
+                            outputPlotDir=self.outputPlotDir, doses=self.doses,
+                            pklSeries=self.pklSeries, inputDir=self.mapDir,
                             plotHeatMaps=self.plotHeatMaps,
-                            doses=self.doses,
-                            pdbNames=self.pdbNames,
-                            inputDir=self.mapDir,
-                            initialPDB=self.initialPDB,
+                            pdbNames=self.pdbNames, initialPDB=self.initialPDB,
                             inclFCmetrics=self.inclFCmets)
         else:
-            furtherAnalysis(csvOnly=csvOnly,
-                            atmsObjs=self.combinedAtoms,
-                            logFile=self.logFile,
-                            outputDir=self.outputDir,
-                            outputPlotDir=self.outputPlotDir,
-                            pklSeries=self.pklSeries,
+            furtherAnalysis(csvOnly=csvOnly, atmsObjs=self.combinedAtoms,
+                            logFile=self.logFile, outputDir=self.outputDir,
+                            outputPlotDir=self.outputPlotDir, doses=self.doses,
+                            pklSeries=self.pklSeries, inputDir=self.mapDir,
                             plotHeatMaps=self.plotHeatMaps,
-                            doses=self.doses,
-                            pdbNames=self.pdbNames,
-                            inputDir=self.mapDir,
-                            initialPDB=self.initialPDB,
+                            pdbNames=self.pdbNames, initialPDB=self.initialPDB,
                             inclFCmetrics=self.inclFCmetrics)
 
     def checkCalphasPresent(self,
