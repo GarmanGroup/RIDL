@@ -18,13 +18,13 @@ class MAPMASKjob():
         # give correct naming scheme to output map file
 
         if switch:
-            self.outputMapFile = self.inputMapFile.split('.map')[0]
-            +'_switchedAxes.map'
+            tag = '_switchedAxes.map'
         elif not factorMultiply:
-            self.outputMapFile = self.inputMapFile.split('.map')[0]
-            +'_cropped.map'
+            tag = '_cropped.map'
         else:
-            self.outputMapFile = self.inputMapFile
+            tag = '.map'
+
+        self.outputMapFile = self.inputMapFile.split('.map')[0] + tag
 
     def defineCommandInput(self):
 
