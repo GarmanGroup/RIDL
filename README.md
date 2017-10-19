@@ -1,5 +1,8 @@
 # RIDL: Radiation-Induced Density Loss
 
+## This program is currently under reconstruction and the latest version is not guaranteed to work. Please email the author for a working version if in doubt 
+
+
 A program to calculate per-atom density change metrics for a specific damage MX investigation.
 Suitable for any MX experiment in which datasets are collected on the **same crystal** over **multiple doses**.
 **NOTE: These scripts are currently under development and updated regularly..**
