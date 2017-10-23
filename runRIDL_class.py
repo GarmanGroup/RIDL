@@ -19,24 +19,19 @@ class process():
     def __init__(self,
                  inputFile='fullInput.txt',
                  run=True,
-                 proceedToMetricCalc=False,
-                 skipToMetricCalc=False,
-                 outputGraphs='yes',
+                 makeMaps=True,
+                 makeMetrics=False,
                  cleanUpFinalFiles=False,
                  printOutput=True,
-                 skipToSummaryFiles=False,
-                 writeSummaryFiles=False,
+                 makeSummaryFile=False,
                  keepMapDir=True):
 
         self.inputFile = inputFile
-        self.proceedToMetricCalc = proceedToMetricCalc
-        self.skipToMetricCalc = skipToMetricCalc
-        # outputGraphs takes 'yes', 'no' or 'slim'
-        self.outputGraphs = outputGraphs
+        self.makeMaps = makeMaps
+        self.makeMetrics = makeMetrics
+        self.makeSummaryFile = makeSummaryFile
         self.cleanUpFinalFiles = cleanUpFinalFiles
         self.printOutput = printOutput
-        self.skipToSummaryFiles = skipToSummaryFiles
-        self.writeSummaryFiles = writeSummaryFiles
         self.keepMapDir = keepMapDir
 
         if run:
@@ -73,13 +68,11 @@ class process():
         self.info()
 
         pro = processFiles(inputFile=self.inputFile,
-                           proceedToMetricCalc=self.proceedToMetricCalc,
-                           skipToMetricCalc=self.skipToMetricCalc,
-                           outputGraphs=self.outputGraphs,
+                           makeMaps=self.makeMaps,
+                           makeMetrics=self.makeMetrics,
+                           makeSummaryFile=self.makeSummaryFile,
                            cleanFinalFiles=self.cleanUpFinalFiles,
                            logFileObj=self.logFile,
-                           skipToSummaryFiles=self.skipToSummaryFiles,
-                           writeSummaryFiles=self.writeSummaryFiles,
                            keepMapDir=self.keepMapDir)
 
         return pro.jobSuccess

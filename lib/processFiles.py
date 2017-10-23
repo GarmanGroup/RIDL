@@ -1,4 +1,5 @@
 from makeMapsFromMTZs import makeMapsFromMTZs
+from calculateMetrics import calculateMetrics
 from cleanUpFiles import cleanUpFinalFiles
 from errors import error
 import difflib
@@ -9,11 +10,10 @@ import os
 class processFiles():
 
     def __init__(self,
-                 inputFile='', proceedToMetricCalc=False,
-                 skipToMetricCalc=False, outputGraphs='yes',
+                 inputFile='', makeMaps=True, makeMetrics=True,
                  metCalcInput='metricCalc_inputfile.txt',
                  cleanFinalFiles=False, logFileObj='',
-                 skipToSummaryFiles=False, writeSummaryFiles=False,
+                 makeSummaryFile=False,
                  keepMapDir=True, includeSIGF=True):
 
         # class to read an input file and generate a set of density
@@ -25,34 +25,25 @@ class processFiles():
         # already been created) with 'skipToMetricCalc'.
 
         self.inputFile = inputFile
-        self.outputGraphs = outputGraphs
         self.metCalcInput = metCalcInput
         self.logFile = logFileObj
-        self.skipToSumFiles = skipToSummaryFiles
-        self.writeSumFiles = writeSummaryFiles
         self.includeSIGF = includeSIGF
 
-        self.props1 = ['name1', 'mtz1', 'mtzlabels1', 'pdb1', 'RfreeFlag1']
+        success = self.runFileProcessing()
 
-        self.props2 = ['name2', 'mtz2', 'mtzlabels2', 'pdb2']
+        if makeMaps:
+            self.runMapGeneration()
 
-        self.props3 = ['name3', 'mtz3', 'phaseLabel', 'FcalcLabel']
+        if makeMetrics:
+            success = self.runMetricCalcStep()
+            if not makeSummaryFile:
+                self.writeSummaryFiles(csvOnly=True)
 
-        if not skipToMetricCalc:
-            success = self.runFileProcessing()
-            if success:
-                success = self.runMapGeneration()
-                if success:
-                    if proceedToMetricCalc:
-                        self.runMetricCalcStep()
+        if makeSummaryFile:
+            self.writeSummaryFiles(csvOnly=False)
 
-        else:
-            success = self.skipToMetricCalc()
-
-        if success and cleanFinalFiles:
-            if skipToMetricCalc or proceedToMetricCalc:
+            if success and cleanFinalFiles:
                 cleanUpFinalFiles(outputDir=self.dir,
-                                  cleanMapDir=not skipToSummaryFiles,
                                   keepMapDir=keepMapDir)
 
         self.jobSuccess = success
@@ -151,7 +142,7 @@ class processFiles():
             FOMweight=self.FFTmapWeight,
             deleteMtzs=self.deleteIntermediateFiles,
             sfall_VDWR=self.sfall_VDWR, mapResLimits=self.mapResLimits,
-            includeFCmaps=self.calculateFCmaps,
+            includeFCmaps=self.includeFCmaps(),
             useLaterCellDims=self.useLaterCellDims)
 
         success = p.runPipeline()
@@ -168,97 +159,91 @@ class processFiles():
 
         return success
 
-    def runMetricCalcStep(self,
-                          write=True, run=True, useImports=True,
-                          skipToMetricCalc=False):
+    def runMetricCalcStep(self):
 
-        # writes an input file for the run of the metric calculation
-        # part of RIDL pipeline after the map generation pipeline has
-        # completed. Allows the user to immediately run the rest of the
-        # program, IF the user did specify all required datasets
-        # within a damage series. If the user only processed a subset of
-        # required datasets within a damage series, another metric
-        # calculation input file will need to be manually created to
-        # run the rest of the program with ALL datasets within the
+        # writes an input file for the run of the metric calculation part of
+        # RIDL pipeline after the map generation pipeline has completed. Allows
+        # the user to immediately run the rest of the program, IF the user did
+        # specify all required datasets within a damage series. If the user
+        # only processed a subset of required datasets within a damage series,
+        # another metric calculation input file will need to be manually
+        # created to run the rest of the program with ALL datasets within the
         # damage series included.
 
-        if useImports:
-            from runRIDL_metricCalc import run as run_metricCalc
+        seriesName = self.dir.split('/')[-2]
 
-        if not skipToMetricCalc:
-            if not write:
-                return True
+        if self.multiDatasets and not self.repeatedFile1InputsUsed:
+            # currently if more than one initial dataset specified then
+            # parts of further analysis are untested. Derivation of Dloss
+            # values should not be affected
 
-            r = run_metricCalc(calculate=False)
-            seriesName = self.dir.split('/')[-2]
+            self.writeError(
+                text='More than one INITIALDATASET input specified! ' +
+                     'Taking only first coordinate file specified in ' +
+                     'input file. This file will used for the x,y,z ' +
+                     'coordinates of each input atom. If you are  using ' +
+                     'outputs from RIDL other than Dloss, please contact' +
+                     ' charles.bury@dtc.ox.ac.uk for concerns ' +
+                     'over validity.',
+                type='warning')
 
-            if self.multiDatasets and not self.repeatedFile1InputsUsed:
-                # currently if more than one initial dataset specified then
-                # parts of further analysis are untested. Derivation of Dloss
-                # values should not be affected
+        self.logFile.writeToLog(str='\n\n**** METRIC CALCULATIONS ****\n')
 
-                self.writeError(
-                    text='More than one INITIALDATASET input specified! ' +
-                         'Taking only first coordinate file specified in ' +
-                         'input file. This file will used for the x,y,z ' +
-                         'coordinates of each input atom. If you are  using ' +
-                         'outputs from RIDL other than Dloss, please contact' +
-                         ' charles.bury@dtc.ox.ac.uk for concerns ' +
-                         'over validity.',
-                    type='warning')
+        c = calculateMetrics(logFile=self.logFile, laterDatasets=self.name2,
+                             inclFCmets=self.includeFCmaps(), outDir=self.dir,
+                             mapDir=self.mapProcessDir, initialPDB=self.name1,
+                             seriesName=seriesName, doses=self.getDoses(),
+                             pklDataFile=self.pklDataFile, autoRun=True,
+                             RIDLinputFile=self.inputFile)
 
-            if self.dose2 == 'NOTCALCULATED':
-                doses = ','.join(map(str, range(len(self.name2.split(',')))))
-            else:
-                doses = self.dose2
-
-            r.writeInputFile(inDir=self.mapProcessDir, outDir=self.dir,
-                             damSetName=seriesName, laterDatasets=self.name2,
-                             initialPDB=self.name1, doses=doses,
-                             outputGraphs=self.outputGraphs)
-
-            shutil.move(r.inputFileName,
-                        '{}/{}'.format(self.dir, r.inputFileName))
-
-        if run:
-            if self.calculateFCmaps.upper() == 'FALSE':
-                inclFCmets = False
-            else:
-                inclFCmets = True
-
-            r = run_metricCalc(inputFileLoc=self.dir,
-                               calculate=not self.skipToSumFiles,
-                               logFile=self.logFile,
-                               skipToSumFiles=self.skipToSumFiles,
-                               writeSumFiles=self.writeSumFiles,
-                               inclFCmets=inclFCmets)
+        self.pklDataFile = c.pklDataFile
 
         return True
 
-    def skipToMetricCalc(self):
+    def writeSummaryFiles(self,
+                          csvOnly=False, includeTests=False):
 
-        # do not generate maps for job, but proceed
-        # directly to metric calculations, if correct
-        # input file exists in working directory
+        # write feedback files for current RIDL job. if csvOnly is True then
+        # ONLY csv files will be output from the run (i.e. no html summary
+        # file and no plots)
 
-            success = self.readMainInputFile()
-            if not success:
-                return False
+        from ridlFeedback import provideFeedback
+        from furtherOutput import furtherAnalysis
+        from savevariables import retrieveGenericObject
 
-            self.checkOutputDirsExists(makeProcessDir=False)
-            self.findFilesInDir(mapProcessDir=False)
+        # retrieve list of atom objects from .pkl file
 
-            if self.metCalcInput not in self.filesInDir:
-                self.writeError(
-                    text='Unable to find input file ' +
-                         '"{}" in "{}"\n'.format(self.metCalcInput, self.dir) +
-                         'Ensure "python runRIDL.py -i <input.txt> ' +
-                         '-p" has been run prior to -c')
-                return False
+        self.logFile.writeToLog(
+            str='Retrieving per-atom damage metric information from ' +
+                ' .pkl file for each dataset within damage series.')
 
-            success = self.runMetricCalcStep(run=True, useImports=True,
-                                             skipToMetricCalc=True)
-            return True
+        self.logFile.writeToLog(
+            str='Input pkl file for data retrieval chosen from input file:\n' +
+                '\t{}'.format(self.pklDataFile))
+
+        # retrieve the combinedAtoms object from the pkl file
+        combinedAtoms = retrieveGenericObject(
+            fileName=self.dir+'RIDL-metrics/'+self.pklDataFile)
+
+        outputPlotDir = '{}RIDL-metrics/plots/'.format(self.dir)
+        self.makeOutputDir(dirName=outputPlotDir)
+
+        if not includeTests:
+            provideFeedback(csvOnly=csvOnly, atmsObjs=combinedAtoms,
+                            logFile=self.logFile, outputDir=self.dir,
+                            outputPlotDir=outputPlotDir, doses=self.getDoses(),
+                            pklSeries=self.pklDataFile,
+                            inputDir=self.mapProcessDir,
+                            pdbNames=self.name2, initialPDB=self.name1,
+                            inclFCmetrics=self.includeFCmaps())
+        else:
+            furtherAnalysis(csvOnly=csvOnly, atmsObjs=combinedAtoms,
+                            logFile=self.logFile, outputDir=self.dir,
+                            outputPlotDir=outputPlotDir, doses=self.getDoses(),
+                            pklSeries=self.pklDataFile,
+                            inputDir=self.mapProcessDir,
+                            pdbNames=self.name2, initialPDB=self.name1,
+                            inclFCmetrics=self.includeFCmaps())
 
     def readMainInputFile(self):
 
@@ -296,6 +281,12 @@ class processFiles():
 
         # check that all required properties have been found
 
+        self.props1 = ['name1', 'mtz1', 'mtzlabels1', 'pdb1', 'RfreeFlag1']
+
+        self.props2 = ['name2', 'mtz2', 'mtzlabels2', 'pdb2']
+
+        self.props3 = ['name3', 'mtz3', 'phaseLabel', 'FcalcLabel']
+
         requiredProps = self.props1+self.props2+self.props3
         requiredProps += ['dir', 'dose1', 'dose2']
 
@@ -319,10 +310,11 @@ class processFiles():
 
         props = ['sfall_VDWR', 'mapResLimits', 'scaleType',
                  'densMapType', 'FFTmapWeight', 'calculateFCmaps',
-                 'deleteIntermediateFiles', 'useLaterCellDims']
+                 'deleteIntermediateFiles', 'useLaterCellDims',
+                 'pklDataFile']
 
         defaults = [1, ',', 'ANISOTROPIC', 'DIFF',
-                    'False', 'FALSE', 'TRUE', 'TRUE']
+                    'False', 'FALSE', 'TRUE', 'TRUE', '']
 
         for i, prop in enumerate(props):
             try:
@@ -889,6 +881,22 @@ class processFiles():
 
         self.createDatasetName()
 
+    def includeFCmaps(self):
+
+        if self.calculateFCmaps.upper() == 'FALSE':
+            return False
+        else:
+            return True
+
+    def getDoses(self):
+
+        if self.dose2 == 'NOTCALCULATED':
+            doses = ','.join(map(str, range(len(self.name2.split(',')))))
+        else:
+            doses = self.dose2
+
+        return doses
+
     def createDatasetName(self):
 
         # create dataset name here, used to distinguish
@@ -950,7 +958,7 @@ class processFiles():
                       '{}{}_atoms.map'.format(*renameParams)]
 
         # cannot keep FC maps if they were never made
-        if self.calculateFCmaps.upper() == 'FALSE':
+        if not self.includeFCmaps():
             includeFCmap = False
 
         if includeFCmap:

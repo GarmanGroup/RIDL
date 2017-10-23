@@ -61,22 +61,6 @@ parser.add_argument('-j',
                     help='Provide information to help user ' +
                          'complete input file.')
 
-parser.add_argument('-g',
-                    dest='noGraphs', action='store_const',
-                    default=False, const=True,
-                    help='Include if no graphs should be output (for case ' +
-                         'where seaborn plotting library not accessible, ' +
-                         'for example).')
-
-parser.add_argument('--slim',
-                    dest='slim', action='store_const',
-                    default=False, const=True,
-                    help='Include only key graphs in the generated output. ' +
-                         'Per-atom per-dataset heatmaps are not produced. ' +
-                         'Recommended if many datasets on a large structure ' +
-                         'are to be input, since the resulting heatmap ' +
-                         'files will be large')
-
 parser.add_argument('-r',
                     dest='cleanUpFinalFiles', action='store_const',
                     default=True, const=False,
@@ -126,16 +110,6 @@ if args.inputFileHelp:
     p = process(run=False)
     p.howToWriteInputFile()
 
-# decide whether to include no graphs (no),
-# key graphs only (slim) or all graphs (yes)
-if args.noGraphs:
-    plot = 'no'
-else:
-    if args.slim:
-        plot = 'slim'
-    else:
-        plot = 'yes'
-
 inputFileToUse = args.inputFile
 
 # decide whether rigid body refinement must be run
@@ -158,26 +132,11 @@ if args.process or args.calculate or args.output:
     # run the pipeline, including generating density and atom-tagged
     # maps from input pdb and mtz files (in a damage series), as
     # specified within an input file
-    if args.process:
-        p = process(inputFile=inputFileToUse,
-                    proceedToMetricCalc=args.calculate,
-                    outputGraphs=plot,
-                    cleanUpFinalFiles=args.cleanUpFinalFiles,
-                    printOutput=args.suppressOutput,
-                    writeSummaryFiles=args.output,
-                    keepMapDir=not args.removeMaps)
 
-    # do not run code to create atom-tagged and density maps, but
-    # proceed directly to the code to calculate per-atom damage
-    # metrics. This works provided that the map generation step
-    # has been performed beforehand
-
-    else:
-        p = process(inputFile=inputFileToUse,
-                    skipToMetricCalc=True,
-                    outputGraphs=plot,
-                    cleanUpFinalFiles=args.cleanUpFinalFiles,
-                    printOutput=args.suppressOutput,
-                    skipToSummaryFiles=not args.calculate,
-                    writeSummaryFiles=args.output,
-                    keepMapDir=not args.removeMaps)
+    p = process(inputFile=inputFileToUse,
+                makeMaps=args.process,
+                makeMetrics=args.calculate,
+                cleanUpFinalFiles=args.cleanUpFinalFiles,
+                printOutput=args.suppressOutput,
+                makeSummaryFile=args.output,
+                keepMapDir=not args.removeMaps)

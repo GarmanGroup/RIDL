@@ -701,8 +701,8 @@ class provideFeedback(object):
         pdbTemplate = self.get1stDsetPDB()
         if not os.path.exists(pdbTemplate):
             error(
-                text='Could not coordinate file "{}" --> could not write ' +
-                     'top damage sites to .pdb file..'.format(pdbTemplate),
+                text='Could not coordinate file "{}" '.format(pdbTemplate) +
+                     '--> could not write top damage sites to .pdb file..',
                 log=self.logFile, type='warning')
             return
 
@@ -896,9 +896,17 @@ class provideFeedback(object):
 
     def get1stDsetPDB(self):
 
-        # retrieve name of first dataset pdb coordinate file
+        # retrieve name of first dataset pdb coordinate file.
 
-        pdbFile = self.inDir + str(self.initialPDB[0])
+        if isinstance(self.initialPDB, list):
+            a = self.initialPDB[0]
+        elif isinstance(self.initialPDB, str):
+            a = self.initialPDB
+
+        if not a.endswith('.pdb'):
+            a += '.pdb'
+
+        pdbFile = self.inDir + a
 
         return pdbFile
 
