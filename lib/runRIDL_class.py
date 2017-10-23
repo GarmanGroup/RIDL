@@ -1,7 +1,5 @@
-import sys
 import os
 import time
-sys.path.insert(0, './lib')
 from errors import error
 from processFiles import processFiles
 from logFile import logFile
