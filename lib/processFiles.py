@@ -1,5 +1,4 @@
-from CADSCALEITpiped import pipeline as pipe1
-from SFALLFFTpiped import pipeline as pipe2
+from SFALLFFTpiped import makeMapsFromMTZs
 from cleanUpFiles import cleanUpFinalFiles
 from errors import error
 import difflib
@@ -15,7 +14,7 @@ class processFiles():
                  metCalcInput='metricCalc_inputfile.txt',
                  cleanFinalFiles=False, logFileObj='',
                  skipToSummaryFiles=False, writeSummaryFiles=False,
-                 keepMapDir=True):
+                 keepMapDir=True, includeSIGF=True):
 
         # class to read an input file and generate a set of density
         # and atom-tagged maps for a damage series. Can handle a single
@@ -31,6 +30,7 @@ class processFiles():
         self.logFile = logFileObj
         self.skipToSumFiles = skipToSummaryFiles
         self.writeSumFiles = writeSummaryFiles
+        self.includeSIGF = includeSIGF
 
         self.props1 = ['name1', 'mtz1', 'mtzlabels1', 'pdb1', 'RfreeFlag1']
 
@@ -38,14 +38,13 @@ class processFiles():
 
         self.props3 = ['name3', 'mtz3', 'phaseLabel', 'FcalcLabel']
 
-        # set to false to not include SIGF column in CAD run
-        self.includeSIGF = True
-
         if not skipToMetricCalc:
-            success = self.runProcessing()
+            success = self.runFileProcessing()
             if success:
-                if proceedToMetricCalc:
-                    self.runMetricCalcStep()
+                success = self.runMapGeneration()
+                if success:
+                    if proceedToMetricCalc:
+                        self.runMetricCalcStep()
 
         else:
             success = self.skipToMetricCalc()
@@ -58,32 +57,7 @@ class processFiles():
 
         self.jobSuccess = success
 
-    def skipToMetricCalc(self):
-
-        # do not generate maps for job, but proceed
-        # directly to metric calculations, if correct
-        # input file exists in working directory
-
-            success = self.readMainInputFile()
-            if not success:
-                return False
-
-            self.checkOutputDirsExists(makeProcessDir=False)
-            self.findFilesInDir(mapProcessDir=False)
-
-            if self.metCalcInput not in self.filesInDir:
-                self.writeError(
-                    text='Unable to find input file ' +
-                         '"{}" in "{}"\n'.format(self.metCalcInput, self.dir) +
-                         'Ensure "python runRIDL.py -i <input.txt> ' +
-                         '-p" has been run prior to -c')
-                return False
-
-            success = self.runMetricCalcStep(run=True, useImports=True,
-                                             skipToMetricCalc=True)
-            return True
-
-    def runProcessing(self):
+    def runFileProcessing(self):
 
         self.logFile.writeToLog(str='\n**** INPUT FILE PROCESSING ****\n')
 
@@ -117,13 +91,17 @@ class processFiles():
         if not success:
             return success
 
+        return success
+
+    def runMapGeneration(self):
+
         self.logFile.writeToLog(str='\n\n**** DENSITY MAP GENERATION ****\n')
 
         if not self.multiDatasets:
             self.logFile.writeToLog(
                 str='Generating suitable electron density maps for run.')
             self.getCurrentInputParams()
-            success = self.runMapGenerationPipelines()
+            success = self.runMapGenerationPipeline()
 
         else:
             self.logFile.writeToLog(
@@ -136,27 +114,58 @@ class processFiles():
                     str='\n{}\nHigher dose '.format('-'*33) +
                         'dataset {} starts here'.format(i+1))
                 self.getCurrentInputParams(jobNumber=i)
-                success = self.runMapGenerationPipelines()
+                success = self.runMapGenerationPipeline()
                 if not success:
                     return success
 
         return success
 
-    def runMapGenerationPipelines(self):
+    def runMapGenerationPipeline(self):
 
-        # run two map generation pipelines
-        # sequentially for a single dataset
+        # run the map generation pipeline for a single dataset
 
         self.setJobName()
-        success = self.runPipeline1()
+
+        if self.sepSIGFPlabel1:
+            sigFP1 = self.mtzSIGFPlabel1_current
+        else:
+            sigFP1 = self.mtzlabels1_current
+
+        if self.sepSIGFPlabel2:
+            sigFP2 = self.mtzSIGFPlabel2_current
+        else:
+            sigFP2 = self.mtzlabels2_current
+
+        p = makeMapsFromMTZs(
+            outputDir=self.mapProcessDir, jobName=self.jobName,
+            log=self.logFile, mtzIn1=self.mtz1_current,
+            Mtz1LabelName=self.mtzlabels1_current,
+            RfreeFlag1=self.RfreeFlag1_current, Mtz1SIGFPlabel=sigFP1,
+            Mtz1LabelRename=self.name1_current, mtzIn2=self.mtz2_current,
+            Mtz2LabelName=self.mtzlabels2_current, Mtz2SIGFPlabel=sigFP2,
+            Mtz2LabelRename=self.name2_current, mtzIn3=self.mtz3_current,
+            Mtz3phaseLabel=self.phaseLabel_current,
+            Mtz3FcalcLabel=self.FcalcLabel_current,
+            Mtz3LabelRename=self.name3_current, inputPDBfile=self.pdb2_current,
+            densMapType=self.densMapType, scaleType=self.scaleType,
+            FOMweight=self.FFTmapWeight,
+            deleteMtzs=self.deleteIntermediateFiles,
+            sfall_VDWR=self.sfall_VDWR, mapResLimits=self.mapResLimits,
+            includeFCmaps=self.calculateFCmaps,
+            useLaterCellDims=self.useLaterCellDims)
+
+        success = p.runPipeline()
+        self.mtzToMapsPipelineLog = p.runLog.logFile
         if success:
-            success = self.runPipeline2()
-            if success:
-                if self.deleteIntermediateFiles.lower() == 'true':
-                    success = self.cleanUpIntermediateFiles()
-                else:
-                    success = self.cleanUpIntermediateFiles(
+            self.logFile.writeToLog(str='---> Subroutine ran to completion.')
+            if self.deleteIntermediateFiles.lower() == 'true':
+                success = self.cleanUpIntermediateFiles()
+            else:
+                success = self.cleanUpIntermediateFiles(
                         removeMtzs=False, removeMaps=False, removePdbs=False)
+        else:
+            self.writeError(text='Subroutine failed to run to completion')
+
         return success
 
     def runMetricCalcStep(self,
@@ -212,7 +221,6 @@ class processFiles():
                         '{}/{}'.format(self.dir, r.inputFileName))
 
         if run:
-
             if self.calculateFCmaps.upper() == 'FALSE':
                 inclFCmets = False
             else:
@@ -226,6 +234,31 @@ class processFiles():
                                inclFCmets=inclFCmets)
 
         return True
+
+    def skipToMetricCalc(self):
+
+        # do not generate maps for job, but proceed
+        # directly to metric calculations, if correct
+        # input file exists in working directory
+
+            success = self.readMainInputFile()
+            if not success:
+                return False
+
+            self.checkOutputDirsExists(makeProcessDir=False)
+            self.findFilesInDir(mapProcessDir=False)
+
+            if self.metCalcInput not in self.filesInDir:
+                self.writeError(
+                    text='Unable to find input file ' +
+                         '"{}" in "{}"\n'.format(self.metCalcInput, self.dir) +
+                         'Ensure "python runRIDL.py -i <input.txt> ' +
+                         '-p" has been run prior to -c')
+                return False
+
+            success = self.runMetricCalcStep(run=True, useImports=True,
+                                             skipToMetricCalc=True)
+            return True
 
     def readMainInputFile(self):
 
@@ -870,73 +903,6 @@ class processFiles():
 
         self.jobName = '{}-{}'.format(self.name2_current, self.name1_current)
 
-    def runPipeline1(self):
-
-        # run the first subroutine (CAD and SCALEIT run)
-
-        if self.sepSIGFPlabel1:
-            sigFP1 = self.mtzSIGFPlabel1_current
-        else:
-            sigFP1 = self.mtzlabels1_current
-
-        if self.sepSIGFPlabel2:
-            sigFP2 = self.mtzSIGFPlabel2_current
-        else:
-            sigFP2 = self.mtzlabels2_current
-
-        self.p1 = pipe1(
-            outputDir=self.mapProcessDir, jobName=self.jobName,
-            log=self.logFile, mtzIn1=self.mtz1_current,
-            Mtz1LabelName=self.mtzlabels1_current,
-            RfreeFlag1=self.RfreeFlag1_current, Mtz1SIGFPlabel=sigFP1,
-            Mtz1LabelRename=self.name1_current, mtzIn2=self.mtz2_current,
-            Mtz2LabelName=self.mtzlabels2_current, Mtz2SIGFPlabel=sigFP2,
-            Mtz2LabelRename=self.name2_current, mtzIn3=self.mtz3_current,
-            Mtz3phaseLabel=self.phaseLabel_current,
-            Mtz3FcalcLabel=self.FcalcLabel_current,
-            Mtz3LabelRename=self.name3_current, inputPDBfile=self.pdb2_current,
-            densMapType=self.densMapType, scaleType=self.scaleType,
-            FOMweight=self.FFTmapWeight,
-            deleteMtzs=self.deleteIntermediateFiles)
-
-        success = self.p1.runPipeline()
-        if success:
-            self.logFile.writeToLog(str='---> Subroutine ran to completion.')
-            return True
-        else:
-            self.writeError(text='Subroutine failed to run to completion')
-            return False
-
-    def runPipeline2(self):
-
-        # run the second subroutine (SFALL and FFT etc)
-
-        if self.densMapType != '2FOFC':
-            self.mtzIn = '{}{}_SCALEITcombined.mtz'.format(
-                self.mapProcessDir, self.jobName)
-        else:
-            self.mtzIn = '{}{}_sigmaa.mtz'.format(
-                self.mapProcessDir, self.name2_current)
-
-        self.p2 = pipe2(
-            outputDir=self.mapProcessDir, jobName=self.jobName,
-            log=self.logFile, inputPDBfile=self.pdb2_current,
-            Mtz1LabelName=self.name1_current, Mtz2LabelName=self.name2_current,
-            phaseDataset=self.name3_current, sfall_VDWR=self.sfall_VDWR,
-            scaleType=self.scaleType, mapResLimits=self.mapResLimits,
-            inputMtzFile=self.mtzIn, densMapType=self.densMapType,
-            FOMweight=self.FFTmapWeight,
-            includeFCmaps=self.calculateFCmaps,
-            useLaterCellDims=self.useLaterCellDims)
-
-        success = self.p2.runPipeline()
-        if success:
-            self.logFile.writeToLog(str='---> Subroutine ran to completion.')
-            return True
-        else:
-            self.writeError(text='Subroutine failed to run to completion')
-            return False
-
     def findFilesInDir(self,
                        mapProcessDir=True):
 
@@ -969,7 +935,7 @@ class processFiles():
         renameParams = m + [self.name2_current]
         # renameParams2 = m + [self.name1_current]
 
-        keyLogFiles = [self.p1.runLog.logFile, self.p2.runLog.logFile]
+        keyLogFiles = [self.mtzToMapsPipelineLog]
 
         if self.densMapType != 'END':
             mapFiles = ['{}{}-{}-{}_cropped_cropped.map'.format(

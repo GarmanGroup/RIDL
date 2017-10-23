@@ -1,3 +1,6 @@
+from CADjob import CADjob
+from SCALEITjob import SCALEITjob
+from SIGMAAjob import SIGMAAjob
 from MAPMASKjob import MAPMASKjob
 from PDBCURjob import PDBCURjob
 from SFALLjob import SFALLjob
@@ -6,39 +9,66 @@ from logFile import logFile
 from FFTjob import FFTjob
 from ENDjob import ENDjob
 from errors import error
+import os.path
 import shutil
 import os
 
 
-class pipeline():
+class makeMapsFromMTZs():
 
-    # class to run SFALL job to generate atom-tagged map, and FFT to
-    # generate a corresponding density map (typically a Fobs(n)-Fobs(1)
-    # Fourier difference map). The maps are then both restricted to the
-    # crystal asymmetric unit, with identical grid sampling properties
-    # (i.e. they are 'compatible'). This subroutine runs after the
-    # CAD-SCALEIT subroutine (see processFiles.py for how these are called).
+    # this class handles the generation of suitable MAP-format files
+    # from input MTZ-format files. It uses a range of CCP4 programs to
+    # achieve this task. In short:
+    # SIGMAA performs any figure of merit recalculation (non default)
+    # CAD combines columns from mtz files corresponding to different datasets
+    # SCALEIT scales FP columns from later dataset mtz to first dataset
+    # PDBCUR strips hydrogens, anisotropic B-factors and 2nd conformations
+    # from pdb file
+    # SFALL generates a tagged atom-map from new pdb file
+    # FFT generates a density map (either Fobs-Fobs, 2Fobs-Fcalc etc depending)
+    # on the input flags with exact same grid dimensions as atom-map
+    # MAPMASK used to crop both maps to an identical volume
 
     def __init__(self,
                  outputDir='', jobName='untitled-job', log='',
-                 inputPDBfile='', Mtz1LabelName='', Mtz2LabelName='',
-                 phaseDataset='', sfall_VDWR=1, scaleType='ANISOTROPIC',
-                 mapResLimits=',', inputMtzFile='', densMapType='DIFF',
-                 FOMweight='NONE', includeFCmaps=True,
+                 mtzIn1='./untitled.mtz', Mtz1LabelName='FP',
+                 Mtz1SIGFPlabel='SIGFP', RfreeFlag1='FREE',
+                 Mtz1LabelRename='D1', mtzIn2='./untitled2.mtz',
+                 Mtz2LabelName='FP',  Mtz2SIGFPlabel='SIGFP',
+                 Mtz2LabelRename='D2', mtzIn3='./untitled3.mtz',
+                 Mtz3phaseLabel='PHIC', Mtz3FcalcLabel='FC',
+                 Mtz3LabelRename='DP', inputPDBfile='./untitled.pdb',
+                 densMapType='DIFF', scaleType='ANISOTROPIC',
+                 deleteMtzs=True, FOMweight='NONE', sfall_VDWR=1,
+                 mapResLimits=',', includeFCmaps=True,
                  useLaterCellDims=True, sfallGRIDdims=[]):
 
+        # specify where output files should be written
         self.outputDir = outputDir
+        self.makeOutputDir(dirName=self.outputDir)
+        self.findFilesInDir()
+
         self.jobName = jobName
-        self.inputPDBfile = inputPDBfile
+        self.mtzIn1 = mtzIn1
         self.Mtz1LabelName = Mtz1LabelName
+        self.Mtz1SIGFPlabel = Mtz1SIGFPlabel
+        self.RfreeFlag1 = RfreeFlag1
+        self.Mtz1LabelRename = Mtz1LabelRename
+        self.mtzIn2 = mtzIn2
         self.Mtz2LabelName = Mtz2LabelName
-        self.phaseDataset = phaseDataset
-        self.sfall_VDWR = sfall_VDWR
-        self.scaleType = scaleType
-        self.mapResLimits = mapResLimits
-        self.inputMtzFile = inputMtzFile
+        self.Mtz2SIGFPlabel = Mtz2SIGFPlabel
+        self.Mtz2LabelRename = Mtz2LabelRename
+        self.mtzIn3 = mtzIn3
+        self.Mtz3phaseLabel = Mtz3phaseLabel
+        self.Mtz3FcalcLabel = Mtz3FcalcLabel
+        self.Mtz3LabelRename = Mtz3LabelRename
+        self.inputPDBfile = inputPDBfile
         self.densMapType = densMapType
+        self.scaleType = scaleType
+        self.deleteMtzs = deleteMtzs
         self.FOMweight = FOMweight
+        self.sfall_VDWR = sfall_VDWR
+        self.mapResLimits = mapResLimits
         self.includeFCmaps = includeFCmaps
         self.useLaterCellDims = useLaterCellDims
         self.sfallGRIDdims = sfallGRIDdims
@@ -55,8 +85,44 @@ class pipeline():
 
         # run the current subroutine within this class
 
-        if self.scaleType in ('NONE', 'PHENIX'):
-            self.inputMtzFile = self.inputMtzFile.replace('_SCALEIT', '_CAD')
+        # copy input mtz files to working directory and rename
+        self.moveInputMtzs()
+
+        skipStep = False
+        if self.FOMweight == 'recalculate':
+            success = self.generateNewFOMcolumn()
+            if not success:
+                return False
+
+            # if 2FO-FC map required, use FWT column from
+            # sigmaa-output mtz (we are done here)
+            if self.densMapType == '2FOFC':
+                skipStep = True
+                self.mtzForMaps = '{}{}_sigmaa.mtz'.format(
+                    self.mapProcessDir, self.name2_current)
+            else:
+                pass
+
+        else:
+            self.CADinputMtz1 = self.SIGMAAinputMtz
+
+        if not skipStep:
+
+            success = self.combineMTZcolumns()
+            if not success:
+                return False
+
+            if self.scaleType != 'NONE':
+                success = self.scaleFPcolumnsTogether()
+                if not success:
+                    return False
+
+            if self.scaleType in ('NONE', 'PHENIX'):
+                self.mtzForMaps = self.CADoutputMtz
+            else:
+                self.mtzForMaps = self.SCALEIToutputMtz
+
+        self.cleanUpDir()
 
         success = self.curatePdbFile()
         if not success:
@@ -72,6 +138,7 @@ class pipeline():
         if not success:
             return False
 
+        # phenix maps are not currently a tested option
         makeFoFoMapWithPhenix = False
         if self.scaleType == 'PHENIX':
             makeFoFoMapWithPhenix = True
@@ -79,8 +146,8 @@ class pipeline():
             self.generatePhenixDensMap()
         else:
             self.mapTag = ''
-            self.fcalcMtz = self.inputMtzFile
-            self.densMapMtz = self.inputMtzFile
+            self.fcalcMtz = self.mtzForMaps
+            self.densMapMtz = self.mtzForMaps
             success = self.generateCCP4DensMap()
 
         if not success:
@@ -116,6 +183,100 @@ class pipeline():
 
         self.cleanUpDir()
         return True
+
+    def moveInputMtzs(self):
+
+        # move input mtz files to working directory and rename as suitable
+
+        if self.densMapType == '2FOFC':
+            self.SIGMAAinputMtz = '{}{}.mtz'.format(
+                self.outputDir, self.Mtz2LabelRename.strip())
+            shutil.copy2(self.mtzIn2, self.SIGMAAinputMtz)
+
+        else:
+            self.SIGMAAinputMtz = '{}{}.mtz'.format(
+                self.outputDir, self.Mtz1LabelRename.strip())
+            self.CADinputMtz2 = '{}{}.mtz'.format(
+                self.outputDir, self.Mtz2LabelRename.strip())
+            self.CADinputMtz3 = '{}{}.mtz'.format(
+                self.outputDir, self.Mtz3LabelRename.strip())
+            shutil.copy2(self.mtzIn1, self.SIGMAAinputMtz)
+            shutil.copy2(self.mtzIn2, self.CADinputMtz2)
+            shutil.copy2(self.mtzIn3, self.CADinputMtz3)
+
+    def generateNewFOMcolumn(self):
+
+        # run SIGMAA job if required to generate a new FOM weight column
+
+        self.printStepNumber()
+
+        if self.densMapType == '2FOFC':
+            mtzLbls_in = self.Mtz2LabelName
+            mtzLbls_out = self.Mtz2LabelRename
+
+        else:
+            mtzLbls_in = self.Mtz1LabelName
+            mtzLbls_out = self.Mtz1LabelName
+
+        sigmaa = SIGMAAjob(inputMtz=self.SIGMAAinputMtz,
+                           MtzLabelNameIn=mtzLbls_in,
+                           MtzLabelNameOut=mtzLbls_out,
+                           RfreeFlag=self.RfreeFlag1,
+                           inputPDB=self.inputPDBfile,
+                           outputDir=self.outputDir,
+                           runLog=self.runLog)
+        success = sigmaa.run()
+        self.CADinputMtz1 = sigmaa.outputMtz
+
+        return success
+
+    def combineMTZcolumns(self):
+
+        # run CAD to combine necessary columns from input mtz files
+
+        self.printStepNumber()
+
+        self.CADoutputMtz = '{}{}_CADcombined.mtz'.format(
+            self.outputDir, self.jobName)
+
+        cad = CADjob(inputMtz1=self.CADinputMtz1, inputMtz2=self.CADinputMtz2,
+                     inputMtz3=self.CADinputMtz3,
+                     Mtz1LabelName=self.Mtz1LabelName,
+                     Mtz2LabelName=self.Mtz2LabelName,
+                     Mtz3phaseLabel=self.Mtz3phaseLabel,
+                     Mtz3FcalcLabel=self.Mtz3FcalcLabel,
+                     Mtz1LabelRename=self.Mtz1LabelRename,
+                     Mtz2LabelRename=self.Mtz2LabelRename,
+                     Mtz3LabelRename=self.Mtz3LabelRename,
+                     outputMtz=self.CADoutputMtz,
+                     outputDir=self.outputDir,
+                     runLog=self.runLog,
+                     FOMWeight=self.FOMweight)
+        success = cad.run()
+
+        return success
+
+    def scaleFPcolumnsTogether(self):
+
+        # run SCALEIT to scale later dataset FP columns to first dataset
+
+        self.printStepNumber()
+
+        # specify output files for parts of pipeline
+
+        self.SCALEIToutputMtz = '{}{}_SCALEITcombined.mtz'.format(
+            self.outputDir, self.jobName)
+
+        scaleit = SCALEITjob(inputMtz=self.CADoutputMtz,
+                             outputMtz=self.SCALEIToutputMtz,
+                             Mtz1Label=self.Mtz1LabelRename,
+                             Mtz2Label=self.Mtz2LabelRename,
+                             outputDir=self.outputDir,
+                             scaling=self.scaleType,
+                             runLog=self.runLog)
+        success = scaleit.run()
+
+        return success
 
     def curatePdbFile(self):
 
@@ -153,15 +314,15 @@ class pipeline():
         # run phenix.fobs_minus_fobs to generate difference map
 
         cmd = 'phenix.fobs_minus_fobs_map ' +\
-              'f_obs_1_file_name={} '.format(self.inputMtzFile) +\
-              'f_obs_2_file_name={} '.format(self.inputMtzFile) +\
+              'f_obs_1_file_name={} '.format(self.mtzForMaps) +\
+              'f_obs_2_file_name={} '.format(self.mtzForMaps) +\
               'phase_source={} '.format(self.reorderedPDBFile) +\
-              'f_obs_1_label=FP_{} '.format(self.Mtz2LabelName) +\
-              'f_obs_2_label=FP_{}'.format(self.Mtz1LabelName)
+              'f_obs_1_label=FP_{} '.format(self.Mtz2LabelRename) +\
+              'f_obs_2_label=FP_{}'.format(self.Mtz1LabelRename)
 
         os.system(cmd+'>phenix.log')
-        self.fcalcMtz = self.inputMtzFile
-        self.densMapMtz = self.inputMtzFile.replace(
+        self.fcalcMtz = self.mtzForMaps
+        self.densMapMtz = self.mtzForMaps.replace(
             '_CADcombined', 'phenixFoFo')
         shutil.move('FoFoPHFc.mtz', self.densMapMtz)
         shutil.move('phenix.log', '{}phenix.log'.format(self.outputDir))
@@ -181,19 +342,19 @@ class pipeline():
         self.printStepNumber()
         if self.densMapType in ('DIFF', 'SIMPLE'):
             tags = ['FP_', 'SIGFP_', 'FOM_']
-            labelsInit = [i+self.Mtz1LabelName for i in tags] +\
-                         ['PHIC_'+self.phaseDataset]
-            labelsLater = [i+self.Mtz2LabelName for i in tags] +\
-                          ['PHIC_'+self.phaseDataset]
+            labelsInit = [i+self.Mtz1LabelRename for i in tags] +\
+                         ['PHIC_'+self.Mtz3LabelRename]
+            labelsLater = [i+self.Mtz2LabelRename for i in tags] +\
+                          ['PHIC_'+self.Mtz3LabelRename]
 
         if self.densMapType == '2FOFC':
             if self.useLaterCellDims.upper() == 'TRUE':
                 labelsInit = ['']*4
-                labelsLater = ['FWT{}'.format(self.Mtz2LabelName),
+                labelsLater = ['FWT{}'.format(self.Mtz2LabelRename),
                                '', '', 'PHIC']
             else:
                 labelsLater = ['']*4
-                labelsInit = ['FWT{}'.format(self.Mtz2LabelName),
+                labelsInit = ['FWT{}'.format(self.Mtz2LabelRename),
                               '', '', 'PHIC']
 
         if self.densMapType != 'END':
@@ -242,8 +403,8 @@ class pipeline():
 
         self.printStepNumber()
         if method == 'FFT':
-            fcLabels = ['FC_{}'.format(self.phaseDataset), '', '',
-                        'PHIC_'+self.phaseDataset]
+            fcLabels = ['FC_{}'.format(self.Mtz3LabelRename), '', '',
+                        'PHIC_'+self.Mtz3LabelRename]
             fft_FC = FFTjob(mapType='FC', FOMweight=self.FOMweight,
                             pdbFile=self.reorderedPDBFile,
                             mtzFile=self.fcalcMtz, outputDir=self.outputDir,
@@ -273,10 +434,10 @@ class pipeline():
 
         elif method == 'FFT2':
             tags = ['FP_', 'SIGFP_', 'FOM_']
-            labels1 = [i+self.Mtz2LabelName for i in tags] +\
-                      ['PHIC_'+self.phaseDataset]
-            labels2 = ['FC_{}'.format(self.phaseDataset), '', '',
-                       'PHIC_'+self.phaseDataset]
+            labels1 = [i+self.Mtz2LabelRename for i in tags] +\
+                      ['PHIC_'+self.Mtz3LabelRename]
+            labels2 = ['FC_{}'.format(self.Mtz3LabelRename), '', '',
+                       'PHIC_'+self.Mtz3LabelRename]
             fft_FC = FFTjob(mapType='DIFF', mapTag='FC',
                             FOMweight=self.FOMweight, runLog=self.runLog,
                             pdbFile=self.reorderedPDBFile,
@@ -467,6 +628,8 @@ class pipeline():
 
         self.runLog.writeToLog(str='\nCleaning up working directory...')
 
+        self.deleteNonFinalMtzs()
+
         # move txt files to subdir
         self.makeOutputDir(dirName='{}txtFiles/'.format(self.outputDir))
 
@@ -475,6 +638,27 @@ class pipeline():
                 args = [self.outputDir, file]
                 shutil.move('{}{}'.format(*args),
                             '{}txtFiles/{}'.format(*args))
+
+    def deleteNonFinalMtzs(self):
+
+        # delete all non-final mtz files within run
+        # (such as those output by CAD before SCALEIT etc).
+        # Not current used at runtime!
+        return
+
+        # give option to delete all mtz files within
+        # output directory except the final resulting
+        # mtz for job - used to save room if necessary
+        if self.deleteMtzs.lower() != 'true':
+            return
+        if self.densMapType == '2FOFC':
+            fileEnd = 'sigmaa.mtz'
+        else:
+            fileEnd = 'SCALEITcombined.mtz'
+        for f in os.listdir(self.outputDir):
+            if ((f.endswith('.mtz') and not f.endswith(fileEnd)) or
+               f.endswith('.tmp')):
+                os.remove(self.outputDir+f)
 
     def findFilesInDir(self):
 
@@ -501,9 +685,7 @@ class pipeline():
         try:
             self.stepNumber
         except AttributeError:
-            self.stepNumber = 3
-
+            self.stepNumber = 1
         self.runLog.writeToLog(
             str='\n_______\nSTEP {})'.format(self.stepNumber))
-
         self.stepNumber += 1
