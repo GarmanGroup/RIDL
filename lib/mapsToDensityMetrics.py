@@ -11,12 +11,7 @@ import numpy as np
 import sys
 import time
 import os
-
-# check if seaborn library is present and include if so
-from checkDependencies import checkDependencies
-c = checkDependencies()
-if c.checkSeaborn():
-    import seaborn as sns
+import seaborn as sns
 
 
 class maps2DensMetrics():
@@ -82,7 +77,7 @@ class maps2DensMetrics():
         if self.plotHist:
             self.plotDensHistPlots()
 
-        self.calcDensMetrics()
+        self.calcDensMetrics(showProgress=False)
 
         if self.plotScatter:
             self.plotDensScatterPlots()

@@ -1,7 +1,4 @@
-import time
-t0 = time.time()
 import matplotlib.pyplot as plt
-print 'Matplotlib import time: {}s'.format(round(time.time()-t0,3))
 from PDBFileManipulation import writePDBline_DamSite
 from matplotlib.gridspec import GridSpec
 from findMetricChange import findBchange
@@ -16,16 +13,8 @@ import os
 import warnings
 warnings.filterwarnings('ignore')
 from bioInfo import bioInfo
+import seaborn as sns
 
-from checkDependencies import checkDependencies
-c = checkDependencies()
-if c.checkSeaborn():
-	t0 = time.time()
-	import seaborn as sns
-	print 'Seaborn import time: {}s'.format(round(time.time()-t0,3))
-	seabornFound = True
-else:
-	seabornFound = False
 
 class combinedAtomList(object):
 
@@ -586,9 +575,6 @@ class combinedAtomList(object):
 		# 'pairs' is list of residues and atoms of form 
 		# [['GLU','CD','CG'],['GLU','CD','OE1'],..] etc
 
-		if not seabornFound:
-			return
-
 		fileout = open('{}{}_{}-D{}-{}.txt'.format(self.outputDir,title,normType,metric,rType),'w')
 
 		foundPairs = {}
@@ -741,9 +727,6 @@ class combinedAtomList(object):
 		# residues and write to file. 'rType' takes values ('ratio',
 		# 'distance'). 'pairs' is list of residues and atoms of form 
 		# [['GLU','CD','CG'],['GLU','CD','OE1'],..] etc.
-
-		if not seabornFound:
-			return
 
 		foundPairs = {}
 		for pair in pairs:
@@ -2281,9 +2264,6 @@ class combinedAtomList(object):
 		# plotted for side and main chain (proteins) and 
 		# base, phosphate, sugar (DNA/RNA)
 
-		if not seabornFound:
-			return {},''
-
 		# attempt to find atoms of type 'resiType'
 		# and flag if not all found
 		if resiType != 'all':
@@ -2524,10 +2504,7 @@ class combinedAtomList(object):
 				 order    = []):
 
 		# plot histogram or kde plot for datax and give current label
-		# 'nBins' is number of bins (only used if plotType is 'hist' or 'both')
-
-		if not seabornFound:
-			return
+		# 'nBins' is number of bins (only used if plotType is 'hist' or 'both'
 
 		if order == []:
 			order = datax.keys()
@@ -2852,9 +2829,6 @@ class combinedAtomList(object):
 		# for a specified atom. 'errorBars' takes values in ('NONE',
 		# 'RESNUM','ATOMTYPE')
 
-		if not seabornFound:
-			return
-
 		errorOptions = ('NONE',
 					    'RESNUM',
 					    'ATOMTYPE')
@@ -3004,9 +2978,6 @@ class combinedAtomList(object):
 
 		# create a line plot of metric values for susceptible atoms within
 		# structure. Susceptible atoms are defined as below
-
-		if not seabornFound:
-			return
 
 		if susAtms == []: 
 			susAtms = [['GLU','CD'],
@@ -3350,9 +3321,6 @@ class combinedAtomList(object):
 		# histogram/kde plot of density metric per atom.
 		# plotType is 'histogram' or 'kde'
 
-		if not seabornFound:
-			return
-
 		if plotType not in ('hist','kde','both'): 
 			return 'Unknown plotting type selected.. cannot plot..'
 		if self.checkMetricPresent(metric = metric, normType = normType) is False: 
@@ -3596,9 +3564,6 @@ class combinedAtomList(object):
 		# if 'lineBestFit' is True then linear line of best fit 
 		# is calculated and plotted. if 'yequalsxLine' is 
 		# True then line y=x plotted
-
-		if not seabornFound:
-			return
 
 		sns.set_context("talk")
 		fig = plt.figure(figsize = (10, 10))
@@ -4297,9 +4262,6 @@ class combinedAtomList(object):
 
 		# produce a barplot to compare the damage metric of 
 		# susceptible atom types at a given dataset
-
-		if not seabornFound:
-			return
 
 		if set == 1:
 			keyAtomTypes = [['GLU','CD'],

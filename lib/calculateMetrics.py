@@ -269,7 +269,7 @@ class calculateMetrics(object):
                                          seriesName=self.seriesName,
                                          inclFCmetrics=self.inclFCmets)
 
-        combinedAtoms.getMultiDoseAtomList()
+        combinedAtoms.getMultiDoseAtomList(logFile=self.logFile)
 
         # calculate 'average' variant Dloss metrics
         combinedAtoms.calcAdditionalMetrics(newMetric='average')
