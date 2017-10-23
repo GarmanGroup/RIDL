@@ -20,11 +20,28 @@ class pipeline():
     # CAD-SCALEIT subroutine (see processFiles.py for how these are called).
 
     def __init__(self,
-                 outputDir='', inputFile='', jobName='untitled-job', log=''):
+                 outputDir='', jobName='untitled-job', log='',
+                 inputPDBfile='', Mtz1LabelName='', Mtz2LabelName='',
+                 phaseDataset='', sfall_VDWR=1, scaleType='ANISOTROPIC',
+                 mapResLimits=',', inputMtzFile='', densMapType='DIFF',
+                 FOMweight='NONE', includeFCmaps=True,
+                 useLaterCellDims=True, sfallGRIDdims=[]):
 
         self.outputDir = outputDir
-        self.inputFile = inputFile
         self.jobName = jobName
+        self.inputPDBfile = inputPDBfile
+        self.Mtz1LabelName = Mtz1LabelName
+        self.Mtz2LabelName = Mtz2LabelName
+        self.phaseDataset = phaseDataset
+        self.sfall_VDWR = sfall_VDWR
+        self.scaleType = scaleType
+        self.mapResLimits = mapResLimits
+        self.inputMtzFile = inputMtzFile
+        self.densMapType = densMapType
+        self.FOMweight = FOMweight
+        self.includeFCmaps = includeFCmaps
+        self.useLaterCellDims = useLaterCellDims
+        self.sfallGRIDdims = sfallGRIDdims
         self.findFilesInDir()
 
         # create log file
@@ -37,10 +54,6 @@ class pipeline():
     def runPipeline(self):
 
         # run the current subroutine within this class
-
-        success = self.readInputFile()
-        if not success:
-            return False
 
         if self.scaleType in ('NONE', 'PHENIX'):
             self.inputMtzFile = self.inputMtzFile.replace('_SCALEIT', '_CAD')
@@ -57,7 +70,7 @@ class pipeline():
 
         success = self.getAtomTaggedMap()
         if not success:
-            return 4
+            return False
 
         makeFoFoMapWithPhenix = False
         if self.scaleType == 'PHENIX':
@@ -73,7 +86,7 @@ class pipeline():
         if not success:
             return False
 
-        if self.includeFCmaps():
+        if self.includeFCmaps:
             success = self.generateFcalcMap()
             if not success:
                 return False
@@ -91,7 +104,7 @@ class pipeline():
         if not success:
             return False
 
-        if self.includeFCmaps():
+        if self.includeFCmaps:
             success = self.cropMapToAtomTaggedMap(densMap=self.FcalcMap)
             if not success:
                 return False
@@ -109,7 +122,7 @@ class pipeline():
         # run pdbcur job
 
         self.printStepNumber()
-        pdbcur = PDBCURjob(inputPDBfile=self.pdbcurPDBinputFile,
+        pdbcur = PDBCURjob(inputPDBfile=self.inputPDBfile,
                            outputDir=self.outputDir, runLog=self.runLog)
         success = pdbcur.run()
         self.PDBCURoutputFile = pdbcur.outputPDBfile
@@ -123,7 +136,7 @@ class pipeline():
         sfall = SFALLjob(inputPDBfile=self.reorderedPDBFile,
                          outputDir=self.outputDir, VDWR=self.sfall_VDWR,
                          symmetrygroup=self.spaceGroup,
-                         gridDimensions=self.sfall_GRID, runLog=self.runLog)
+                         gridDimensions=self.sfallGRIDdims, runLog=self.runLog)
         success = sfall.run()
 
         sfallMap = mapTools(mapName=sfall.outputMapFile)
@@ -143,8 +156,8 @@ class pipeline():
               'f_obs_1_file_name={} '.format(self.inputMtzFile) +\
               'f_obs_2_file_name={} '.format(self.inputMtzFile) +\
               'phase_source={} '.format(self.reorderedPDBFile) +\
-              'f_obs_1_label=FP_{} '.format(self.laterPDB) +\
-              'f_obs_2_label=FP_{}'.format(self.initPDB)
+              'f_obs_1_label=FP_{} '.format(self.Mtz2LabelName) +\
+              'f_obs_2_label=FP_{}'.format(self.Mtz1LabelName)
 
         os.system(cmd+'>phenix.log')
         self.fcalcMtz = self.inputMtzFile
@@ -168,18 +181,20 @@ class pipeline():
         self.printStepNumber()
         if self.densMapType in ('DIFF', 'SIMPLE'):
             tags = ['FP_', 'SIGFP_', 'FOM_']
-            labelsInit = [i+self.initPDB for i in tags] +\
+            labelsInit = [i+self.Mtz1LabelName for i in tags] +\
                          ['PHIC_'+self.phaseDataset]
-            labelsLater = [i+self.laterPDB for i in tags] +\
+            labelsLater = [i+self.Mtz2LabelName for i in tags] +\
                           ['PHIC_'+self.phaseDataset]
 
         if self.densMapType == '2FOFC':
             if self.useLaterCellDims.upper() == 'TRUE':
                 labelsInit = ['']*4
-                labelsLater = ['FWT{}'.format(self.laterPDB), '', '', 'PHIC']
+                labelsLater = ['FWT{}'.format(self.Mtz2LabelName),
+                               '', '', 'PHIC']
             else:
                 labelsLater = ['']*4
-                labelsInit = ['FWT{}'.format(self.laterPDB), '', '', 'PHIC']
+                labelsInit = ['FWT{}'.format(self.Mtz2LabelName),
+                              '', '', 'PHIC']
 
         if self.densMapType != 'END':
             if self.useLaterCellDims.upper() == 'TRUE':
@@ -209,7 +224,7 @@ class pipeline():
 
         else:
             # run END job if required (may take time to run!!)
-            endInputPDB = self.pdbcurPDBinputFile
+            endInputPDB = self.inputPDBfile
             endInputMTZ = ''.join(endInputPDB.split('.')[:-1]+['.mtz'])
             endInputEFF = ''.join(endInputPDB.split('.')[:-1]+['.eff'])
 
@@ -242,7 +257,8 @@ class pipeline():
             sfall = SFALLjob(inputPDBfile=self.reorderedPDBFile,
                              outputDir=self.outputDir, VDWR=self.sfall_VDWR,
                              symmetrygroup=self.spaceGroup, runLog=self.runLog,
-                             gridDimensions=self.sfall_GRID, task='fcalc mtz')
+                             gridDimensions=self.sfallGRIDdims,
+                             task='fcalc mtz')
             success = sfall.run()
             FcalcMtz = sfall.outputMtzFile
 
@@ -257,7 +273,7 @@ class pipeline():
 
         elif method == 'FFT2':
             tags = ['FP_', 'SIGFP_', 'FOM_']
-            labels1 = [i+self.laterPDB for i in tags] +\
+            labels1 = [i+self.Mtz2LabelName for i in tags] +\
                       ['PHIC_'+self.phaseDataset]
             labels2 = ['FC_{}'.format(self.phaseDataset), '', '',
                        'PHIC_'+self.phaseDataset]
@@ -314,45 +330,6 @@ class pipeline():
         mapmask.multipleByFactor(factor=factor, symGroup=self.spaceGroup)
 
         return mapmask.outputMapFile
-
-    def readInputFile(self):
-
-        # read in input file for this subroutine
-
-        # if Input.txt not found, flag error
-        if not os.path.isfile(self.inputFile):
-            error(text='Input file {} not found..'.format(self.inputFile),
-                  log=self.runLog, type='error')
-            return False
-
-        inputFile = open(self.inputFile, 'r')
-        props = {'pdbIN': 'pdbcurPDBinputFile', 'runname': 'runName',
-                 'sfall_VDWR': 'sfall_VDWR', 'scaleType': 'scaleType',
-                 'mapResLimits': 'mapResLimits', 'mtzIN': 'inputMtzFile',
-                 'foldername': 'outputDir', 'initialPDB': 'initPDB',
-                 'laterPDB': 'laterPDB', 'phaseDataset': 'phaseDataset',
-                 'densMapType': 'densMapType', 'FFTmapWeight': 'FOMweight',
-                 'calculateFCmaps': 'FCmaps',
-                 'useLaterCellDims': 'useLaterCellDims'}
-
-        self.sfall_GRID = []
-        for l in inputFile.readlines():
-            if 'END' == l.split()[0]:
-                break
-            elif l.split()[0] in props.keys():
-                setattr(self, props[l.split()[0]], l.split()[1])
-            elif l.split()[0] == 'sfall_GRID':
-                self.sfall_GRID = l.split()[1:4]
-        return True
-
-    def includeFCmaps(self):
-
-        # determine whether FCalc maps should be generated
-
-        if self.FCmaps.upper() == 'TRUE':
-            return True
-        else:
-            return False
 
     def renumberPDBFile(self):
 

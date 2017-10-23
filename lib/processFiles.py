@@ -148,10 +148,8 @@ class processFiles():
         # sequentially for a single dataset
 
         self.setJobName()
-        self.writePipeline1Inputs()
         success = self.runPipeline1()
         if success:
-            self.writePipeline2Inputs()
             success = self.runPipeline2()
             if success:
                 if self.deleteIntermediateFiles.lower() == 'true':
@@ -160,6 +158,74 @@ class processFiles():
                     success = self.cleanUpIntermediateFiles(
                         removeMtzs=False, removeMaps=False, removePdbs=False)
         return success
+
+    def runMetricCalcStep(self,
+                          write=True, run=True, useImports=True,
+                          skipToMetricCalc=False):
+
+        # writes an input file for the run of the metric calculation
+        # part of RIDL pipeline after the map generation pipeline has
+        # completed. Allows the user to immediately run the rest of the
+        # program, IF the user did specify all required datasets
+        # within a damage series. If the user only processed a subset of
+        # required datasets within a damage series, another metric
+        # calculation input file will need to be manually created to
+        # run the rest of the program with ALL datasets within the
+        # damage series included.
+
+        if useImports:
+            from runRIDL_metricCalc import run as run_metricCalc
+
+        if not skipToMetricCalc:
+            if not write:
+                return True
+
+            r = run_metricCalc(calculate=False)
+            seriesName = self.dir.split('/')[-2]
+
+            if self.multiDatasets and not self.repeatedFile1InputsUsed:
+                # currently if more than one initial dataset specified then
+                # parts of further analysis are untested. Derivation of Dloss
+                # values should not be affected
+
+                self.writeError(
+                    text='More than one INITIALDATASET input specified! ' +
+                         'Taking only first coordinate file specified in ' +
+                         'input file. This file will used for the x,y,z ' +
+                         'coordinates of each input atom. If you are  using ' +
+                         'outputs from RIDL other than Dloss, please contact' +
+                         ' charles.bury@dtc.ox.ac.uk for concerns ' +
+                         'over validity.',
+                    type='warning')
+
+            if self.dose2 == 'NOTCALCULATED':
+                doses = ','.join(map(str, range(len(self.name2.split(',')))))
+            else:
+                doses = self.dose2
+
+            r.writeInputFile(inDir=self.mapProcessDir, outDir=self.dir,
+                             damSetName=seriesName, laterDatasets=self.name2,
+                             initialPDB=self.name1, doses=doses,
+                             outputGraphs=self.outputGraphs)
+
+            shutil.move(r.inputFileName,
+                        '{}/{}'.format(self.dir, r.inputFileName))
+
+        if run:
+
+            if self.calculateFCmaps.upper() == 'FALSE':
+                inclFCmets = False
+            else:
+                inclFCmets = True
+
+            r = run_metricCalc(inputFileLoc=self.dir,
+                               calculate=not self.skipToSumFiles,
+                               logFile=self.logFile,
+                               skipToSumFiles=self.skipToSumFiles,
+                               writeSumFiles=self.writeSumFiles,
+                               inclFCmets=inclFCmets)
+
+        return True
 
     def readMainInputFile(self):
 
@@ -798,102 +864,44 @@ class processFiles():
 
         self.dsetName = (self.pdb2_current).split('/')[-1].replace('.pdb', '')
 
-    def writePipeline1Inputs(self):
-
-        # write the input file for the first subroutine
-        # (run of CAD and SCALEIT)
-
-        self.pipe1FileName = '{}{}_subroutine1.txt'.format(
-            self.mapProcessDir, self.jobName)
-        props = {'mtzIn1': 'mtz1_current',
-                 'Mtz1LabelName': 'mtzlabels1_current',
-                 'Mtz1LabelRename': 'name1_current',
-                 'RfreeFlag1': 'RfreeFlag1_current',
-                 'mtzIn2': 'mtz2_current',
-                 'Mtz2LabelName': 'mtzlabels2_current',
-                 'Mtz2LabelRename': 'name2_current',
-                 'mtzIn3': 'mtz3_current',
-                 'Mtz3phaseLabel': 'phaseLabel_current',
-                 'Mtz3FcalcLabel': 'FcalcLabel_current',
-                 'Mtz3LabelRename': 'name3_current',
-                 'inputPDBfile': 'pdb2_current',
-                 'densMapType': 'densMapType',
-                 'deleteMtzs': 'deleteIntermediateFiles',
-                 'scaleType': 'scaleType',
-                 'FFTmapWeight': 'FFTmapWeight'}
-
-        if self.sepSIGFPlabel1:
-            props['Mtz1SIGFPlabel'] = 'mtzSIGFPlabel1_current'
-        else:
-            props['Mtz1SIGFPlabel'] = 'mtzlabels1_current'
-
-        if self.sepSIGFPlabel2:
-            props['Mtz2SIGFPlabel'] = 'mtzSIGFPlabel2_current'
-        else:
-            props['Mtz2SIGFPlabel'] = 'mtzlabels2_current'
-
-        fileOut1 = open(self.pipe1FileName, 'w')
-        inputString = ''
-        for p in props.keys():
-            inputString += '{} {}\n'.format(p, getattr(self, props[p]))
-        inputString += 'END'
-        fileOut1.write(inputString)
-        fileOut1.close()
-
     def setJobName(self):
 
         # set a name for the current job
 
         self.jobName = '{}-{}'.format(self.name2_current, self.name1_current)
 
-    def writePipeline2Inputs(self):
-
-        # write input file for the second subroutine
-        # (run of SFALL and FFT)
-
-        self.pipe2FileName = '{}{}_subroutine2.txt'.format(
-            self.mapProcessDir, self.jobName)
-
-        if self.densMapType != '2FOFC':
-            self.mtzIn = '{}{}_SCALEITcombined.mtz'.format(
-                self.mapProcessDir, self.jobName)
-        else:
-            self.mtzIn = '{}{}_sigmaa.mtz'.format(
-                self.mapProcessDir, self.name2_current)
-
-        props = {'pdbIN': 'pdb2_current',
-                 'initialPDB': 'name1_current',
-                 'laterPDB': 'name2_current',
-                 'phaseDataset': 'name3_current',
-                 'sfall_VDWR': 'sfall_VDWR',
-                 'scaleType': 'scaleType',
-                 'mapResLimits': 'mapResLimits',
-                 'mtzIN': 'mtzIn',
-                 'densMapType': 'densMapType',
-                 'FFTmapWeight': 'FFTmapWeight',
-                 'calculateFCmaps': 'calculateFCmaps',
-                 'useLaterCellDims': 'useLaterCellDims'}
-
-        fileOut2 = open(self.pipe2FileName, 'w')
-        inputString = ''
-        for p in props.keys():
-            inputString += '{} {}\n'.format(p, getattr(self, props[p]))
-        inputString += 'END'
-        fileOut2.write(inputString)
-        fileOut2.close()
-
     def runPipeline1(self):
 
         # run the first subroutine (CAD and SCALEIT run)
 
-        self.p1 = pipe1(outputDir=self.mapProcessDir,
-                        inputFile=self.pipe1FileName,
-                        jobName=self.jobName, log=self.logFile)
+        if self.sepSIGFPlabel1:
+            sigFP1 = self.mtzSIGFPlabel1_current
+        else:
+            sigFP1 = self.mtzlabels1_current
 
-        outcome = self.p1.runPipeline()
-        if outcome == 0:
+        if self.sepSIGFPlabel2:
+            sigFP2 = self.mtzSIGFPlabel2_current
+        else:
+            sigFP2 = self.mtzlabels2_current
+
+        self.p1 = pipe1(
+            outputDir=self.mapProcessDir, jobName=self.jobName,
+            log=self.logFile, mtzIn1=self.mtz1_current,
+            Mtz1LabelName=self.mtzlabels1_current,
+            RfreeFlag1=self.RfreeFlag1_current, Mtz1SIGFPlabel=sigFP1,
+            Mtz1LabelRename=self.name1_current, mtzIn2=self.mtz2_current,
+            Mtz2LabelName=self.mtzlabels2_current, Mtz2SIGFPlabel=sigFP2,
+            Mtz2LabelRename=self.name2_current, mtzIn3=self.mtz3_current,
+            Mtz3phaseLabel=self.phaseLabel_current,
+            Mtz3FcalcLabel=self.FcalcLabel_current,
+            Mtz3LabelRename=self.name3_current, inputPDBfile=self.pdb2_current,
+            densMapType=self.densMapType, scaleType=self.scaleType,
+            FOMweight=self.FFTmapWeight,
+            deleteMtzs=self.deleteIntermediateFiles)
+
+        success = self.p1.runPipeline()
+        if success:
             self.logFile.writeToLog(str='---> Subroutine ran to completion.')
-
             return True
         else:
             self.writeError(text='Subroutine failed to run to completion')
@@ -903,9 +911,23 @@ class processFiles():
 
         # run the second subroutine (SFALL and FFT etc)
 
-        self.p2 = pipe2(outputDir=self.mapProcessDir,
-                        inputFile=self.pipe2FileName,
-                        jobName=self.jobName, log=self.logFile)
+        if self.densMapType != '2FOFC':
+            self.mtzIn = '{}{}_SCALEITcombined.mtz'.format(
+                self.mapProcessDir, self.jobName)
+        else:
+            self.mtzIn = '{}{}_sigmaa.mtz'.format(
+                self.mapProcessDir, self.name2_current)
+
+        self.p2 = pipe2(
+            outputDir=self.mapProcessDir, jobName=self.jobName,
+            log=self.logFile, inputPDBfile=self.pdb2_current,
+            Mtz1LabelName=self.name1_current, Mtz2LabelName=self.name2_current,
+            phaseDataset=self.name3_current, sfall_VDWR=self.sfall_VDWR,
+            scaleType=self.scaleType, mapResLimits=self.mapResLimits,
+            inputMtzFile=self.mtzIn, densMapType=self.densMapType,
+            FOMweight=self.FFTmapWeight,
+            includeFCmaps=self.calculateFCmaps,
+            useLaterCellDims=self.useLaterCellDims)
 
         success = self.p2.runPipeline()
         if success:
@@ -1032,74 +1054,6 @@ class processFiles():
         d = self.mapProcessDir
         if f not in os.listdir(d):
             shutil.copy2(self.pdb1_current, d+f)
-
-    def runMetricCalcStep(self,
-                          write=True, run=True, useImports=True,
-                          skipToMetricCalc=False):
-
-        # writes an input file for the run of the metric calculation
-        # part of RIDL pipeline after the map generation pipeline has
-        # completed. Allows the user to immediately run the rest of the
-        # program, IF the user did specify all required datasets
-        # within a damage series. If the user only processed a subset of
-        # required datasets within a damage series, another metric
-        # calculation input file will need to be manually created to
-        # run the rest of the program with ALL datasets within the
-        # damage series included.
-
-        if useImports:
-            from runRIDL_metricCalc import run as run_metricCalc
-
-        if not skipToMetricCalc:
-            if not write:
-                return True
-
-            r = run_metricCalc(calculate=False)
-            seriesName = self.dir.split('/')[-2]
-
-            if self.multiDatasets and not self.repeatedFile1InputsUsed:
-                # currently if more than one initial dataset specified then
-                # parts of further analysis are untested. Derivation of Dloss
-                # values should not be affected
-
-                self.writeError(
-                    text='More than one INITIALDATASET input specified! ' +
-                         'Taking only first coordinate file specified in ' +
-                         'input file. This file will used for the x,y,z ' +
-                         'coordinates of each input atom. If you are  using ' +
-                         'outputs from RIDL other than Dloss, please contact' +
-                         ' charles.bury@dtc.ox.ac.uk for concerns ' +
-                         'over validity.',
-                    type='warning')
-
-            if self.dose2 == 'NOTCALCULATED':
-                doses = ','.join(map(str, range(len(self.name2.split(',')))))
-            else:
-                doses = self.dose2
-
-            r.writeInputFile(inDir=self.mapProcessDir, outDir=self.dir,
-                             damSetName=seriesName, laterDatasets=self.name2,
-                             initialPDB=self.name1, doses=doses,
-                             outputGraphs=self.outputGraphs)
-
-            shutil.move(r.inputFileName,
-                        '{}/{}'.format(self.dir, r.inputFileName))
-
-        if run:
-
-            if self.calculateFCmaps.upper() == 'FALSE':
-                inclFCmets = False
-            else:
-                inclFCmets = True
-
-            r = run_metricCalc(inputFileLoc=self.dir,
-                               calculate=not self.skipToSumFiles,
-                               logFile=self.logFile,
-                               skipToSumFiles=self.skipToSumFiles,
-                               writeSumFiles=self.writeSumFiles,
-                               inclFCmets=inclFCmets)
-
-        return True
 
     def makeOutputDir(self,
                       dirName='./'):

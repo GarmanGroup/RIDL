@@ -13,15 +13,41 @@ class pipeline():
     # structure factors against the 1st datasets
 
     def __init__(self,
-                 outputDir='', inputFile='',
-                 jobName='untitled-job', log=''):
+                 outputDir='', jobName='untitled-job', log='',
+                 mtzIn1='./untitled.mtz', Mtz1LabelName='FP',
+                 Mtz1SIGFPlabel='SIGFP', RfreeFlag1='FREE',
+                 Mtz1LabelRename='D1', mtzIn2='./untitled2.mtz',
+                 Mtz2LabelName='FP',  Mtz2SIGFPlabel='SIGFP',
+                 Mtz2LabelRename='D2', mtzIn3='./untitled3.mtz',
+                 Mtz3phaseLabel='PHIC', Mtz3FcalcLabel='FC',
+                 Mtz3LabelRename='DP', inputPDBfile='./untitled.pdb',
+                 densMapType='DIFF', scaleType='ANISOTROPIC',
+                 deleteMtzs=True, FOMweight='NONE'):
 
         # specify where output files should be written
         self.outputDir = outputDir
         self.makeOutputDir(dirName=self.outputDir)
         self.findFilesInDir()
-        self.txtInputFile = inputFile
+
         self.jobName = jobName
+        self.mtzIn1 = mtzIn1
+        self.Mtz1LabelName = Mtz1LabelName
+        self.Mtz1SIGFPlabel = Mtz1SIGFPlabel
+        self.RfreeFlag1 = RfreeFlag1
+        self.Mtz1LabelRename = Mtz1LabelRename
+        self.mtzIn2 = mtzIn2
+        self.Mtz2LabelName = Mtz2LabelName
+        self.Mtz2SIGFPlabel = Mtz2SIGFPlabel
+        self.Mtz2LabelRename = Mtz2LabelRename
+        self.mtzIn3 = mtzIn3
+        self.Mtz3phaseLabel = Mtz3phaseLabel
+        self.Mtz3FcalcLabel = Mtz3FcalcLabel
+        self.Mtz3LabelRename = Mtz3LabelRename
+        self.inputPDBfile = inputPDBfile
+        self.densMapType = densMapType
+        self.scaleType = scaleType
+        self.deleteMtzs = deleteMtzs
+        self.FOMweight = FOMweight
 
         if log == '':
             f = '{}{}_runLog1.log'.format(self.outputDir+'RIDL-log', jobName)
@@ -55,15 +81,11 @@ class pipeline():
         # mtz information for a low and high dose
         # dataset within a damage series
 
-        success = self.readInputs()
-        if not success:
-            return 1
-
         # copy input mtz files to working directory and rename
         self.moveInputMtzs()
 
         # run SIGMAA job if required to generate a new FOM weight column
-        if self.FFTmapWeight == 'recalculate':
+        if self.FOMweight == 'recalculate':
 
             if self.densMapType == '2FOFC':
                 mtzLbls_in = self.Mtz2LabelName
@@ -84,13 +106,13 @@ class pipeline():
             success = sigmaa.run()
 
             if not success:
-                return 2
+                return False
 
             # if 2FO-FC map required, use FWT column from
             # sigmaa-output mtz (we are done here)
             if self.densMapType == '2FOFC':
                 self.cleanUpDir()
-                return 0
+                return True
 
             self.CADinputMtz1 = sigmaa.outputMtz
         else:
@@ -111,11 +133,11 @@ class pipeline():
                      outputMtz=self.CADoutputMtz,
                      outputDir=self.outputDir,
                      runLog=self.runLog,
-                     FOMWeight=self.FFTmapWeight)
+                     FOMWeight=self.FOMweight)
         success = cad.run()
 
         if not success:
-            return 3
+            return False
 
         # run SCALEIT job
         if self.scaleType != 'NONE':
@@ -130,58 +152,10 @@ class pipeline():
             success = scaleit.run()
 
             if not success:
-                return 4
+                return False
 
         # end of pipeline reached
         self.cleanUpDir()
-        return 0
-
-    def readInputs(self):
-
-        # open input file and parse inputs for the current subroutine
-
-        # if Input.txt not found, flag error
-        if not self.checkFileExists(self.txtInputFile):
-            self.runLog.writeToLog(
-                str='Required input file {} not found..'.format(
-                    self.txtInputFile))
-            return False
-
-        self.runLog.writeToLog(
-            str='Reading inputs from {}'.format(
-                self.txtInputFile))
-
-        # parse input file (ignore blank/comment lines)
-        inputFile = open(self.txtInputFile, 'r')
-        for l in inputFile.readlines():
-            try:
-                l.split()[1]
-            except IndexError:
-                continue
-            if l.strip()[0] == '#':
-                continue
-            if l.split()[0] == 'END':
-                break
-            setattr(self, l.split()[0], l.split()[1])
-        inputFile.close()
-
-        # check that all required properties have been found
-        requiredProps = ['mtzIn1', 'Mtz1LabelName',
-                         'RfreeFlag1', 'Mtz1LabelRename',
-                         'mtzIn2', 'Mtz2LabelName',
-                         'Mtz2LabelRename', 'mtzIn3',
-                         'Mtz3phaseLabel', 'Mtz3FcalcLabel',
-                         'Mtz3LabelRename', 'inputPDBfile',
-                         'densMapType', 'scaleType',
-                         'deleteMtzs']
-
-        for prop in requiredProps:
-            try:
-                getattr(self, prop)
-            except AttributeError:
-                self.runLog.writeToLog(
-                    str='Necessary input not found: {}.'.format(prop))
-                return False
         return True
 
     def moveInputMtzs(self):
@@ -248,16 +222,6 @@ class pipeline():
         # find files initially in working directory
 
         self.filesInDir = os.listdir(self.outputDir)
-
-    def checkFileExists(self, filename):
-
-        # check if file exists
-
-        if not os.path.isfile(filename):
-            self.runLog.writeToLog(str='File {} not found'.format(filename))
-            return False
-        else:
-            return True
 
     def printStepNumber(self):
 
