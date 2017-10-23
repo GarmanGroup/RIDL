@@ -1,4 +1,4 @@
-from SFALLFFTpiped import makeMapsFromMTZs
+from makeMapsFromMTZs import makeMapsFromMTZs
 from cleanUpFiles import cleanUpFinalFiles
 from errors import error
 import difflib
