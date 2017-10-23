@@ -68,51 +68,51 @@ class CADjob():
 
         self.printPurpose()
 
-        self.commandInput1 = 'cad ' +\
-                             'HKLIN1 {} '.format(self.inputMtz1) +\
-                             'HKLIN2 {} '.format(self.inputMtz2) +\
-                             'HKLIN3 {} '.format(self.inputMtz3) +\
-                             'HKLOUT {}'.format(self.outputMtz)
+        cmd1 = 'cad ' +\
+               'HKLIN1 {} '.format(self.inputMtz1) +\
+               'HKLIN2 {} '.format(self.inputMtz2) +\
+               'HKLIN3 {} '.format(self.inputMtz3) +\
+               'HKLOUT {}'.format(self.outputMtz)
 
-        self.commandInput2 = 'title CAD JOB\n' +\
-                             'monitor BRIEF\n' +\
-                             'labin file 1 - \n' +\
-                             'E1 = {} - \n'.format(self.labels[0]) +\
-                             'E2 = SIG{} '.format(self.labels[0]) +\
-                             '{} \n'.format(self.FOMtag['in']) +\
-                             'labout file 1 - \n' +\
-                             'E1 = FP_{} - \n'.format(self.renameLabels[0]) +\
-                             'E2 = SIGFP_{} '.format(self.renameLabels[0]) +\
-                             '{} \n'.format(self.FOMtag['out']) +\
-                             'ctypin file 1 - \n' +\
-                             'E1 = F - \n' +\
-                             'E2 = Q ' +\
-                             '{} \n'.format(self.FOMtag['type']) +\
-                             'labin file 2 - \n' +\
-                             'E1 = {} - \n'.format(self.labels[1]) +\
-                             'E2 = SIG{} \n'.format(self.labels[1]) +\
-                             'labout file 2 - \n' +\
-                             'E1 = FP_{} - \n'.format(self.renameLabels[1]) +\
-                             'E2 = SIGFP_{} \n'.format(self.renameLabels[1]) +\
-                             'ctypin file 2 - \n' +\
-                             'E1 = F - \n' +\
-                             'E2 = Q \n' +\
-                             'labin file 3 - \n' +\
-                             'E1 = {} -\n'.format(self.labels[2]) +\
-                             'E2 = {} \n'.format(self.labels[3]) +\
-                             'labout file 3 - \n' +\
-                             'E1 = PHIC_{} - \n'.format(self.renameLabels[2]) +\
-                             'E2 = FC_{} \n'.format(self.renameLabels[2]) +\
-                             'ctypin file 3 - \n' +\
-                             'E1 = P -\n' +\
-                             'E2 = F \n'
+        cmd2 = 'title CAD JOB\n' +\
+               'monitor BRIEF\n' +\
+               'labin file 1 - \n' +\
+               'E1 = {} - \n'.format(self.labels[0]) +\
+               'E2 = SIG{} '.format(self.labels[0]) +\
+               '{} \n'.format(self.FOMtag['in']) +\
+               'labout file 1 - \n' +\
+               'E1 = FP_{} - \n'.format(self.renameLabels[0]) +\
+               'E2 = SIGFP_{} '.format(self.renameLabels[0]) +\
+               '{} \n'.format(self.FOMtag['out']) +\
+               'ctypin file 1 - \n' +\
+               'E1 = F - \n' +\
+               'E2 = Q ' +\
+               '{} \n'.format(self.FOMtag['type']) +\
+               'labin file 2 - \n' +\
+               'E1 = {} - \n'.format(self.labels[1]) +\
+               'E2 = SIG{} \n'.format(self.labels[1]) +\
+               'labout file 2 - \n' +\
+               'E1 = FP_{} - \n'.format(self.renameLabels[1]) +\
+               'E2 = SIGFP_{} \n'.format(self.renameLabels[1]) +\
+               'ctypin file 2 - \n' +\
+               'E1 = F - \n' +\
+               'E2 = Q \n' +\
+               'labin file 3 - \n' +\
+               'E1 = {} -\n'.format(self.labels[2]) +\
+               'E2 = {} \n'.format(self.labels[3]) +\
+               'labout file 3 - \n' +\
+               'E1 = PHIC_{} - \n'.format(self.renameLabels[2]) +\
+               'E2 = FC_{} \n'.format(self.renameLabels[2]) +\
+               'ctypin file 3 - \n' +\
+               'E1 = P -\n' +\
+               'E2 = F \n'
 
         self.outputLogfile = 'CADlogfile.txt'
 
         # run CAD job
         job = ccp4Job(jobName='CAD',
-                      commandInput1=self.commandInput1,
-                      commandInput2=self.commandInput2,
+                      commandInput1=cmd1,
+                      commandInput2=cmd2,
                       outputDir=self.outputDir,
                       outputLog=self.outputLogfile,
                       outputFile=self.outputMtz)

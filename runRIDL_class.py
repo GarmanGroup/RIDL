@@ -162,21 +162,15 @@ MAPINFO
         ln = '---------------------------------------------------------------'
         self.logFile.writeToLog(str=ln)
 
-    def titleCaption(self,
-                     whichString='new'):
+    def titleCaption(self):
 
         # a title line to print to command line
 
-        if whichString == 'old':
-            txt = '\n||========================== RIDL ==========================||' +\
-                  '||======== Radiation-Induced Density Loss Analysis =========||\n'
-        else:
-            txt = '\n----------------------------------------------------\n' +\
-                  ' '*24+'RIDL\n' +\
-                  ' '*4+'(Radiation-Induced Density Loss Analysis)\n' +\
-                  '----------------------------------------------------'
-
-        self.logFile.writeToLog(str=txt)
+        self.logFile.writeToLog(
+          str='\n----------------------------------------------------\n' +
+              ' '*24+'RIDL\n' +
+              ' '*4+'(Radiation-Induced Density Loss Analysis)\n' +
+              '----------------------------------------------------')
 
     def info(self):
 

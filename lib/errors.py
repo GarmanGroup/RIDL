@@ -33,17 +33,19 @@ class error():
         self.printError(
             message='\n****ERROR!****\n{}\n\nPlease contact '.format(message) +
                     'charles.bury@dtc.ox.ac.uk for queries regarding this' +
-                    'failure\n**************')
+                    'failure\n--->Terminating script...**************',
+            killRun=True)
 
     def warningMessage(self,
                        message=''):
 
         # template for warning message printed to screen
 
-        self.printError(message='Warning! >>> {}'.format(message))
+        self.printError(message='Warning! >>> {}'.format(message),
+                        killRun=False)
 
     def printError(self,
-                   message=''):
+                   message='', killRun=True):
 
         # return error to command line or log file (if exists)
 
@@ -51,3 +53,6 @@ class error():
             self.log.writeToLog(str=message, strip=False)
         else:
             print message
+
+        if killRun:
+            sys.exit()

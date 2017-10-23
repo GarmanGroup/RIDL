@@ -69,10 +69,10 @@ class FFTjob():
         # run FFT job using the external ccp4Job class
 
         self.printPurpose()
-        self.commandInput1 = 'fft ' +\
-                             'HKLIN {} '.format(self.inputMtzFile) +\
-                             'MAPOUT {} '.format(self.outputMapFile) +\
-                             'SYMINFO syminfo.lib '
+        cmd1 = 'fft ' +\
+               'HKLIN {} '.format(self.inputMtzFile) +\
+               'MAPOUT {} '.format(self.outputMapFile) +\
+               'SYMINFO syminfo.lib '
 
         # if FOM is specified the weighting is applied to the map
         if self.FOMweight == 'recalculate' or 'preset,' in self.FOMweight:
@@ -123,7 +123,7 @@ class FFTjob():
                     resStr += ' {}'.format(self.lowResCutoff)
                 resStr += '\n'
 
-        self.commandInput2 = 'AXIS {} {} {}\n'.format(
+        cmd2 = 'AXIS {} {} {}\n'.format(
             self.fastAxis, self.medAxis, self.slowAxis) +\
             'title FTT DENSITY MAP RUN\n' +\
             'grid {} {} {}\n'.format(
@@ -135,8 +135,8 @@ class FFTjob():
         self.outputLogfile = 'FFTlogfile.txt'
 
         # run FFT job
-        job = ccp4Job(jobName='FFT', commandInput1=self.commandInput1,
-                      commandInput2=self.commandInput2,
+        job = ccp4Job(jobName='FFT', commandInput1=cmd1,
+                      commandInput2=cmd2,
                       outputDir=self.outputDir, outputLog=self.outputLogfile,
                       outputFile=self.outputMapFile)
 
