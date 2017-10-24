@@ -32,7 +32,7 @@ class error():
 
         self.printError(
             message='\n****ERROR!****\n{}\n\nPlease contact '.format(message) +
-                    'charles.bury@dtc.ox.ac.uk for queries regarding this' +
+                    'charles.bury@dtc.ox.ac.uk for queries regarding this ' +
                     'failure\n--->Terminating script...\n**************',
             killRun=True)
 
