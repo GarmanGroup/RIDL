@@ -8,7 +8,7 @@ class SFALLjob():
     def __init__(self,
                  inputPDBfile='', outputDir='./', VDWR=1, symmetrygroup='P1',
                  gridDimensions=[], task='atom map', mapoutType='ATMMOD',
-                 runLog=''):
+                 outputMapFile='', outputMtzFile='', runLog=''):
 
         self.inputPDBfile = inputPDBfile
         self.outputDir = outputDir
@@ -21,13 +21,19 @@ class SFALLjob():
 
         if task == 'atom map':
             self.makeAtomMap = True
-            self.outputMapFile = '{}_sfall.map'.format(
-                inputPDBfile.split('_reordered.pdb')[0])
+            if outputMapFile == '':
+                self.outputMapFile = '{}_SFALL.map'.format(
+                    inputPDBfile.split('.pdb')[0])
+            else:
+                self.outputMapFile = outputMapFile
             self.outputFile = self.outputMapFile
         elif task == 'fcalc mtz':
             self.makeAtomMap = False
-            self.outputMtzFile = '{}_sfall.mtz'.format(
-                inputPDBfile.split('_reordered.pdb')[0])
+            if outputMtzFile == '':
+                self.outputMtzFile = '{}_SFALL.mtz'.format(
+                    inputPDBfile.split('.pdb')[0])
+            else:
+                self.outputMtzFile = outputMtzFile
             self.outputFile = self.outputMtzFile
 
     def run(self):

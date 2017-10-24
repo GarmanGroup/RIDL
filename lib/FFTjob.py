@@ -9,7 +9,8 @@ class FFTjob():
                  pdbFile='', mtzFile='', outputDir='./', axes=[1, 2, 3],
                  gridSamps=[0, 0, 0], labels1=['', '', '', ''],
                  labels2=['', '', '', ''], F1Scale=1.0, F2Scale=1.0,
-                 highResCutoff='', lowResCutoff='', runLog=''):
+                 highResCutoff='', lowResCutoff='', runLog='',
+                 outputMapFile=''):
 
         self.mapType = mapType
         self.FOMweight = FOMweight
@@ -23,8 +24,12 @@ class FFTjob():
         else:
             self.mapTag = mapTag
 
-        self.outputMapFile = '{}-{}-fft.map'.format(
-            pdbFile.split('_reordered.pdb')[0], self.mapTag)
+        if outputMapFile == '':
+            self.outputMapFile = '{}-{}_FFT.map'.format(
+                pdbFile.split('.pdb')[0], self.mapTag)
+        else:
+            self.outputMapFile = outputMapFile
+
         self.outputDir = outputDir
         XYZ = ['X', 'Y', 'Z']
         self.fastAxis = XYZ[int(axes[0])-1]

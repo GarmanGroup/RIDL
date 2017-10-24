@@ -4,11 +4,14 @@ from ccp4Job import ccp4Job, checkInputsExist
 class PDBCURjob():
 
     def __init__(self,
-                 inputPDBfile='', outputDir='./', runLog=''):
+                 inputPDBfile='', outputPDBfile='', outputDir='./', runLog=''):
 
         self.inputPDBfile = inputPDBfile
-        self.outputPDBfile = '{}{}_pdbcur.pdb'.format(
-            outputDir, inputPDBfile.split('/')[-1].split('.pdb')[0])
+        if outputPDBfile == '':
+            self.outputPDBfile = '{}{}_pdbcur.pdb'.format(
+                outputDir, inputPDBfile.split('/')[-1].split('.pdb')[0])
+        else:
+            self.outputPDBfile = outputPDBfile
         self.outputDir = outputDir
         self.runLog = runLog
 

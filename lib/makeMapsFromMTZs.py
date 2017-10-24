@@ -39,8 +39,8 @@ class makeMapsFromMTZs():
                  Mtz3phaseLabel='PHIC', Mtz3FcalcLabel='FC',
                  Mtz3LabelRename='DP', inputPDBfile='./untitled.pdb',
                  densMapType='DIFF', scaleType='ANISOTROPIC',
-                 deleteMtzs=True, FOMweight='NONE', sfall_VDWR=1,
-                 mapResLimits=',', includeFCmaps=True,
+                 deleteIntermediateFiles=True, FOMweight='NONE',
+                 sfall_VDWR=1, mapResLimits=',', includeFCmaps=True,
                  useLaterCellDims=True, sfallGRIDdims=[]):
 
         # specify where output files should be written
@@ -65,7 +65,7 @@ class makeMapsFromMTZs():
         self.inputPDBfile = inputPDBfile
         self.densMapType = densMapType
         self.scaleType = scaleType
-        self.deleteMtzs = deleteMtzs
+        self.deleteIntermediateFiles = deleteIntermediateFiles
         self.FOMweight = FOMweight
         self.sfall_VDWR = sfall_VDWR
         self.mapResLimits = mapResLimits
@@ -167,21 +167,36 @@ class makeMapsFromMTZs():
             if not success:
                 return False
 
-        success = self.cropMapToAtomTaggedMap(densMap=self.densityMap)
+        success, mapOut = self.cropMapToAtomTaggedMap(
+          densMap=self.densityMap)
         if not success:
             return False
+        else:
+            self.densityMap = mapOut
 
         if self.includeFCmaps:
-            success = self.cropMapToAtomTaggedMap(densMap=self.FcalcMap)
+            success, mapOut = self.cropMapToAtomTaggedMap(
+              densMap=self.FcalcMap)
             if not success:
                 return False
+            else:
+                self.FcalcMap = mapOut
 
         self.reportCroppedMapInfo()
         success = self.mapConsistencyCheck()
         if not success:
             return False
 
-        self.cleanUpDir()
+        self.renameFinalMapFiles()
+        self.renameFinalPDBFile()
+
+        if self.deleteIntermediateFiles:
+            self.cleanUpDir(deleteUnwantedMapFiles=True,
+                            deleteUnwantedMtzFiles=True,
+                            deleteUnwantedPdbFiles=True)
+        else:
+            self.cleanUpDir()
+
         return True
 
     def moveInputMtzs(self):
@@ -283,29 +298,66 @@ class makeMapsFromMTZs():
         # run pdbcur job
 
         self.printStepNumber()
+
+        self.PDBCURoutputFile = '{}{}_PDBCUR.pdb'.format(
+            self.outputDir, self.jobName)
+
         pdbcur = PDBCURjob(inputPDBfile=self.inputPDBfile,
+                           outputPDBfile=self.PDBCURoutputFile,
                            outputDir=self.outputDir, runLog=self.runLog)
         success = pdbcur.run()
-        self.PDBCURoutputFile = pdbcur.outputPDBfile
         return success
+
+    def renumberPDBFile(self):
+
+        # reorder atoms in pdb file since some may be
+        # missing now after pdbcur has been run
+
+        self.runLog.writeToLog(
+            str='Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
+
+        self.reorderedPDBFile = '{}{}_curated.pdb'.format(
+            self.outputDir, self.jobName)
+
+        pdbin = open(self.PDBCURoutputFile, 'r')
+        pdbout = open(self.reorderedPDBFile, 'w')
+
+        counter = 0
+        for line in pdbin.readlines():
+            if ('ATOM' not in line[0:4] and 'HETATM' not in line[0:6]):
+                pdbout.write(line)
+            else:
+                counter += 1
+                pdbout.write(line[0:6])
+                new_atomnum = " "*(5-len(str(counter))) + str(counter)
+                pdbout.write(new_atomnum)
+                pdbout.write(line[11:80]+'\n')
+        pdbin.close()
+        pdbout.close()
+        self.runLog.writeToLog(
+            str='Output pdb file: {}'.format(self.reorderedPDBFile))
 
     def getAtomTaggedMap(self):
 
         # run SFALL job to generate atom tagged map
 
         self.printStepNumber()
+
+        atomMap = '{}{}_SFALL.map'.format(
+            self.outputDir, self.jobName)
+
         sfall = SFALLjob(inputPDBfile=self.reorderedPDBFile,
                          outputDir=self.outputDir, VDWR=self.sfall_VDWR,
-                         symmetrygroup=self.spaceGroup,
+                         symmetrygroup=self.spaceGroup, outputMapFile=atomMap,
                          gridDimensions=self.sfallGRIDdims, runLog=self.runLog)
         success = sfall.run()
 
-        sfallMap = mapTools(mapName=sfall.outputMapFile)
+        sfallMap = mapTools(mapName=atomMap)
         self.axes = [sfallMap.fastaxis, sfallMap.medaxis, sfallMap.slowaxis]
         self.gridSamps = [sfallMap.gridsamp1, sfallMap.gridsamp2,
                           sfallMap.gridsamp3]
 
-        self.atomTaggedMap = sfall.outputMapFile
+        self.atomTaggedMap = atomMap
 
         return success
 
@@ -340,6 +392,9 @@ class makeMapsFromMTZs():
         # run FFT job to generate density map
 
         self.printStepNumber()
+
+        densMap = '{}{}_FFT.map'.format(self.outputDir, self.jobName)
+
         if self.densMapType in ('DIFF', 'SIMPLE'):
             tags = ['FP_', 'SIGFP_', 'FOM_']
             labelsInit = [i+self.Mtz1LabelRename for i in tags] +\
@@ -362,6 +417,7 @@ class makeMapsFromMTZs():
                 fft = FFTjob(mapType=self.densMapType, mapTag=self.mapTag,
                              FOMweight=self.FOMweight, runLog=self.runLog,
                              pdbFile=self.reorderedPDBFile,
+                             outputMapFile=densMap,
                              mtzFile=self.densMapMtz, outputDir=self.outputDir,
                              axes=self.axes, gridSamps=self.gridSamps,
                              labels1=labelsLater, labels2=labelsInit,
@@ -371,6 +427,7 @@ class makeMapsFromMTZs():
                 fft = FFTjob(mapType=self.densMapType, mapTag=self.mapTag,
                              FOMweight=self.FOMweight, runLog=self.runLog,
                              pdbFile=self.reorderedPDBFile,
+                             outputMapFile=densMap,
                              mtzFile=self.densMapMtz, outputDir=self.outputDir,
                              axes=self.axes, gridSamps=self.gridSamps,
                              labels1=labelsInit, labels2=labelsLater,
@@ -492,35 +549,6 @@ class makeMapsFromMTZs():
 
         return mapmask.outputMapFile
 
-    def renumberPDBFile(self):
-
-        # reorder atoms in pdb file since some may be
-        # missing now after pdbcur has been run
-
-        self.runLog.writeToLog(
-            str='Renumbering input pdb file: {}'.format(self.PDBCURoutputFile))
-
-        self.reorderedPDBFile = self.PDBCURoutputFile.split(
-            '_pdbcur.pdb')[0]+'_reordered.pdb'
-
-        pdbin = open(self.PDBCURoutputFile, 'r')
-        pdbout = open(self.reorderedPDBFile, 'w')
-
-        counter = 0
-        for line in pdbin.readlines():
-            if ('ATOM' not in line[0:4] and 'HETATM' not in line[0:6]):
-                pdbout.write(line)
-            else:
-                counter += 1
-                pdbout.write(line[0:6])
-                new_atomnum = " "*(5-len(str(counter))) + str(counter)
-                pdbout.write(new_atomnum)
-                pdbout.write(line[11:80]+'\n')
-        pdbin.close()
-        pdbout.close()
-        self.runLog.writeToLog(
-            str='Output pdb file: {}'.format(self.reorderedPDBFile))
-
     def getSpaceGroup(self):
 
         # parse the space group from the input pdb file
@@ -563,9 +591,9 @@ class makeMapsFromMTZs():
                               mapFile2=self.atomTaggedMap,
                               outputDir=self.outputDir, runLog=self.runLog)
         success = mapmask3.cropMap2Map()
-        self.croppedDensityMap = mapmask3.outputMapFile
+        croppedDensityMap = mapmask3.outputMapFile
 
-        return success
+        return success, croppedDensityMap
 
     def reportCroppedMapInfo(self):
 
@@ -584,7 +612,7 @@ class makeMapsFromMTZs():
         # the grid dimensions/filtering are the same and the ordering
         # of the fast, medium, and slow axes are identical.
 
-        fftMap = mapTools(self.croppedDensityMap)
+        fftMap = mapTools(self.densityMap)
         fftMap.readHeader()
         sfallMap = mapTools(self.atomTaggedMap)
         sfallMap.readHeader()
@@ -622,43 +650,60 @@ class makeMapsFromMTZs():
         self.runLog.writeToLog(str='---> success!')
         return True
 
-    def cleanUpDir(self):
+    def renameFinalMapFiles(self):
+
+        # rename the final map files
+
+        shutil.move(self.densityMap,
+                    '{}{}_density.map'.format(self.outputDir, self.jobName))
+        shutil.move(self.atomTaggedMap,
+                    '{}{}_atoms.map'.format(self.outputDir, self.jobName))
+        if self.includeFCmaps:
+            shutil.move(self.FcalcMap,
+                        '{}{}_FC.map'.format(self.outputDir, self.jobName))
+
+    def renameFinalPDBFile(self):
+
+        # rename the final pdb file
+
+        shutil.move(self.reorderedPDBFile,
+                    '{}{}.pdb'.format(self.outputDir, self.jobName))
+
+    def cleanUpDir(self,
+                   deleteUnwantedMapFiles=False,
+                   deleteUnwantedMtzFiles=False,
+                   deleteUnwantedPdbFiles=False):
 
         # give option to clean up working directory
 
         self.runLog.writeToLog(str='\nCleaning up working directory...')
 
-        self.deleteNonFinalMtzs()
-
         # move txt files to subdir
         self.makeOutputDir(dirName='{}txtFiles/'.format(self.outputDir))
 
-        for file in os.listdir(self.outputDir):
-            if file.endswith('.txt') and file not in self.filesInDir:
-                args = [self.outputDir, file]
+        for f in os.listdir(self.outputDir):
+            if f.endswith('.txt') and f not in self.filesInDir:
+                args = [self.outputDir, f]
                 shutil.move('{}{}'.format(*args),
                             '{}txtFiles/{}'.format(*args))
 
-    def deleteNonFinalMtzs(self):
+            if deleteUnwantedMapFiles:
+                self.runLog.writeToLog(str='\n\tDeleting unwanted .map files')
+                if f.endswith('.map'):
+                    if not (f.endswith('_density.map') or
+                            f.endswith('_atoms.map') or
+                            f.endswith('_FC.map')):
+                        os.remove(self.outputDir+f)
 
-        # delete all non-final mtz files within run
-        # (such as those output by CAD before SCALEIT etc).
-        # Not current used at runtime!
-        return
+            if deleteUnwantedMtzFiles:
+                self.runLog.writeToLog(str='\n\tDeleting unwanted .mtz files')
+                if f.endswith('.mtz'):
+                    os.remove(self.outputDir+f)
 
-        # give option to delete all mtz files within
-        # output directory except the final resulting
-        # mtz for job - used to save room if necessary
-        if self.deleteMtzs.lower() != 'true':
-            return
-        if self.densMapType == '2FOFC':
-            fileEnd = 'sigmaa.mtz'
-        else:
-            fileEnd = 'SCALEITcombined.mtz'
-        for f in os.listdir(self.outputDir):
-            if ((f.endswith('.mtz') and not f.endswith(fileEnd)) or
-               f.endswith('.tmp')):
-                os.remove(self.outputDir+f)
+            if deleteUnwantedPdbFiles:
+                self.runLog.writeToLog(str='\n\tDeleting unwanted .pdb files')
+                if f.endswith('_PDBCUR.pdb'):
+                    os.remove(self.outputDir+f)
 
     def findFilesInDir(self):
 

@@ -127,6 +127,11 @@ class processFiles():
         else:
             sigFP2 = self.mtzlabels2_current
 
+        if self.useSeparatePDBperDataset():
+            pdb = self.pdb2_current
+        else:
+            pdb = self.pdb1_current
+
         p = makeMapsFromMTZs(
             outputDir=self.mapProcessDir, jobName=self.jobName,
             log=self.logFile, mtzIn1=self.mtz1_current,
@@ -137,23 +142,22 @@ class processFiles():
             Mtz2LabelRename=self.name2_current, mtzIn3=self.mtz3_current,
             Mtz3phaseLabel=self.phaseLabel_current,
             Mtz3FcalcLabel=self.FcalcLabel_current,
-            Mtz3LabelRename=self.name3_current, inputPDBfile=self.pdb2_current,
+            Mtz3LabelRename=self.name3_current, inputPDBfile=pdb,
             densMapType=self.densMapType, scaleType=self.scaleType,
             FOMweight=self.FFTmapWeight,
-            deleteMtzs=self.deleteIntermediateFiles,
             sfall_VDWR=self.sfall_VDWR, mapResLimits=self.mapResLimits,
             includeFCmaps=self.includeFCmaps(),
-            useLaterCellDims=self.useLaterCellDims)
+            useLaterCellDims=self.useLaterCellDims,
+            deleteIntermediateFiles=self.deleteUnwantedFiles())
 
         success = p.runPipeline()
         self.mtzToMapsPipelineLog = p.runLog.logFile
         if success:
             self.logFile.writeToLog(str='---> Subroutine ran to completion.')
-            if self.deleteIntermediateFiles.lower() == 'true':
-                success = self.cleanUpIntermediateFiles()
-            else:
-                success = self.cleanUpIntermediateFiles(
-                        removeMtzs=False, removeMaps=False, removePdbs=False)
+
+            # move initial dataset pdb files to working directory
+            self.moveInitialPDBfile()
+
         else:
             self.writeError(text='Subroutine failed to run to completion')
 
@@ -283,7 +287,10 @@ class processFiles():
 
         self.props1 = ['name1', 'mtz1', 'mtzlabels1', 'pdb1', 'RfreeFlag1']
 
-        self.props2 = ['name2', 'mtz2', 'mtzlabels2', 'pdb2']
+        self.props2 = ['name2', 'mtz2', 'mtzlabels2']
+
+        if self.useSeparatePDBperDataset():
+            self.props2.append('pdb2')
 
         self.props3 = ['name3', 'mtz3', 'phaseLabel', 'FcalcLabel']
 
@@ -314,7 +321,7 @@ class processFiles():
                  'pklDataFile']
 
         defaults = [1, ',', 'ANISOTROPIC', 'DIFF',
-                    'False', 'FALSE', 'TRUE', 'TRUE', '']
+                    'False', 'FALSE', 'TRUE', 'FALSE', '']
 
         for i, prop in enumerate(props):
             try:
@@ -897,19 +904,51 @@ class processFiles():
 
         return doses
 
-    def createDatasetName(self):
+    def deleteUnwantedFiles(self):
+
+        if self.deleteIntermediateFiles.upper() == 'TRUE':
+            return True
+        else:
+            return False
+
+    def useSeparatePDBperDataset(self):
+
+        # decide whether a separate pdb file should be used per dataset
+        # (using the PDB2 line). This is currently controlled by the
+        # 'useLaterCellDims' input, since maps must be generated over
+        # later unit cell dimensions if the pdb file changes with dataset
+        # number
+
+        if self.useLaterCellDims.upper() == 'TRUE':
+            return True
+        else:
+            return False
+
+    def createDatasetName(self,
+                          fmt=2):
 
         # create dataset name here, used to distinguish
         # input file naming scheme (if name2 not the same
         # as pdb2 then this is required)
 
-        self.dsetName = (self.pdb2_current).split('/')[-1].replace('.pdb', '')
+        if fmt == 1:
+            d = '{}-{}'.format(self.name2_current, self.name1_current)
+        else:
+            d = self.name2_current
 
-    def setJobName(self):
+        self.dsetName = d
+
+    def setJobName(self,
+                   fmt=2):
 
         # set a name for the current job
 
-        self.jobName = '{}-{}'.format(self.name2_current, self.name1_current)
+        if fmt == 1:
+            j = '{}-{}'.format(self.name2_current, self.name1_current)
+        else:
+            j = self.name2_current
+
+        self.jobName = j
 
     def findFilesInDir(self,
                        mapProcessDir=True):
@@ -920,99 +959,6 @@ class processFiles():
             self.filesInDir = os.listdir(self.mapProcessDir)
         else:
             self.filesInDir = os.listdir(self.dir)
-
-    def cleanUpIntermediateFiles(self,
-                                 removeMtzs=True, removeMaps=True,
-                                 removePdbs=True, includeFCmap=True):
-
-        # after successful completion of the map processing
-        # part of the pipeline for each SINGLE dataset
-        # clean up working directory
-
-        self.logFile.writeToLog(str='\nCleaning up working directory.')
-
-        # distinguish between FFT and END map output formats
-        # depending on program used (FFT/END shellscript)
-        if self.densMapType == 'END':
-            densMapProg = 'END_switchedAxes'
-        else:
-            densMapProg = 'fft'
-
-        m = [self.mapProcessDir]
-        params = m + [self.dsetName]
-        renameParams = m + [self.name2_current]
-        # renameParams2 = m + [self.name1_current]
-
-        keyLogFiles = [self.mtzToMapsPipelineLog]
-
-        if self.densMapType != 'END':
-            mapFiles = ['{}{}-{}-{}_cropped_cropped.map'.format(
-                self.mapProcessDir, self.dsetName,
-                self.densMapType, densMapProg)]
-        else:
-            mapFiles = ['{}{}-{}_cropped_cropped.map'.format(
-                self.mapProcessDir, self.dsetName, densMapProg)]
-        mapFiles += ['{}{}_sfall_cropped.map'.format(*params)]
-
-        renameMaps = ['{}{}_density.map'.format(*renameParams),
-                      '{}{}_atoms.map'.format(*renameParams)]
-
-        # cannot keep FC maps if they were never made
-        if not self.includeFCmaps():
-            includeFCmap = False
-
-        if includeFCmap:
-            mapFiles += ['{}{}-FC-{}_cropped_cropped.map'.format(
-                self.mapProcessDir, self.dsetName, densMapProg)]
-            renameMaps += ['{}{}_FC.map'.format(*renameParams)]
-
-        pdbFiles = ['{}{}_reordered.pdb'.format(*params)]
-        renamePDB = ['{}{}.pdb'.format(*renameParams)]
-
-        outputFiles = mapFiles + pdbFiles
-        renameFiles = renameMaps + renamePDB
-
-        subdir = '{}{}_additionalFiles/'.format(
-            self.mapProcessDir, self.jobName)
-        self.makeOutputDir(dirName=subdir)
-
-        keyFiles = keyLogFiles + mapFiles + pdbFiles
-        for file in os.listdir(self.mapProcessDir):
-            if file.endswith('_additionalFiles'):
-                continue
-            if file not in self.filesInDir:
-                fileName = '{}{}'.format(self.mapProcessDir, file)
-                if fileName not in keyFiles:
-                    shutil.move(fileName, '{}{}'.format(subdir, file))
-
-        for file in os.listdir(subdir):
-            remove = False
-            if removeMtzs and file.endswith('.mtz'):
-                remove = True
-            if removeMaps and file.endswith('.map'):
-                remove = True
-            if removePdbs and file.endswith('.pdb'):
-                remove = True
-            if remove:
-                os.remove(subdir + file)
-
-        shutil.make_archive(subdir, 'zip', subdir)
-        shutil.rmtree(subdir)
-
-        # rename final map & pdb files
-        for i in range(len(outputFiles)):
-            shutil.move(outputFiles[i], renameFiles[i])
-
-        # move initial dataset pdb files to working directory
-        self.moveInitialPDBfile()
-
-        # check that resulting files are found
-        self.findFilesInDir()
-        for f in renameFiles:
-            if f.split('/')[-1] not in self.filesInDir:
-                self.writeError(text='Not all key output files found')
-                return False
-        return True
 
     def moveInitialPDBfile(self):
 
