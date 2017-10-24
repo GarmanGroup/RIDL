@@ -1,7 +1,6 @@
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm, plotDensForAtm
 from perAtomClusterAnalysis import perAtomClusterAnalysis
 from densityAnalysisPlots import edens_scatter
-from savevariables import save_objectlist
 from itertools import izip as zip
 from PDBFileManipulation import PDBtoList
 from readMap import readMap
@@ -82,8 +81,6 @@ class maps2DensMetrics():
         if self.plotScatter:
             self.plotDensScatterPlots()
 
-        self.pickleAtomList()
-
     def readPDBfile(self):
 
         # read in pdb file info here. A list of atom objects
@@ -96,7 +93,7 @@ class maps2DensMetrics():
         self.lgwrite(ln='Reading pdb file: {}'.format(self.pdbName))
 
         # read in the pdb file to fill list of atom objects
-        self.PDBarray = PDBtoList('{}{}.pdb'.format(
+        self.PDBarray = PDBtoList('{}{}'.format(
             self.filesIn, self.pdbName))
         self.stopTimer()
 
@@ -723,12 +720,6 @@ class maps2DensMetrics():
                                    PDBarray=self.PDBarray,
                                    pdbName=self.pdbName)
             self.lgwrite(ln=logStr)
-
-    def pickleAtomList(self):
-
-        # save list of atom objects to a .pkl file
-
-        self.pklFileName = save_objectlist(self.PDBarray, self.pdbName)
 
     def startTimer(self):
 

@@ -1,6 +1,9 @@
 from makeMapsFromMTZs import makeMapsFromMTZs
 from calculateMetrics import calculateMetrics
 from cleanUpFiles import cleanUpFinalFiles
+from ridlFeedback import provideFeedback
+from furtherOutput import furtherAnalysis
+from savevariables import retrieveGenericObject
 from errors import error
 import difflib
 import shutil
@@ -101,21 +104,24 @@ class processFiles():
                     'higher dose datasets located for this job.')
 
             for i in range(self.numDsets):
+                if i == 0:
+                    firstTimeRun = True
+                else:
+                    firstTimeRun = False
                 self.logFile.writeToLog(
                     str='\n{}\nHigher dose '.format('-'*33) +
                         'dataset {} starts here'.format(i+1))
                 self.getCurrentInputParams(jobNumber=i)
-                success = self.runMapGenerationPipeline()
+                success = self.runMapGenerationPipeline(firstTimeRun)
                 if not success:
                     return success
 
         return success
 
-    def runMapGenerationPipeline(self):
+    def runMapGenerationPipeline(self,
+                                 firstTimeRun=True):
 
         # run the map generation pipeline for a single dataset
-
-        self.setJobName()
 
         if self.sepSIGFPlabel1:
             sigFP1 = self.mtzSIGFPlabel1_current
@@ -127,14 +133,23 @@ class processFiles():
         else:
             sigFP2 = self.mtzlabels2_current
 
+        pam, sg, am, ma, gs = '', '', '', [], []
+        fcMaps = self.includeFCmaps()
         if self.useSeparatePDBperDataset():
             pdb = self.pdb2_current
         else:
             pdb = self.pdb1_current
+            am = self.name1_current
+            if not firstTimeRun:
+                pam = self.copySameRunInfo['atomMapName']
+                sg = self.copySameRunInfo['spaceGroup']
+                ma = self.copySameRunInfo['axes']
+                gs = self.copySameRunInfo['gridsamp']
+                fcMaps = False
 
         p = makeMapsFromMTZs(
-            outputDir=self.mapProcessDir, jobName=self.jobName,
-            log=self.logFile, mtzIn1=self.mtz1_current,
+            outputDir=self.mapProcessDir, densMapNaming=self.name2_current,
+            atomMapNaming=am, log=self.logFile, mtzIn1=self.mtz1_current,
             Mtz1LabelName=self.mtzlabels1_current,
             RfreeFlag1=self.RfreeFlag1_current, Mtz1SIGFPlabel=sigFP1,
             Mtz1LabelRename=self.name1_current, mtzIn2=self.mtz2_current,
@@ -144,11 +159,13 @@ class processFiles():
             Mtz3FcalcLabel=self.FcalcLabel_current,
             Mtz3LabelRename=self.name3_current, inputPDBfile=pdb,
             densMapType=self.densMapType, scaleType=self.scaleType,
-            FOMweight=self.FFTmapWeight,
+            FOMweight=self.FFTmapWeight, firstTimeRun=firstTimeRun,
             sfall_VDWR=self.sfall_VDWR, mapResLimits=self.mapResLimits,
-            includeFCmaps=self.includeFCmaps(),
-            useLaterCellDims=self.useLaterCellDims,
-            deleteIntermediateFiles=self.deleteUnwantedFiles())
+            includeFCmaps=fcMaps,
+            useLaterCellDims=self.useSeparatePDBperDataset(),
+            deleteIntermediateFiles=self.deleteUnwantedFiles(),
+            premadeAtomMap=pam, gridSampBeforeCropping=gs,
+            mapAxisOrder=ma, spaceGroup=sg)
 
         success = p.runPipeline()
         self.mtzToMapsPipelineLog = p.runLog.logFile
@@ -160,6 +177,16 @@ class processFiles():
 
         else:
             self.writeError(text='Subroutine failed to run to completion')
+
+        if firstTimeRun and not self.useSeparatePDBperDataset():
+            # in the case where the same PDB file is used for each dataset
+            # the atom-map is only generated once. Use this information
+            # to properly define and density maps generated for each dataset
+            self.copySameRunInfo = {'atomMapName': p.atomTaggedMap,
+                                    'FcMapName': p.FcalcMap,
+                                    'axes': p.axes,
+                                    'gridsamp': p.gridSamps,
+                                    'spaceGroup': p.spaceGroup}
 
         return success
 
@@ -193,11 +220,34 @@ class processFiles():
 
         self.logFile.writeToLog(str='\n\n**** METRIC CALCULATIONS ****\n')
 
-        c = calculateMetrics(logFile=self.logFile, laterDatasets=self.name2,
+        names2 = self.name2.split(',')
+        if self.repeatedFile1InputsUsed:
+            names1 = [self.name1]*len(names2)
+        else:
+            names1 = self.name1
+
+        densMapList = ['{}_density.map'.format(d) for d in names2]
+
+        if self.useSeparatePDBperDataset():
+            atomMapList = ['{}_atoms.map'.format(d) for d in names2]
+            pdbFileList = ['{}.pdb'.format(d) for d in names2]
+        else:
+            atomMapList = ['{}_atoms.map'.format(d) for d in names1]
+            pdbFileList = ['{}.pdb'.format(d) for d in names1]
+
+        if self.includeFCmaps():
+            if self.useSeparatePDBperDataset():
+                FcMapList = ['{}_FC.map'.format(d) for d in names2]
+            else:
+                FcMapList = ['{}_FC.map'.format(d) for d in names1]
+
+        c = calculateMetrics(logFile=self.logFile, densMapList=densMapList,
+                             atomMapList=atomMapList, FcMapList=FcMapList,
                              inclFCmets=self.includeFCmaps(), outDir=self.dir,
                              mapDir=self.mapProcessDir, initialPDB=self.name1,
                              seriesName=seriesName, doses=self.getDoses(),
                              pklDataFile=self.pklDataFile, autoRun=True,
+                             pdbFileList=pdbFileList,
                              RIDLinputFile=self.inputFile)
 
         self.pklDataFile = c.pklDataFile
@@ -210,10 +260,6 @@ class processFiles():
         # write feedback files for current RIDL job. if csvOnly is True then
         # ONLY csv files will be output from the run (i.e. no html summary
         # file and no plots)
-
-        from ridlFeedback import provideFeedback
-        from furtherOutput import furtherAnalysis
-        from savevariables import retrieveGenericObject
 
         # retrieve list of atom objects from .pkl file
 
@@ -336,9 +382,13 @@ class processFiles():
 
         # check that the required properties have correct formats
 
-        props = ['mtz1', 'pdb1', 'mtz2', 'pdb2', 'mtz3']
+        props = ['mtz1', 'pdb1', 'mtz2', 'mtz3']
 
-        fType = ['.mtz', '.pdb']*2+['.mtz']
+        fType = ['.mtz', '.pdb', '.mtz', '.mtz']
+
+        if self.useSeparatePDBperDataset():
+            props.append('pdb2')
+            fType.append('.pdb')
 
         for p, t in zip(props, fType):
             if not self.multiDatasets:

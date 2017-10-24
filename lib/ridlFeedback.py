@@ -76,7 +76,8 @@ class provideFeedback(object):
                 n = 'Standard'
             else:
                 n = 'Calpha normalised'
-            self.summaryFile(metric='loss', normType=n)
+
+            self.summaryHTML(primaryMetric='loss', primaryNorm=n)
 
         if self.writeTopSites:
             self.writeDamSitesToFile()
@@ -178,12 +179,13 @@ class provideFeedback(object):
                     move('{}{}'.format(self.outputDir, fName),
                          '{}csvFiles/{}{}'.format(self.outputDir, loc, fName))
 
-    def summaryFile(self,
-                    metric='loss', normType='Standard'):
+    def summaryHTML(self,
+                    primaryMetric='loss', primaryNorm='Calpha normalised'):
 
-        # write a summary output file (only html currently available)
+        # produce a selection of per-dataset summary statistics
+        # and write in a HTML summary format
 
-        if normType == 'Calpha normalised' and not self.calphaPresent:
+        if primaryNorm == 'Calpha normalised' and not self.calphaPresent:
             error(
                 text='Error! Tried to write summary file for ' +
                      'Calpha-normalised metric but not such metric exists',
@@ -191,15 +193,7 @@ class provideFeedback(object):
 
         self.logFile.writeToLog(
             str='Writing HTML summary output file for metric:' +
-                ' {}, normalisation: {}'.format(metric, normType))
-
-        self.summaryHTML(primaryMetric=metric, primaryNorm=normType)
-
-    def summaryHTML(self,
-                    primaryMetric='loss', primaryNorm='Calpha normalised'):
-
-        # produce a selection of per-dataset summary statistics
-        # and write in a HTML summary format
+                ' {}, normalisation: {}'.format(primaryMetric, primaryNorm))
 
         calphaNorm = 'C<sub>&#945</sub>-normalised'
 
@@ -252,16 +246,16 @@ class provideFeedback(object):
                 '{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(
                     norm.replace(' ', ''), norm, m)
 
-        bodyString += '<li><a href = "plots/{}{}">'.format(
-            subdir, figName.split('/')[-1]) +\
+        bodyString += '<li><a href = "{}{}">'.format(
+            plotDir, figName.split('/')[-1]) +\
             'Top 25 damage sites per residue/nucleotide type</a></li>'
 
         # create heatmap plots (large files) if requested
         if self.plotHeatMaps:
             for m, norm in zip([primaryMetric]*len(norms), norms):
-                bodyString += '<li><a href = "plots/metric_heatmap/' +\
-                              'heatmap_metric-{}_normalisation-'.format(m) +\
-                              '{}.svg">{} D<sub>{}'.format(
+                bodyString += '<li><a href="RIDL-metrics/plots/metric_heatm' +\
+                              'ap/heatmap_metric-{}_normalisation'.format(m) +\
+                              '-{}.svg">{} D<sub>{}'.format(
                                 norm.replace(' ', ''), norm, m) +\
                               '</sub> per-atom heat map</a></li></ul>'
         else:
@@ -313,22 +307,22 @@ class provideFeedback(object):
                              '_Normalisation-{}_topDamSites'.format(norm))
 
                 figCallsLinePlots.append(
-                    '<img class="img-responsive" src="plots/{}{}">'.format(
-                        subdir, figName.split('/')[-1]))
+                    '<img class="img-responsive" src="{}{}">'.format(
+                        plotDir, figName.split('/')[-1]))
 
             # make distn plots over entire structure to indicate
             # the role of Calpha normalisation
             subdir = 'metricDistn_allAtoms/'
-            outDir = self.makeNewPlotSubdir(subdir=subdir)
+            plotDir = self.makeNewPlotSubdir(subdir=subdir)
 
             for n in norms:
                 data, saveName = self.makeDistnPlots(
                     densMet=primaryMetric, normType=n, plotSet=4,
-                    outputDir=outDir, dataset='all')
+                    outputDir=plotDir, dataset='all')
 
                 figCallsDistnPlots.append(
-                    '<img class="img-responsive" src="plots/{}{}">'.format(
-                        subdir, saveName.split('/')[-1]))
+                    '<img class="img-responsive" src="{}{}">'.format(
+                        plotDir, saveName.split('/')[-1]))
 
             info = '<h3>Metric distribution</h3>\n<div class = "row">\n'
             for f in figCallsDistnPlots:
@@ -414,14 +408,14 @@ class provideFeedback(object):
             t = 'D<sub>{}</sub> Distribution Plots'.format(primaryMetric)
 
             subdir = 'metricDistn_allAtoms/'
-            outDir = self.makeNewPlotSubdir(subdir=subdir)
+            plotDir = self.makeNewPlotSubdir(subdir=subdir)
 
             failedPlots = self.makeDistnPlots(
                 densMet=primaryMetric, normType=plotNorm, plotSet=4,
-                outputDir=outDir, dataset=i)
+                outputDir=plotDir, dataset=i)
 
-            figCall = '<img class="img-responsive" src="plots/' +\
-                      '{}DistnPlot_Residues-all_Metric-D'.format(subdir) +\
+            figCall = '<img class="img-responsive" src="' +\
+                      '{}DistnPlot_Residues-all_Metric-D'.format(plotDir) +\
                       '{}_Normalisation-{}_Dataset-{}.svg">'.format(
                         primaryMetric, plotNorm.replace(' ', ''), i)
             figInfo = '<div class = "row">\n' +\
@@ -432,16 +426,16 @@ class provideFeedback(object):
 
             for paramSet in params:
                 subdir = 'metricDistn_key{}/'.format(paramSet[0])
-                outDir = self.makeNewPlotSubdir(subdir=subdir)
+                plotDir = self.makeNewPlotSubdir(subdir=subdir)
 
                 failedPlots, saveName = self.makeDistnPlots(
                     densMet=primaryMetric, normType=plotNorm,
-                    plotSet=paramSet[1], outputDir=outDir, dataset=i)
+                    plotSet=paramSet[1], outputDir=plotDir, dataset=i)
 
                 if not failedPlots[paramSet[2]]:
-                    figCall = '<img class="img-responsive" src="plots/' +\
+                    figCall = '<img class="img-responsive" src="' +\
                               '{}{}"><br>'.format(
-                                subdir, saveName.split('/')[-1])
+                                plotDir, saveName.split('/')[-1])
                     figInfo += '<div class = "col-sm-6">{}</div>\n'.format(
                         figCall)
 
@@ -455,7 +449,7 @@ class provideFeedback(object):
             # current dataset given here
 
             subdir = 'topNatoms/'
-            outDir = self.makeNewPlotSubdir(subdir=subdir)
+            plotDir = self.makeNewPlotSubdir(subdir=subdir)
 
             # choose the order to plot the metrics for the dot plot
             # (including normalisation types). atoms will be ordered
@@ -481,8 +475,8 @@ class provideFeedback(object):
                 numHits=25)
 
             t = 'Top 25 damage sites'
-            c = '<img class="img-responsive" src="plots/{}{}">'.format(
-                subdir, saveName.split('/')[-1])
+            c = '<img class="img-responsive" src="{}{}">'.format(
+                plotDir, saveName.split('/')[-1])
 
             self.writeHtmlDropDownPanel(title=t, content=c,
                                         dataset=i, sumFile=summaryFile)
@@ -843,7 +837,7 @@ class provideFeedback(object):
 
         title = ''
         if plotSet == 1:
-            resList = [['GLU' 'ASP', 'CYS', 'MET', 'TYR']]
+            resList = [['GLU', 'ASP', 'CYS', 'MET', 'TYR']]
             title = 'Predicted susceptible residue types'
         elif plotSet == 2:
             resList = [['GLU', 'GLN'], ['ASP', 'ASN'], ['ILE', 'LEU'],

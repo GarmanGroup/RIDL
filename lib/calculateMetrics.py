@@ -1,5 +1,5 @@
 from combinedAtomList import combinedAtomList
-from savevariables import retrieve_objectlist
+from savevariables import retrieve_objectlist, save_objectlist
 from savevariables import saveGenericObject
 from PDBFileManipulation import PDBtoList
 from mapsToDensityMetrics import maps2DensMetrics
@@ -24,7 +24,8 @@ class calculateMetrics(object):
                  mapDir='./', outDir='./', pklFiles=[],
                  initialPDB="", seriesName="untitled-series", pklDataFile="",
                  doses=[], plot='no', output='simple', logFile='',
-                 inclFCmets=True, laterDatasets=[], autoRun=True,
+                 inclFCmets=True, densMapList=[], atomMapList=[],
+                 pdbFileList=[], FcMapList=[], autoRun=True,
                  RIDLinputFile='untitled.txt'):
 
         # the input map file directory
@@ -39,8 +40,17 @@ class calculateMetrics(object):
         # the first dataset pdb code
         self.initialPDB = initialPDB
 
-        # the list of later dataset pdb files
-        self.laterDatasets = laterDatasets.split(',')
+        # list of density maps
+        self.densMapList = densMapList
+
+        # list of atom-tagged maps
+        self.atomMapList = atomMapList
+
+        # list of Fcalc maps (if available)
+        self.FcMapList = FcMapList
+
+        # list of PDB files
+        self.pdbFileList = pdbFileList
 
         # the general series name
         self.seriesName = seriesName
@@ -74,7 +84,7 @@ class calculateMetrics(object):
         # number of later datasets, assume same initial dataset
         # used for every later dataset (fix as first one given)
         initialPDBs = self.initialPDB.split(',')
-        numLaterDsets = len(self.laterDatasets)
+        numLaterDsets = len(self.densMapList)
         if len(initialPDBs) != numLaterDsets:
             initialPDBs = [initialPDBs[0]]*numLaterDsets
         l = []
@@ -185,14 +195,12 @@ class calculateMetrics(object):
         self.makeOutputDir(dirName='{}{}'.format(self.outputDir, pklFileDir))
 
         pklFileNames = []
-        i = 0
-        for d, initPDB in zip(self.laterDatasets, self.initialPDB):
-            i += 1
-            # derive per-atom density metrics from maps
-            mapName1 = '{}_atoms.map'.format(d)
-            mapName2 = '{}_density.map'.format(d)
-            # mapName3 = initPDB.replace('.pdb','_FC.map')
-            mapName3 = '{}_FC.map'.format(d)
+
+        for i in range(len(self.densMapList)):
+            atomMap = self.atomMapList[i]
+            densMap = self.densMapList[i]
+            FcMap = self.FcMapList[i]
+            pdbFile = self.pdbFileList[i]
 
             self.logFile.writeToLog(
                 str='\n---------------------------------\n' +
@@ -200,17 +208,23 @@ class calculateMetrics(object):
 
             maps2DensMets = maps2DensMetrics(filesIn=self.mapDir,
                                              filesOut=self.outputDir,
-                                             pdbName=d, atomTagMap=mapName1,
-                                             densityMap=mapName2,
-                                             FCmap=mapName3,
+                                             pdbName=pdbFile,
+                                             atomTagMap=atomMap,
+                                             densityMap=densMap,
+                                             FCmap=FcMap,
                                              plotHist=self.plot,
                                              logFile=self.logFile,
                                              calcFCmap=self.inclFCmets)
 
             maps2DensMets.maps2atmdensity()
 
-            # move pkl file to working output directory
-            pklFileName = maps2DensMets.pklFileName
+            # # move pkl file to working output directory
+            # pklFileName = maps2DensMets.pklFileName
+
+            # save list of atom objects to a .pkl file
+            tag = densMap.replace('_density.map', '')
+
+            pklFileName = save_objectlist(maps2DensMets.PDBarray, tag)
 
             move(pklFileName,
                  '{}{}{}'.format(self.outputDir, pklFileDir, pklFileName))
