@@ -130,10 +130,10 @@ class MAPMASKjob():
         success = self.provideFeedback()
         return success
 
-    def multipleByFactor(self,
+    def multiplyByFactor(self,
                          includeDir=False, factor=-1.0, symGroup=""):
 
-        # multiple all points in a density
+        # multiply all points in a density
         # map file by a constant factor
 
         self.printPurpose(mode='Multiply by factor')
