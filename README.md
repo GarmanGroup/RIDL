@@ -182,8 +182,6 @@ Several command line flags are required to run the program:
 
 - `-s` (optional) 'silent mode' can be used to prevent any text being output to the command line at run time.
 
-- `-g` (optional) can be used to prevent any graphs from being plotted at run time (will speed up the run). 
-
 - `--rigid` can be used to run to generate higher dose dataset coordinate models through a scripted REFMAC rigid body refine job (see section "What data are needed to run RIDL?" above).
 
 - `--remove_maps` can be used to used remove the generated RIDL-maps/ directory that is generated at runtime. This may be useful if RIDL is to be run repeatedly and storage of many generated .map files becomes a memory burden.
