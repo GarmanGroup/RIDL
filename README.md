@@ -29,9 +29,9 @@ Please email *charles.bury@dtc.ox.ac.uk*
 ## Quick hints:
 
 - The RIDL pipeline has been broken down into 3 components:
--- map generation: ```-p```
--- metric calculation: ```-c```
--- output file generation: ```-o```
+    - map generation: ```-p```
+    - metric calculation: ```-c```
+    - output file generation: ```-o```
 - All three steps can be run at once: ```python runRIDL.py -i input.txt -pco```, or as 3 sequential command line calls. 
 
 - To save room, use the additional command line flag ```--remove_maps``` to remove any generated .map files after a run has finished: ```python runRIDL.py -i input.txt -pco --remove_maps```
