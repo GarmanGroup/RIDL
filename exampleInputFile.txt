@@ -12,7 +12,6 @@ LATERDATASET
 name2 1qie,1qif
 mtz2 ./testOutput/1qie/1qie.mtz,./testOutput/1qif/1qif.mtz
 mtzlabels2 FP_1qie,FP_1qif
-pdb2 ./testOutput/1qie/1qie.pdb,./testOutput/1qif/1qif.pdb
 dose2 2,3
 
 PHASEDATASET
@@ -20,9 +19,3 @@ name3 1qid
 mtz3 ./testOutput/1qid/1qid.mtz
 phaseLabel PHIC
 FcalcLabel FC
-
-MAPINFO
-sfall_VDWR 1
-densMapType DIFF
-FFTmapWeight False
-deleteIntermediateFiles TRUE
