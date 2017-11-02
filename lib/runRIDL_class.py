@@ -20,6 +20,7 @@ class process():
                  makeMaps=True,
                  makeMetrics=False,
                  cleanUpFinalFiles=False,
+                 printverboseOutput=False,
                  printOutput=True,
                  makeSummaryFile=False,
                  keepMapDir=True):
@@ -29,6 +30,7 @@ class process():
         self.makeMetrics = makeMetrics
         self.makeSummaryFile = makeSummaryFile
         self.cleanUpFinalFiles = cleanUpFinalFiles
+        self.printverboseOutput = printverboseOutput
         self.printOutput = printOutput
         self.keepMapDir = keepMapDir
 
@@ -210,7 +212,8 @@ MAPINFO
         uniqLogName = logName(i)
 
         log = logFile(fileName=uniqLogName, fileDir=self.outputDir,
-                      printToScreen=self.printOutput)
+                      printToScreenMajor=self.printOutput,
+                      printToScreenMinor=self.printverboseOutput)
         self.logFile = log
 
     def checkOutputDirExists(self,

@@ -106,8 +106,8 @@ class maps2DensMetrics():
 
         self.printStepNumber()
         self.startTimer()
-        self.lgwrite(ln='Reading atom-tagged map file...')
-        self.lgwrite(ln='Atom map name: {}'.format(self.map1))
+        self.lgwrite(ln='Reading atom-tagged map file...\n' +
+                        'Atom map name: {}'.format(self.map1))
 
         self.atmmap, self.atomIndices = readMap(
             dirIn=self.filesIn, dirOut=self.filesOut, mapName=self.map1,
@@ -136,8 +136,8 @@ class maps2DensMetrics():
 
         self.printStepNumber()
         self.startTimer()
-        self.lgwrite(ln='Reading density map file...')
-        self.lgwrite(ln='Density map name: {}'.format(self.map2))
+        self.lgwrite(ln='Reading density map file...\n' +
+                        'Density map name: {}'.format(self.map2))
 
         self.densmap = readMap(dirIn=self.filesIn, dirOut=self.filesOut,
                                mapName=self.map2, mapType='density_map',
@@ -152,8 +152,8 @@ class maps2DensMetrics():
 
         self.printStepNumber()
         self.startTimer()
-        self.lgwrite(ln='Reading Fcalc density map file...')
-        self.lgwrite(ln='Density map name: {}'.format(self.map3))
+        self.lgwrite(ln='Reading Fcalc density map file...\n' +
+                        'Density map name: {}'.format(self.map3))
 
         self.FCmap = readMap(dirIn=self.filesIn, dirOut=self.filesOut,
                              mapName=self.map3, mapType='density_map',
@@ -248,7 +248,6 @@ class maps2DensMetrics():
                 len(self.atmmap.vxls_val)))
 
     def createVoxelList(self,
-                        plotVoxelsAssignedToAtoms=False,
                         getVoxelXYZs=False):
 
         # create dictionary of voxels with atom numbers as keys
@@ -269,13 +268,13 @@ class maps2DensMetrics():
         if getVoxelXYZs:
             xyz_list = self.densmap.getVoxXYZ(
                 self.atomIndices, coordType='fractional')
+
             for atm, xyz in zip(self.atmmap.vxls_val, xyz_list):
                 xyzDic[atm].append(xyz)
 
-            # can visualise voxel positions if required
-            if plotVoxelsAssignedToAtoms:
-                self.plot3DvoxelPositions(xyzDic)
             self.xyzsPerAtom = xyzDic
+
+            self.meanXYZ = np.mean(xyz_list, 0)
 
         self.vxlsPerAtom = vxlDic
 
@@ -287,60 +286,6 @@ class maps2DensMetrics():
 
         self.deleteMapsAttributes()
         self.stopTimer()
-
-    def plot3DvoxelPositions(self,
-                             xyzDic={}, xMin=0.48, xMax=1, yMin=0,
-                             yMax=0.34, zMin=0.75, zMax=0.8):
-
-        # Allow the plotting of the 3D locations of all
-        # voxels assigned to atoms within the grid limits
-        # specified by (xMin,xMax), (yMin,yMax) and (zMin,zMax).
-        # This should not be selected in a standard run of
-        # the code, however can be used for testing that
-        # voxels have been suitably assigned to atoms
-
-        import matplotlib.pyplot as plt
-        xSubset, ySubset, zSubset = [], [], []
-
-        count = 0
-        colors = []
-        for atm in xyzDic.keys():
-            xyz = xyzDic[atm]
-            found = False
-            for i in range(len(xyz)):
-                if xyz[i][0] > yMin and xyz[i][0] < yMax:
-                    if xyz[i][1] > yMin and xyz[i][1] < yMax:
-                        if xyz[i][2] > zMin and xyz[i][2] < zMax:
-                            if not found:
-                                count += 1
-                            xSubset.append(xyz[i][0])
-                            ySubset.append(xyz[i][1])
-                            zSubset.append(xyz[i][2])
-                            colors.append(count)
-                            found = True
-
-        colorsFinal = []
-        for col in colors:
-            if col % 5 == 0:
-                colorsFinal.append('r')
-            elif col % 5 == 1:
-                colorsFinal.append('b')
-            elif col % 5 == 2:
-                colorsFinal.append('b')
-            elif col % 5 == 3:
-                colorsFinal.append('b')
-            elif col % 5 == 4:
-                colorsFinal.append('b')
-            else:
-                colorsFinal.append('b')
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(xSubset, ySubset, zSubset, s=10, c=colorsFinal)
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        plt.show()
 
     def deleteMapsAttributes(self):
 
@@ -360,8 +305,8 @@ class maps2DensMetrics():
 
         self.startTimer()
         self.printStepNumber()
-        self.lgwrite(ln='Plotting histogram plots of voxels per atom...')
-        self.lgwrite(ln='Plots written to "{}plots"'.format(self.filesOut))
+        self.lgwrite(ln='Plotting histogram plots of voxels per atom...\n' +
+                        'Plots written to "{}plots"'.format(self.filesOut))
 
         stats = plotVxlsPerAtm(pdbName=self.pdbName, where=self.filesOut,
                                vxlsPerAtom=self.vxlsPerAtom, plotType='both',
@@ -421,25 +366,23 @@ class maps2DensMetrics():
                 atom.meanNegOnly = 0
 
             if self.calcFCmap:
-                # if the user has opted to calculate an Fcalc
-                # map in addition to the difference map, then
-                # additional metrics can be derived using this
-                # map. These metrics typically use the Fcalc
-                # map density at each voxel to weight the
-                # contribution that each voxel's difference map
-                # value should play when calculating damage metrics.
-                # Effectively, a voxel far from an atom (but still
-                # included in the search radius around that atom)
-                # should not contribute to a damage indicator
-                # as much as a voxel close to the atomic centre
+                # if the user has opted to calculate an Fcalc map in addition
+                # to the difference map, then additional metrics can be
+                # derived using this map. These metrics typically use the Fcalc
+                # map density at each voxel to weight the contribution that
+                # each voxel's difference map value should play when
+                # calculating damage metrics. Effectively, a voxel far from an
+                # atom (but still included in the search radius around that
+                # atom) should not contribute to a damage indicator as much as
+                # a voxel close to the atomic centre
 
                 atomFCvals = self.FCperAtom[atom.atomnum]
-                # currently set all negative values to zero.
-                # This has the effect of ignoring Fcalc density that
-                # is less than the map mean. This is implemented
-                # such that all per-voxel weights (see below) are
-                # positive and so therefore sensible weighted-means
-                # can be calculated. This may need to be reconsidered
+                # NOTE: currently set all negative values to zero. This has
+                # effect of ignoring Fcalc density that is less than the map
+                # mean. This is implemented such that all per-voxel weights
+                # (see below) are positive and so therefore sensible
+                # weighted-means can be calculated. This may need to be
+                # reconsidered
                 # for future use!
                 atomFCvals = [v if v > 0 else 0 for v in atomFCvals]
 
@@ -486,6 +429,7 @@ class maps2DensMetrics():
                     atom.densityWeightedMeanNegOnly = 0
 
                 if plotDistn:
+                    # typically only to be used for testing purposes
                     self.plotFCdistnPlot(
                         atomsToPlot=['CYS-SG'], atomOfInterest=atom,
                         atomFCvals=atomFCvals, FCatMin=atomFCvals[minIndex],
@@ -508,7 +452,8 @@ class maps2DensMetrics():
                 clustAnalysis = perAtomClusterAnalysis(
                     atmNum=atom.atomnum, atmId=atom.getAtomID(),
                     vxlsPerAtom=self.vxlsPerAtom, xyzsPerAtom=self.xyzsPerAtom,
-                    densMapObj=self.densmap, prevAtmMidPt=self.atomMidPts[-1])
+                    densMapObj=self.densmap, prevAtmMidPt=self.atomMidPts[-1],
+                    vxlRefPoint=self.meanXYZ)
 
                 self.atomMidPts.append(clustAnalysis.midPt)
 
@@ -522,16 +467,13 @@ class maps2DensMetrics():
                         showProgress=True, parallel=False,
                         makeTrainSet=False, inclOnlyGluAsp=False):
 
-        # determine density summary metrics per atom.
-        # 'includeOnlyGluAsp' allows calculations to
-        # be performed only for Glu/asp carboxylates
-        # (this is not typically suitable and will
-        # cause later analysis to break), however allows
-        # quicker generation of per-atom training sets
-        # for glu/asp groups over a structure.
-        # Training sets for supervised learning
-        # classification can be created by setting the
-        # 'makeTrainSet' input to True
+        # determine density summary metrics per atom. 'includeOnlyGluAsp'
+        # allows calculations to be performed only for Glu/asp carboxylates
+        # (this is not typically suitable and will cause later analysis to
+        # break), however allows quicker generation of per-atom training sets
+        # for glu/asp groups over a structure. Training sets for supervised
+        # learning classification can be created by setting the 'makeTrainSet'
+        # input to True
 
         if makeTrainSet:
             clustAnalys = True
@@ -590,7 +532,7 @@ class maps2DensMetrics():
 
         # make a training set of per-atom density values on
         # which a supervised-learning classifier could be trained.
-        # This should not be included in a standard run of the code
+        # NOTE: This should NOT be included in a standard run
 
         print 'Preparing classifier training dataset'
 

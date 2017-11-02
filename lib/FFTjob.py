@@ -145,7 +145,7 @@ class FFTjob():
                       outputDir=self.outputDir, outputLog=self.outputLogfile,
                       outputFile=self.outputMapFile)
 
-        self.jobSuccess = job.checkJobSuccess()
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
 
     def provideFeedback(self,
                         includeDir=False):

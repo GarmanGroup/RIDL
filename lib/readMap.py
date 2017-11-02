@@ -59,7 +59,7 @@ def readMap(dirIn='./', dirOut='./', mapName='untitled.map',
     if log != '':
         if os.path.exists(log.logFile):
             for l in s.split('\n'):
-                log.writeToLog(l)
+                log.writeToLog(l, priority='minor')
     else:
         print s
 

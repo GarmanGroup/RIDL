@@ -91,6 +91,11 @@ parser.add_argument('-s',
                          'text will be printed directly to log file and ' +
                          'not command line.')
 
+parser.add_argument('-v',
+                    dest='verboseOutput', action='store_const',
+                    default=False, const=True,
+                    help='Print verbose output to command line.')
+
 args = parser.parse_args()
 
 # check RIDL dependencies are present
@@ -137,6 +142,7 @@ if args.process or args.calculate or args.output:
                 makeMaps=args.process,
                 makeMetrics=args.calculate,
                 cleanUpFinalFiles=args.cleanUpFinalFiles,
+                printverboseOutput=args.verboseOutput,
                 printOutput=args.suppressOutput,
                 makeSummaryFile=args.output,
                 keepMapDir=not args.removeMaps)

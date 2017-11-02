@@ -104,7 +104,7 @@ class SFALLjob():
                       outputLog=self.outputLogfile,
                       outputFile=self.outputFile)
 
-        self.jobSuccess = job.checkJobSuccess()
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
 
     def provideFeedback(self,
                         includeDir=False):

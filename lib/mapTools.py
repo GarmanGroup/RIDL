@@ -70,4 +70,4 @@ class mapTools():
         if self.log == '':
             print info
         else:
-            self.log.writeToLog(str=info)
+            self.log.writeToLog(str=info, priority='minor')

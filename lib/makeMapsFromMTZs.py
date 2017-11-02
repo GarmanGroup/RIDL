@@ -43,7 +43,7 @@ class makeMapsFromMTZs():
                  sfall_VDWR=1, mapResLimits=',', includeFCmaps=True,
                  useLaterCellDims=True, sfallGRIDdims=[], mapAxisOrder=[],
                  firstTimeRun=True, premadeAtomMap='', spaceGroup='',
-                 gridSampBeforeCropping=[]):
+                 gridSampBeforeCropping=[], cropToModel=False):
 
         # specify where output files should be written
         self.outputDir = outputDir
@@ -81,6 +81,11 @@ class makeMapsFromMTZs():
         self.spaceGroup = spaceGroup
         self.axes = mapAxisOrder
         self.gridSamps = gridSampBeforeCropping
+
+        # usually not crop to model, but crop to asym unit
+        # to get a smaller output map file
+        self.cropToModel = cropToModel
+
         self.findFilesInDir()
 
         # create log file
@@ -117,9 +122,7 @@ class makeMapsFromMTZs():
 
         skipStep = False
         if self.FOMweight == 'recalculate':
-            success = self.generateNewFOMcolumn()
-            if not success:
-                return False
+            self.generateNewFOMcolumn()
 
             # if 2FO-FC map required, use FWT column from
             # sigmaa-output mtz (we are done here)
@@ -135,14 +138,10 @@ class makeMapsFromMTZs():
 
         if not skipStep:
 
-            success = self.combineMTZcolumns()
-            if not success:
-                return False
+            self.combineMTZcolumns()
 
             if self.scaleType != 'NONE':
-                success = self.scaleFPcolumnsTogether()
-                if not success:
-                    return False
+                self.scaleFPcolumnsTogether()
 
             if self.scaleType in ('NONE', 'PHENIX'):
                 self.mtzForMaps = self.CADoutputMtz
@@ -153,24 +152,18 @@ class makeMapsFromMTZs():
 
         if self.firstTimeRun or self.useLaterCellDims:
 
-            success = self.curatePdbFile()
-            if not success:
-                return False
-
+            self.curatePdbFile()
             self.renumberPDBFile()
 
             if self.spaceGroup == '':
-                success = self.getSpaceGroup()
-                if not success:
-                    return False
+                self.getSpaceGroup()
 
-            success = self.getAtomTaggedMap()
-            if not success:
-                return False
+            self.getAtomTaggedMap()
 
-            success = self.cropAtmTaggedMapToAsymUnit()
-            if not success:
-                return False
+            if self.cropToModel:
+                self.atomTaggedMap = self.cropMapToModel(self.atomTaggedMap)
+            else:
+                self.cropAtmTaggedMapToAsymUnit()
 
         # phenix maps are not currently a tested option
         makeFoFoMapWithPhenix = False
@@ -182,42 +175,30 @@ class makeMapsFromMTZs():
             self.mapTag = ''
             self.fcalcMtz = self.mtzForMaps
             self.densMapMtz = self.mtzForMaps
-            success = self.generateCCP4DensMap()
-
-        if not success:
-            return False
+            self.generateCCP4DensMap()
 
         if self.includeFCmaps:
             if self.firstTimeRun or self.useLaterCellDims:
-                success = self.generateFcalcMap()
-                if not success:
-                    return False
+                self.generateFcalcMap()
 
         if self.densMapType == 'END':
-            success = self.ensureSameMapAxesOrder()
-            if not success:
-                return False
+            self.ensureSameMapAxesOrder()
 
-        success, mapOut = self.cropMapToAtomTaggedMap(
-          densMap=self.densityMap)
-        if not success:
-            return False
+        if self.cropToModel:
+            self.densityMap = self.cropMapToModel(self.densityMap)
+            if self.includeFCmaps:
+                if self.firstTimeRun or self.useLaterCellDims:
+                    self.FcalcMap = self.cropMapToModel(self.FcalcMap)
         else:
+            mapOut = self.cropMapToAtomTaggedMap(densMap=self.densityMap)
             self.densityMap = mapOut
-
-        if self.includeFCmaps:
-            if self.firstTimeRun or self.useLaterCellDims:
-                success, mapOut = self.cropMapToAtomTaggedMap(
-                  densMap=self.FcalcMap)
-                if not success:
-                    return False
-                else:
+            if self.includeFCmaps:
+                if self.firstTimeRun or self.useLaterCellDims:
+                    mapOut = self.cropMapToAtomTaggedMap(densMap=self.FcalcMap)
                     self.FcalcMap = mapOut
 
         self.reportCroppedMapInfo()
-        success = self.mapConsistencyCheck()
-        if not success:
-            return False
+        self.mapConsistencyCheck()
 
         self.renameFinalMapFiles()
         if self.firstTimeRun or self.useLaterCellDims:
@@ -276,7 +257,9 @@ class makeMapsFromMTZs():
         success = sigmaa.run()
         self.CADinputMtz1 = sigmaa.outputMtz
 
-        return success
+        if not success:
+            error(text='Failure to successfully generate new FOM column',
+                  log=self.runLog)
 
     def combineMTZcolumns(self):
 
@@ -300,7 +283,9 @@ class makeMapsFromMTZs():
                      FOMWeight=self.FOMweight)
         success = cad.run()
 
-        return success
+        if not success:
+            error(text='Failure to successfully combine mtz files',
+                  log=self.runLog)
 
     def scaleFPcolumnsTogether(self):
 
@@ -319,7 +304,9 @@ class makeMapsFromMTZs():
                              runLog=self.runLog)
         success = scaleit.run()
 
-        return success
+        if not success:
+            error(text='Failure to successfully scale Fobs columns together',
+                  log=self.runLog)
 
     def curatePdbFile(self):
 
@@ -331,7 +318,10 @@ class makeMapsFromMTZs():
                            outputPDBfile=self.PDBCURoutputFile,
                            outputDir=self.outputDir, runLog=self.runLog)
         success = pdbcur.run()
-        return success
+
+        if not success:
+            error(text='Failure to successfully run PDBCUR',
+                  log=self.runLog)
 
     def renumberPDBFile(self):
 
@@ -377,7 +367,9 @@ class makeMapsFromMTZs():
         self.gridSamps = [sfallMap.gridsamp1, sfallMap.gridsamp2,
                           sfallMap.gridsamp3]
 
-        return success
+        if not success:
+            error(text='Failure to successfully generate tagged atom map',
+                  log=self.runLog)
 
     def generatePhenixDensMap(self):
 
@@ -402,7 +394,9 @@ class makeMapsFromMTZs():
         self.mapTag = 'DIFF'
         success = self.generateCCP4DensMap(labelsInit, labelsLater)
 
-        return success
+        if not success:
+            error(text='Failure to successfully generate map using PHENIX',
+                  log=self.runLog)
 
     def generateCCP4DensMap(self,
                             labelsInit=[], labelsLater=[]):
@@ -469,7 +463,10 @@ class makeMapsFromMTZs():
                          gridSamps=self.gridSamps, runLog=self.runLog)
             success = end.run()
             self.densityMap = end.outputMapFile
-        return success
+
+        if not success:
+            error(text='Failure to successfully generate density map',
+                  log=self.runLog)
 
     def generateFcalcMap(self,
                          method=3):
@@ -541,7 +538,28 @@ class makeMapsFromMTZs():
             success = fft_FC.run()
             self.FcalcMap = fft_FC.outputMapFile
 
-        return success
+        if not success:
+            error(text='Failure to successfully generate Fcalc map',
+                  log=self.runLog)
+
+    def cropMapToModel(self,
+                       map=''):
+
+        # crop a map to the input coordinate model
+
+        self.printStepNumber()
+        mapmask1 = MAPMASKjob(
+          mapFile1=map, pdbFile=self.inputPDBfile,
+          outputDir=self.outputDir, runLog=self.runLog)
+        success = mapmask1.crop2model(spaceGroup=self.spaceGroup)
+
+        if not success:
+            error(text='Failure to crop map in MAPMASK',
+                  log=self.runLog)
+
+        croppedMap = mapmask1.outputMapFile
+
+        return croppedMap
 
     def cropAtmTaggedMapToAsymUnit(self):
 
@@ -551,9 +569,12 @@ class makeMapsFromMTZs():
         mapmask1 = MAPMASKjob(mapFile1=self.atomTaggedMap,
                               outputDir=self.outputDir, runLog=self.runLog)
         success = mapmask1.crop2AsymUnit()
-        self.atomTaggedMap = mapmask1.outputMapFile
 
-        return success
+        if not success:
+            error(text='Failure to crop map in MAPMASK',
+                  log=self.runLog)
+
+        self.atomTaggedMap = mapmask1.outputMapFile
 
     def ensureSameMapAxesOrder(self):
 
@@ -567,7 +588,9 @@ class makeMapsFromMTZs():
 
         self.densityMap = mapmask.outputMapFile
 
-        return success
+        if not success:
+            error(text='Failure to ensure correct map axes order in MAPMASK',
+                  log=self.runLog)
 
     def multiplyMapByFactor(self,
                             factor=-1.0, map='./untitled.map'):
@@ -625,7 +648,11 @@ class makeMapsFromMTZs():
         success = mapmask3.cropMap2Map()
         croppedDensityMap = mapmask3.outputMapFile
 
-        return success, croppedDensityMap
+        if not success:
+            error(text='Failure to successfully crop atom map',
+                  log=self.runLog)
+        else:
+            return croppedDensityMap
 
     def reportCroppedMapInfo(self):
 
@@ -658,29 +685,24 @@ class makeMapsFromMTZs():
                 sfallMap.gridsamp3 != fftMap.gridsamp3):
             error(text='Incompatible grid sampling found...',
                   log=self.runLog, type='error')
-            return False
 
         if (sfallMap.fastaxis != fftMap.fastaxis or
             sfallMap.medaxis != fftMap.medaxis or
                 sfallMap.slowaxis != fftMap.slowaxis):
             error(text='Incompatible fast,med,slow axes ordering found...',
                   log=self.runLog, type='error')
-            return False
 
         if (sfallMap.numCols != fftMap.numCols or
             sfallMap.numRows != fftMap.numRows or
                 sfallMap.numSecs != fftMap.numSecs):
             error(text='Incompatible number of rows, columns and sections...',
                   log=self.runLog, type='error')
-            return False
 
         if sfallMap.getMapSize() != fftMap.getMapSize():
             error(text='Incompatible map file sizes',
                   log=self.runLog, type='error')
-            return False
 
         self.runLog.writeToLog(str='---> success!')
-        return True
 
     def renameFinalMapFiles(self):
 

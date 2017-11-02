@@ -5,10 +5,12 @@ from mapTools import mapTools
 class MAPMASKjob():
 
     def __init__(self,
-                 mapFile1='', mapFile2='', outputDir='./', runLog=''):
+                 mapFile1='', mapFile2='', pdbFile='',
+                 outputDir='./', runLog=''):
 
         self.inputMapFile = mapFile1
         self.inputMapFile2 = mapFile2
+        self.inputPdbFile = pdbFile
         self.outputDir = outputDir
         self.runLog = runLog
 
@@ -33,6 +35,8 @@ class MAPMASKjob():
         ci1 = 'mapmask MAPIN {} '.format(self.inputMapFile)
         if self.inputMapFile2 != '':
             ci1 += 'MAPLIM {} '.format(self.inputMapFile2)
+        if self.inputPdbFile != '':
+            ci1 += 'XYZIN {} '.format(self.inputPdbFile)
         ci1 += 'MAPOUT {} '.format(self.outputMapFile) +\
                'SYMINFO syminfo.lib '
         self.commandInput1 = ci1
@@ -66,7 +70,35 @@ class MAPMASKjob():
                       outputLog=self.outputLogfile,
                       outputFile=self.outputMapFile)
 
-        self.jobSuccess = job.checkJobSuccess()
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
+        success = self.provideFeedback()
+        return success
+
+    def crop2model(self,
+                   includeDir=False,
+                   spaceGroup='P1'):
+
+        # crop map to an input coordinate model
+
+        self.printPurpose(mode='crop to model')
+        self.defineCorrectOutputMap()
+        inputFiles = [self.inputMapFile, self.inputPdbFile]
+        if not checkInputsExist(inputFiles, self.runLog):
+            return False
+
+        self.defineCommandInput()
+        self.commandInput2 = 'SYMMETRY {}\nBORDER 1'.format(spaceGroup)
+        self.outputLogfile = 'MAPMASKlogfile.txt'
+
+        # run MAPMASK job
+        job = ccp4Job(jobName='MAPMASK_crop2Model',
+                      commandInput1=self.commandInput1,
+                      commandInput2=self.commandInput2,
+                      outputDir=self.outputDir,
+                      outputLog=self.outputLogfile,
+                      outputFile=self.outputMapFile)
+
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
         success = self.provideFeedback()
         return success
 
@@ -75,7 +107,6 @@ class MAPMASKjob():
 
         # Crop map 1 to asymmetric unit
 
-        # fillerLine()
         self.printPurpose(mode='crop to asym')
         self.defineCorrectOutputMap()
         inputFiles = [self.inputMapFile]
@@ -94,7 +125,7 @@ class MAPMASKjob():
                       outputLog=self.outputLogfile,
                       outputFile=self.outputMapFile)
 
-        self.jobSuccess = job.checkJobSuccess()
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
         success = self.provideFeedback()
         return success
 
@@ -103,7 +134,6 @@ class MAPMASKjob():
 
         # Crop map 1 to map 2
 
-        # fillerLine()
         self.printPurpose(mode='crop to map')
         self.defineCorrectOutputMap()
         inputFiles = [self.inputMapFile, self.inputMapFile2]
@@ -126,7 +156,7 @@ class MAPMASKjob():
                       outputLog=self.outputLogfile,
                       outputFile=self.outputMapFile)
 
-        self.jobSuccess = job.checkJobSuccess()
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
         success = self.provideFeedback()
         return success
 
@@ -156,7 +186,7 @@ class MAPMASKjob():
                       outputLog=self.outputLogfile,
                       outputFile=self.outputMapFile)
 
-        self.jobSuccess = job.checkJobSuccess()
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
         success = self.provideFeedback()
         return success
 
@@ -223,4 +253,8 @@ class MAPMASKjob():
             ln = 'Cropping map "{}" to map "{}"'.format(*maps)
         if mode == 'Multiply by factor':
             ln = 'Multiple map by a constant factor'
+        if mode == 'crop to model':
+            ln = 'Cropping map "{}" to model "{}"'.format(
+                self.inputMapFile, self.inputPdbFile)
+
         self.runLog.writeToLog(ln)

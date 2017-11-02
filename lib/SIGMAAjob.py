@@ -72,7 +72,7 @@ class SIGMAAjob():
                       outputDir=self.outputDir, outputLog=self.outputLogfile,
                       outputFile=self.tmpMtz)
 
-        self.jobSuccess = job.checkJobSuccess()
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
         if not self.jobSuccess:
             return
 

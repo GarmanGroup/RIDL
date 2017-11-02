@@ -1,5 +1,6 @@
 import os
 import shutil
+from errors import error
 
 
 class ccp4Job():
@@ -41,10 +42,30 @@ class ccp4Job():
                     '{}{}'.format(self.outputDir,
                                   self.outputLogfile))
 
-    def checkJobSuccess(self):
-        # job success checked, based on whether output files exist
+    def checkJobSuccess(self, runLog):
+
+        # job success checked, based on:
+        # (a) the program log file has completed
+        # (b) whether output files exist
+
+        fIn = open(self.outputDir+self.outputLogfile, 'r')
+        logFinished = False
+        for l in fIn.readlines():
+            if 'normal termination' in l.lower():
+                logFinished = True
+                break
+        fIn.close()
+
+        if not logFinished:
+            error(
+                text='{} did not proceed to completion'.format(self.jobName),
+                log=runLog)
+            return False
+
         if not os.path.isfile(self.outputFile):
-            print '{} did not proceed to completion'.format(self.jobName)
+            error(
+                text='{} did not proceed to completion'.format(self.jobName),
+                log=runLog)
             return False
         else:
             return True

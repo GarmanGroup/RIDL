@@ -4,7 +4,8 @@ from time import gmtime, strftime
 class logFile():
 
     def __init__(self,
-                 fileName='untitled-log', fileDir='', printToScreen=True):
+                 fileName='untitled-log', fileDir='',
+                 printToScreenMajor=True, printToScreenMinor=False):
 
         self.logFile = fileName
         self.createLogFile()
@@ -12,7 +13,11 @@ class logFile():
         # fileDir is where majority of files come from
         self.fileDir = fileDir
         self.allocateDir()
-        self.printToScreen = printToScreen
+
+        # split text into two priorities to decide which part
+        # is most important to print to the command line
+        self.printToScreenMajor = printToScreenMajor
+        self.printToScreenMinor = printToScreenMinor
 
     def createLogFile(self):
 
@@ -34,7 +39,8 @@ class logFile():
         log.close()
 
     def writeToLog(self,
-                   str='', strip=True, forcePrint=False, timeStamp=False):
+                   str='', strip=True, forcePrint=False, timeStamp=False,
+                   priority='major'):
 
         # write string to current log file
 
@@ -50,7 +56,9 @@ class logFile():
         with open(self.logFile, "a") as logfile:
             logfile.write('{}\n'.format(logstring))
 
-            if self.printToScreen or forcePrint:
+            if ((priority == 'major' and self.printToScreenMajor) or
+                (priority == 'minor' and self.printToScreenMinor) or
+                    forcePrint):
                 if logstring.startswith('Running'):
                     print '\n'+logstring
                 else:

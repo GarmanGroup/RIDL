@@ -203,28 +203,33 @@ class processFiles():
 
         seriesName = self.dir.split('/')[-2]
 
-        if self.multiDatasets and not self.repeatedFile1InputsUsed:
-            # currently if more than one initial dataset specified then
-            # parts of further analysis are untested. Derivation of Dloss
-            # values should not be affected
+        if self.multiDatasets:
+            if not self.repeatedFile1InputsUsed:
+                # currently if more than one initial dataset specified then
+                # parts of further analysis are untested. Derivation of Dloss
+                # values should not be affected
 
-            self.writeError(
-                text='More than one INITIALDATASET input specified! ' +
-                     'Taking only first coordinate file specified in ' +
-                     'input file. This file will used for the x,y,z ' +
-                     'coordinates of each input atom. If you are  using ' +
-                     'outputs from RIDL other than Dloss, please contact' +
-                     ' charles.bury@dtc.ox.ac.uk for concerns ' +
-                     'over validity.',
-                type='warning')
+                self.writeError(
+                    text='More than one INITIALDATASET input specified! ' +
+                         'Taking only first coordinate file specified in ' +
+                         'input file. This file will used for the x,y,z ' +
+                         'coordinates of each input atom. If you are  using ' +
+                         'outputs from RIDL other than Dloss, please contact' +
+                         ' charles.bury@dtc.ox.ac.uk for concerns ' +
+                         'over validity.',
+                    type='warning')
 
         self.logFile.writeToLog(str='\n\n**** METRIC CALCULATIONS ****\n')
 
         names2 = self.name2.split(',')
-        if self.repeatedFile1InputsUsed:
-            names1 = [self.name1]*len(names2)
+
+        if self.multiDatasets:
+            if self.repeatedFile1InputsUsed:
+                names1 = [self.name1]*len(names2)
+            else:
+                names1 = self.name1.split(',')
         else:
-            names1 = self.name1
+            names1 = [self.name1]
 
         densMapList = ['{}_density.map'.format(d) for d in names2]
 
@@ -352,7 +357,7 @@ class processFiles():
                 return False
 
         self.logFile.writeToLog(
-            str='All necessary inputs found in input file.')
+            str='--> All necessary inputs found in input file.')
 
         return True
 
@@ -375,8 +380,8 @@ class processFiles():
             except AttributeError:
                 setattr(self, prop, defaults[i])
                 self.logFile.writeToLog(
-                    str='Input "{}" not found in input file. '.format(prop) +
-                        'Setting to default value: "{}"'.format(defaults[i]))
+                    str='--> Input "{}" not found in input file'.format(prop) +
+                        '. Setting to default value: "{}"'.format(defaults[i]))
 
     def checkCorrectInputFormats(self):
 
@@ -587,7 +592,7 @@ class processFiles():
                         return False
 
         self.logFile.writeToLog(
-            str='All input file parameters appear to be of suitable format.')
+            str='--> All input file parameters of suitable format.')
 
         return True
 
@@ -831,7 +836,7 @@ class processFiles():
         self.numDsets = lengths[0]
         if lengths == [1]*len(props):
             self.logFile.writeToLog(
-                str='Only single dataset located and will be processed')
+                str='--> Only single dataset located and will be processed')
             self.multiDatasets = False
 
         elif lengths[1:] != lengths[:-1]:
@@ -842,7 +847,7 @@ class processFiles():
 
         else:
             self.logFile.writeToLog(
-                str='Multiple higher dose datasets located in ' +
+                str='--> Multiple higher dose datasets located in ' +
                     ' input file to be processed.')
             self.multiDatasets = True
 
@@ -887,18 +892,18 @@ class processFiles():
 
         if not self.dir.endswith('/'):
             self.logFile.writeToLog(
-                str='Working directory specified in input ' +
+                str='--> Working directory specified in input ' +
                     'file must end in "/" - appending.')
             self.dir += '/'
 
         if not os.path.exists(self.dir):
             self.logFile.writeToLog(
-                str='Output directory "{}"'.format(self.dir) +
+                str='--> Output directory "{}"'.format(self.dir) +
                     ' not found, making directory')
 
             os.makedirs(self.dir)
         self.logFile.writeToLog(
-            str='Working directory set to "{}"'.format(self.dir))
+            str='--> Working directory set to "{}"'.format(self.dir))
 
         self.mapProcessDir = self.dir + 'RIDL-maps/'
         if makeProcessDir:

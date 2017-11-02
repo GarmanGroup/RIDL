@@ -50,6 +50,8 @@ def plotHist(datax=[],  plotType='histogram', xlabel='', title='',
         if not os.path.exists(outDir):
             os.makedirs(outDir)
         fig.savefig(outDir + fName)
+    else:
+        plt.show()
 
 
 def plotVxlsPerAtm(pdbName='untitled', where='', vxlsPerAtom={},

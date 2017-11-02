@@ -67,7 +67,7 @@ class SCALEITjob():
                       outputDir=self.outputDir, outputLog=self.outputLogfile,
                       outputFile=self.outputMtz)
 
-        self.jobSuccess = job.checkJobSuccess()
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
 
     def provideFeedback(self,
                         includeDir=False):
@@ -86,7 +86,7 @@ class SCALEITjob():
                                'Output mtz file: {}'.format(fileOut))
 
         statsStr = self.parseLogForStats()
-        self.runLog.writeToLog(statsStr)
+        self.runLog.writeToLog(statsStr, priority='minor')
 
     def parseLogForStats(self):
 
