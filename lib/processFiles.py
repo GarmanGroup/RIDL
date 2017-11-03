@@ -79,8 +79,6 @@ class processFiles():
         if not success:
             return success
 
-        self.checkForSeparateSIGFlabel()
-
         success = self.checkMtzLabelsExist()
         if not success:
             return success
@@ -372,7 +370,7 @@ class processFiles():
                  'pklDataFile']
 
         defaults = [1, ',', 'ANISOTROPIC', 'DIFF',
-                    'False', 'FALSE', 'TRUE', 'FALSE', '']
+                    'False', 'TRUE', 'TRUE', 'FALSE', '']
 
         for i, prop in enumerate(props):
             try:
@@ -472,6 +470,13 @@ class processFiles():
                 return False
 
         if self.multiDatasets:
+            names = self.name2.split(',')
+            if len(list(set(names))) != len(names):
+                self.writeError(
+                    text='Comma-separated entries in "name2" must be unique')
+                return False
+
+        if self.multiDatasets:
             if self.repeatedPhaseInputsUsed:
                 names = [self.name3]
             else:
@@ -493,55 +498,6 @@ class processFiles():
                 self.name3 += '-ph'
             else:
                 self.name3 = ','.join([n+'-ph' for n in self.name3.split(',')])
-
-        if self.densMapType not in ('DIFF', 'SIMPLE', '2FOFC', 'END'):
-            self.writeError(
-                text='"densMapType" input of incompatible format, ' +
-                     '(default is "DIFF"). Currently set as ' +
-                     '"{}" in input file.'.format(self.densMapType))
-            return False
-
-        if self.deleteIntermediateFiles.lower() not in ('true', 'false'):
-            self.writeError(
-                text='"deleteIntermediateFiles" input of incompatible format' +
-                     ' ("true","false"), case insensitive. Currently set as ' +
-                     '"{}" in input file'.format(self.deleteIntermediateFiles))
-            return False
-        try:
-            float(self.sfall_VDWR)
-        except ValueError:
-            self.writeError(
-                text='"sfall_VDWR" input must be a float. Currently set as ' +
-                     '"{}" in input file.'.format(self.sfall_VDWR))
-            return False
-
-        if float(self.sfall_VDWR) <= 0:
-            self.writeError(
-                text='"sfall_VDWR" input must be a positive float. Currently' +
-                     ' set as "{}" in input file.'.format(self.sfall_VDWR))
-            return False
-
-        if ('preset' not in self.FFTmapWeight and
-                self.FFTmapWeight not in ('recalculate', 'False')):
-            self.writeError(
-                text='"FFTmapWeight" input must take either "recalculate",' +
-                     '"False" or "preset,x" where "x" is the FOM weight ' +
-                     'label (of the form FOMx) of a preset FOM column ' +
-                     'within the input .mtz file. Currently set as ' +
-                     '"{}" in input file'.format(self.FFTmapWeight))
-            return False
-
-        if self.FFTmapWeight.startswith('preset'):
-            if self.FFTmapWeight.replace('preset', '')[0] != ',':
-                self.writeError(
-                    text='If "FFTmapWeight" input is specified by "preset", ' +
-                         'then this must be followed a comma and then the ' +
-                         'FOM label name within the input .mtz file (i.e. ' +
-                         '"preset,x" for column label "FOMx"). If column ' +
-                         'label is simply  "FOM" then use "preset,". ' +
-                         'Currently set as "{}" in input file'.format(
-                            self.FFTmapWeight))
-                return False
 
         doseStr = 'Doses can be calculated using RADDOSE-3D (visit ' +\
                   'www.raddo.se for more details). If no doses have been' +\
@@ -590,6 +546,141 @@ class processFiles():
                     if float(dose) < 0:
                         self.writeError(text=err)
                         return False
+
+        # if a separate input exists for the SIGFP columns, check consistency
+        self.checkForSeparateSIGFlabel()
+
+        if self.sepSIGFPlabel1:
+            l1 = len(self.mtzlabels1.split(','))
+            l2 = len(self.mtzSIGFPlabel1.split(','))
+            if l1 != l2:
+                self.writeError(
+                    text='"mtzSIGFPlabel1" and "mtzlabels1" do not contain ' +
+                         'same number of entries')
+
+        if self.sepSIGFPlabel2:
+            l1 = len(self.mtzlabels2.split(','))
+            l2 = len(self.mtzSIGFPlabel2.split(','))
+            if l1 != l2:
+                self.writeError(
+                    text='"mtzSIGFPlabel2" and "mtzlabels2" do not contain ' +
+                         'same number of entries')
+
+        # also check the optimal inputs that may be at the bottom of the file
+
+        if self.densMapType not in ('DIFF', 'SIMPLE', '2FOFC', 'END'):
+            self.writeError(
+                text='"densMapType" input of incompatible format, ' +
+                     '(default is "DIFF"). Currently set as ' +
+                     '"{}" in input file.'.format(self.densMapType))
+            return False
+
+        if self.deleteIntermediateFiles.lower() not in ('true', 'false'):
+            self.writeError(
+                text='"deleteIntermediateFiles" input of incompatible format' +
+                     ' ("true","false"), case insensitive. Currently set as ' +
+                     '"{}" in input file'.format(self.deleteIntermediateFiles))
+            return False
+
+        try:
+            float(self.sfall_VDWR)
+        except ValueError:
+            self.writeError(
+                text='"sfall_VDWR" input must be a float. Currently set as ' +
+                     '"{}" in input file.'.format(self.sfall_VDWR))
+            return False
+
+        if float(self.sfall_VDWR) <= 0:
+            self.writeError(
+                text='"sfall_VDWR" input must be a positive float. Currently' +
+                     ' set as "{}" in input file.'.format(self.sfall_VDWR))
+            return False
+
+        if float(self.sfall_VDWR) > 3:
+            self.writeError(
+                text='"sfall_VDWR" input can only take values less than 3. ' +
+                     'Larger values will be set to the upper limit of 3. ' +
+                     'Currently "{}" in input file.'.format(self.sfall_VDWR),
+                type='warning')
+
+        if float(self.sfall_VDWR) < 1:
+            self.writeError(
+                text='A "sfall_VDWR" input of 1 or greater . ' +
+                     'is recommended - consider increasing this..',
+                type='warning')
+
+        if ('preset' not in self.FFTmapWeight and
+                self.FFTmapWeight not in ('recalculate', 'False')):
+            self.writeError(
+                text='"FFTmapWeight" input must take either "recalculate",' +
+                     '"False" or "preset,x" where "x" is the FOM weight ' +
+                     'label (of the form FOMx) of a preset FOM column ' +
+                     'within the input .mtz file. Currently set as ' +
+                     '"{}" in input file'.format(self.FFTmapWeight))
+            return False
+
+        if self.FFTmapWeight.startswith('preset'):
+            if self.FFTmapWeight.replace('preset', '')[0] != ',':
+                self.writeError(
+                    text='If "FFTmapWeight" input is specified by "preset", ' +
+                         'then this must be followed a comma and then the ' +
+                         'FOM label name within the input .mtz file (i.e. ' +
+                         '"preset,x" for column label "FOMx"). If column ' +
+                         'label is simply  "FOM" then use "preset,". ' +
+                         'Currently set as "{}" in input file'.format(
+                            self.FFTmapWeight))
+                return False
+
+        if self.useLaterCellDims.lower() not in ('true', 'false'):
+            self.writeError(
+                text='"useLaterCellDims" input of incompatible format' +
+                     ' ("true","false"), case insensitive. Currently set as ' +
+                     '"{}" in input file'.format(self.useLaterCellDims))
+            return False
+
+        if self.calculateFCmaps.lower() not in ('true', 'false'):
+            self.writeError(
+                text='"calculateFCmaps" input of incompatible format' +
+                     ' ("true","false"), case insensitive. Currently set as ' +
+                     '"{}" in input file'.format(self.calculateFCmaps))
+            return False
+
+        if self.scaleType not in ('ANISOTROPIC', 'ISOTROPIC', 'SCALE', 'NONE'):
+            self.writeError(
+                text='"scaleType" input of incompatible format, ' +
+                     '(default is "ANISOTROPIC"). Currently set as ' +
+                     '"{}" in input file.'.format(self.densMapType))
+            return False
+
+        if self.mapResLimits != ',':
+            resLims = self.mapResLimits.split(',')
+            if len(resLims) != 2:
+                self.writeError(
+                    text='"mapResLimits" input of incompatible format, ' +
+                         ' must be of form "x,y" for upper resolution ' +
+                         'cutoff "x" and lower cutoff "y". Currently set as ' +
+                         '"{}" in input file.'.format(self.mapResLimits))
+                return False
+            else:
+                try:
+                    float(resLims[0])
+                    float(resLims[1])
+                except ValueError:
+                    self.writeError(
+                        text='"mapResLimits" input of incompatible format, ' +
+                             ' must be of form "x,y" for floats "x" and "y" ' +
+                             'for upper resolution cutoff "x" and lower ' +
+                             'cutoff "y". Currently set as ' +
+                             '"{}" in input file.'.format(self.mapResLimits))
+                    return False
+                if float(resLims[0]) == float(resLims[1]):
+                    self.writeError(
+                        text='"mapResLimits" input of incompatible format, ' +
+                             ' must be of form "x,y" for "x" and "y" ' +
+                             'for upper resolution cutoff "x" and lower ' +
+                             'cutoff "y", BUT DIFFERENT. Currently set as ' +
+                             '"{}" in input file.'.format(self.mapResLimits))
+                    return False
 
         self.logFile.writeToLog(
             str='--> All input file parameters of suitable format.')
@@ -842,7 +933,7 @@ class processFiles():
         elif lengths[1:] != lengths[:-1]:
             self.writeError(
                 text='Error! Input file properties ' +
-                     '({}) must'.format(','.join(props)) +
+                     '({}) must'.format(', '.join(props)) +
                      'have same number of comma-separated inputs')
 
         else:
@@ -873,7 +964,7 @@ class processFiles():
         if lengths not in ([1]*len(props), [self.numDsets]*len(props)):
             self.writeError(
                 text='Error! Input file properties ' +
-                     '({})must all '.format(','.join(props)) +
+                     '({}) must all '.format(', '.join(props)) +
                      'each have either 1 or {} '.format(self.numDsets) +
                      'comma-separated inputs')
         else:
