@@ -1,9 +1,13 @@
 # RIDL: Radiation-Induced Density Loss
 
+
 **Note: This program is currently under reconstruction and the latest version is not guaranteed to work. Please email the author for a working version if in doubt**
 
 A program to calculate per-atom metrics to describe electron density change between **complete diffraction datasets** collected at **successive doses**. 
 It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data.
+
+Test data: 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1043864.svg)](https://doi.org/10.5281/zenodo.1043864)
 
 ## Queries
 
@@ -36,15 +40,18 @@ Please email *charles.bury@dtc.ox.ac.uk*
 
 - To save room, use the additional command line flag ```--remove_maps``` to remove any generated .map files after a run has finished: ```python runRIDL.py -i input.txt -pco --remove_maps```
 
+- Any run of RIDL will generate a separate log file stored in the output subdirectory `RIDL-log/`. Please refer to the log file if RIDL has not run to completion. 
+
+
 ## A brief background
 
-During MX data collection, when a protein or nucleic acid crystal is exposed to X-ray radiation, localised radiation-induced chemical changes are known to occur at specific sites within the macromolecules at doses of the order of several MGy (at 100 K). In not accounted for, these *site-specific damage* manifestations can ultimately lead to incorrect biological interpretations of the structure during subsequent model building. Localised chemical changes in a macromolecule can be detected by observing shifts in the electron density attributed to particular atoms with increasing dose. *F<sub>obs</sub>(d<sub>n</sub>) - F<sub>obs</sub>(d<sub>1</sub>)* Fourier difference maps between different accumulated dose states *d<sub>1</sub>* and *d<sub>n</sub>* provide a tool to pinpoint such changes. Unfortunately, visual manual inspection of maps is inherently subjective and time-intensive, and becomes increasingly intractable for larger macromolecules. These problems are compounded by the fact that with increasing dose, Fourier difference maps become increasingly noisy, due to the overall degradation of the diffraction data quality (global radiation damage) and unmodelled chemistry within crystal bulk solvent regions. 
+During MX data collection, when a protein or nucleic acid crystal is exposed to X-ray radiation, localised radiation-induced chemical changes are known to occur at specific sites within the macromolecules at doses of the order of several MGy (at 100 K). In not accounted for, these *site-specific damage* manifestations can ultimately lead to incorrect biological interpretations of the structure during subsequent model building. Localised chemical changes in a macromolecule can be detected by observing shifts in the electron density attributed to particular atoms with increasing dose. *F<sub>obs,n</sub> - F<sub>obs,1</sub>* Fourier difference maps between different accumulated dose states *1* and *n* provide a tool to pinpoint such changes. Unfortunately, visual manual inspection of maps is inherently subjective and time-intensive, and becomes increasingly intractable for larger macromolecules. These problems are compounded by the fact that with increasing dose, Fourier difference maps become increasingly noisy, due to the overall degradation of the diffraction data quality (global radiation damage) and unmodelled chemistry within crystal bulk solvent regions. 
 
 To mitigate such subjective bias and permit systematic categorisation of radiation-induced structure changes over a series of increasing doses for individual refined atoms within a structure, the set of scripts **RIDL** has been written to provide a high-throughput pipeline to calculate per-atom metrics to quantify the damage susceptibility of each refined atom in a macromolecular structure.
 
 ### Per-atom metrics
 
-In **RIDL**, each *F<sub>obs</sub>(d<sub>n</sub>) - F<sub>obs</sub>(d<sub>1</sub>)* Fourier difference map is sampled in the localised region around each atom, and several metrics are output:
+In **RIDL**, each *F<sub>obs,n</sub> - F<sub>obs,1</sub>* Fourier difference map is sampled in the localised region around each atom, and several metrics are output:
 
 #### D<sub>loss</sub>
 - *D<sub>loss</sub>* is the maximum density loss value in sampled region for each atom. 
@@ -98,29 +105,28 @@ For the general case, the a plain-text input file must be written manually.
 
 #### An example input file
 
-Here is an example input file for a series of 3 increasing dose datasets collected on a single insulin crystal.
+Here is an example input file for a series of 3 increasing dose datasets collected on a single crystal of a cellobiohydrolase test protein. The corresponding data are accessible for download at https://doi.org/10.5281/zenodo.1043864
 
 ```
-dir ./TDinsulin/
+dir ./RIDL-testrun1/
 
 INITIALDATASET
-name1 insulin1
-mtz1 ../insDamSer/insu1.mtz
-mtzlabels1 FP_1
-pdb1 ../insDamSer/insu1.pdb
+name1 GH7-1
+mtz1 ./GH7-data/GH7-1.mtz
+mtzlabels1 F_FROMDIALS1
+pdb1 ./GH7-data/GH7-1-fromRefmac.pdb
 RfreeFlag1 FreeR_flag
-dose1 1.2
+dose1 1.11
 
 LATERDATASET
-name2 insulin2, insulin3
-mtz2 ../insDamSer/insu2.mtz, ../insDamSer/insu3.mtz
-mtzlabels2 FP_2, FP_3
-pdb2 ../insDamSer/insu2.pdb, ../insDamSer/insu3.pdb
-dose2 3.1, 5.6
+name2 GH7-2, GH7-3
+mtz2 ./GH7-data/GH7-2.mtz, ./GH7-data/GH7-3.mtz
+mtzlabels2 F_FROMDIALS2, F_FROMDIALS3
+dose2 3.27, 5.43
 
 PHASEDATASET
-name3 insulin1
-mtz3 ../insDamSer/insu1.mtz
+name3 GH7-1
+mtz3 ./GH7-data/GH7-1-fromRefmac.mtz
 phaseLabel PHIC
 FcalcLabel FC
 ```
@@ -134,7 +140,7 @@ Property | Description
 `dir` | The directory where the output files should be written
 `name1` | Name you would like to call the first dataset. This will affect the naming of files subsequently generated by RIDL. This name does not have to be the same as the input .pdb or *.mtz* files for the first dataset
 `mtz1` | Path to the first dataset *.mtz* file
-`mtzlabels1` | Labelling convention for first dataset *.mtz* file for the *Fobs* and *SIGFobs* columns. In the above example the Fobs column is currently *FP_1* and the *SIGFobs* is set to *SIGFP_1*, such that this input becomes `FP_1` above. 
+`mtzlabels1` | Labelling convention for first dataset *.mtz* file for the *Fobs* and *SIGFobs* columns. In the above example the Fobs column is currently *F_FROMDIALS1* and the corresponding *SIGFobs* column is set to *SIGF_FROMDIALS1*. 
 `mtzSIGFPlabel1` | **(optional)** Specify a separate labelling convention for the *SIGFobs* column in the first dataset.
 `pdb1` | Full path to the first dataset *.pdb* file
 `RfreeFlag1` | Full *R<sub>free</sub>* column name as specified within the input *.mtz* file
@@ -170,6 +176,10 @@ Several command line flags are required to run the program:
 Several optional command line flags also exist:
 
 - `-s`: **(optional)** 'silent mode' can be used to prevent any text being output to the command line at run time.
+
+- `-v`: **(optional)** 'verbose mode' can be used to include additional output text to the command line at run time. Note that the full text is always written to the log file, even when this is not included.
+
+- `-r`: **(optional)** can be used to prevent the atom-tagged map generated by SFALL from being deleted following a full run of RIDL. If not included, this map is removed.
 
 - `--rigid`: **(optional)** can be used to run to generate higher dose dataset coordinate models through a scripted REFMAC rigid body refine job (see section "What data are needed to run RIDL?" above).
 
