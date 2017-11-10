@@ -420,6 +420,7 @@ class combinedAtomList(object):
 						 groupBy  = 'none',
 						 metric   = 'loss',
 						 normType = 'Standard',
+						 sortby   = 'atomnum',
 						 numDP    = 2):
 
 		# write all metric values to a .csv file to location 'where'
@@ -473,13 +474,20 @@ class combinedAtomList(object):
 				roundedVals = [round(v,numDP) for v in statDic[k]]
 				csvfile.write('{},{},{}\n'.format(i,k,','.join(map(str,roundedVals))))			
 		else:
-			self.atomList.sort(key=lambda x: x.atomnum) # sort atom list by atom number
+
+			# sort atom list by atom number or damage metric
+			if sortby == 'atomnum':
+				self.atomList.sort(key=lambda x: x.atomnum)
+			else:
+				self.atomList.sort(key=lambda x: x.densMetric[metric][normType]['values'][0], reverse=True)
 			for atom in self.atomList:
 				csvfile.write('{},{},'.format(atom.atomnum,atom.getAtomID()))
 				roundedVals = [round(v,numDP) for v in atom.densMetric[metric][normType]['values']]
 				csvfile.write(','.join(map(str,roundedVals)))
 				csvfile.write('\n')
 		csvfile.close()
+
+		return csvName
 
 	def reorderByAtomNumber(self):
 

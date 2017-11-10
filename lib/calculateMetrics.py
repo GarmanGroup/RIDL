@@ -167,10 +167,12 @@ class calculateMetrics(object):
         # set the locations of the output directories
 
         self.outputDir = '{}RIDL-metrics/'.format(self.outDir)
+        self.outputDataDir = self.outputDir + 'data/'
+        self.pklFileDir = self.outputDataDir + 'pklFiles/'
 
         # add pkl file names as attribute if specified in input file
         if len(self.pklFiles) != 0:
-            self.pklFiles = [self.outputDir+f for f in self.pklFiles]
+            self.pklFiles = [self.pklFileDir+f for f in self.pklFiles]
 
     def map_processing(self):
 
@@ -188,11 +190,8 @@ class calculateMetrics(object):
 
         # create additional subdirectories
         self.makeOutputDir(dirName=self.outputDir)
-
-        # make pklFiles and dir to move all generated
-        # per-dataset pkl files to this
-        pklFileDir = 'pklFiles-perDataset/'
-        self.makeOutputDir(dirName='{}{}'.format(self.outputDir, pklFileDir))
+        self.makeOutputDir(dirName=self.outputDataDir)
+        self.makeOutputDir(dirName=self.pklFileDir)
 
         pklFileNames = []
 
@@ -207,19 +206,15 @@ class calculateMetrics(object):
                     'Higher dose dataset {} starts here'.format(i))
 
             maps2DensMets = maps2DensMetrics(filesIn=self.mapDir,
-                                             filesOut=self.outputDir,
+                                             filesOut=self.outputDataDir,
                                              pdbName=pdbFile,
                                              atomTagMap=atomMap,
                                              densityMap=densMap,
                                              FCmap=FcMap,
-                                             plotHist=self.plot,
                                              logFile=self.logFile,
                                              calcFCmap=self.inclFCmets)
 
             maps2DensMets.maps2atmdensity()
-
-            # # move pkl file to working output directory
-            # pklFileName = maps2DensMets.pklFileName
 
             # save list of atom objects to a .pkl file
             tag = densMap.replace('_density.map', '')
@@ -227,10 +222,10 @@ class calculateMetrics(object):
             pklFileName = save_objectlist(maps2DensMets.PDBarray, tag)
 
             move(pklFileName,
-                 '{}{}{}'.format(self.outputDir, pklFileDir, pklFileName))
+                 '{}{}'.format(self.pklFileDir, pklFileName))
 
             pklFileNames.append(
-                '{}{}{}'.format(self.outputDir, pklFileDir, pklFileName))
+                '{}{}'.format(self.pklFileDir, pklFileName))
 
         self.pklFiles = pklFileNames
 
@@ -265,11 +260,6 @@ class calculateMetrics(object):
 
             # add new retrieved damage set list to dList
             dList.append(PDB_ret)
-        pklDir = '/'.join(pkl_filename.split('/')[:-1])+'/'
-
-        # remove directory if it is now empty
-        if listdir(pklDir) == []:
-            rmdir(pklDir)
 
         # create a list of atom objects with attributes as lists varying over
         # dose range, only including atoms present in ALL damage datasets
@@ -279,7 +269,7 @@ class calculateMetrics(object):
                                          numLigRegDsets=len(dList),
                                          doseList=self.doses,
                                          initialPDBList=initialPDBlist,
-                                         outputDir=self.outputDir,
+                                         outputDir=self.outputDataDir,
                                          seriesName=self.seriesName,
                                          inclFCmetrics=self.inclFCmets)
 
@@ -295,7 +285,8 @@ class calculateMetrics(object):
 
             if self.inclFCmets:
                 metricsOfInterest += ['density_weighted_mean_negOnly',
-                                      'density_weighted_loss']
+                                      'density_weighted_loss',
+                                      'density_weighted_mean']
 
             for m in metricsOfInterest:
                 combinedAtoms.calcAdditionalMetrics(metric=m)
@@ -306,12 +297,21 @@ class calculateMetrics(object):
         pklDataFile = saveGenericObject(obj=self.combinedAtoms,
                                         fileName=self.seriesName)
 
-        move(pklDataFile, '{}{}'.format(self.outputDir, pklDataFile))
-        self.pklDataFile = pklDataFile
+        move(pklDataFile, self.pklFileDir + pklDataFile)
+        self.pklDataFile = self.pklFileDir + pklDataFile
 
-        inputfile = open(self.RIDLinputFile, 'a')
-        inputfile.write('\npklDataFile ' + pklDataFile)
+        # append the pklfile name to the input RIDL file
+        inputfile = open(self.RIDLinputFile, 'r')
+        pklFound = False
+        for l in inputfile.readlines():
+            if l.startswith('pklDataFile'):
+                pklFound = True
+                break
         inputfile.close()
+        if not pklFound:
+            inputfile = open(self.RIDLinputFile, 'a')
+            inputfile.write('\npklDataFile ' + self.pklDataFile)
+            inputfile.close()
 
     def checkCalphasPresent(self,
                             atomObjList=[]):

@@ -1,8 +1,7 @@
 from checkDependencies import checkDependencies
-from os import path, makedirs, listdir, system
+from os import path, makedirs, system
 from PDBFileManipulation import writePDBline
 from time import gmtime, strftime
-from shutil import move
 from errors import error
 import numpy as np
 import sys
@@ -14,7 +13,7 @@ class provideFeedback(object):
     def __init__(self,
                  standardFeedback=True, csvOnly=False, writeCsvs=False,
                  writeSumFile=False, writeTopSites=False, plotHeatMaps=False,
-                 atmsObjs=[], outputDir='./', outputPlotDir='./',
+                 atmsObjs=[], outputDir='./',
                  csvExtent='simple', plotGraphs=True, logFile=[], pklSeries='',
                  doses=[], pdbNames=[], inputDir='./', autoRun=True,
                  initialPDB='untitled.pdb', inclFCmetrics=False):
@@ -22,8 +21,7 @@ class provideFeedback(object):
         # create series of output feedback files and graphs
 
         self.atmsObjs = atmsObjs
-        self.outputDir = outputDir
-        self.outputPlotDir = outputPlotDir
+        self.outputDir = os.path.abspath(outputDir)+'/'
         self.plot = plotGraphs
         self.logFile = logFile
         self.pklSeries = pklSeries
@@ -37,10 +35,11 @@ class provideFeedback(object):
         self.writeSumFile = writeSumFile
         self.writeTopSites = writeTopSites
         self.csvExtent = csvExtent
+        self.madeCsvFiles = []
 
         if plotGraphs:
-            if not os.path.exists(self.outputPlotDir):
-                os.mkdir(self.outputPlotDir)
+            self.outputPlotDir = '{}data/plots/'.format(self.outputDir)
+            self.makeOutputDir(dirName=self.outputPlotDir)
 
         # define a 'standard' feedback for the program
         if standardFeedback:
@@ -50,9 +49,6 @@ class provideFeedback(object):
 
         if csvOnly:
             self.writeCsvs = True
-            self.writeSumFile = False
-            self.writeTopSites = False
-            self.plotHeatMaps = False
 
         if autoRun:
             self.run()
@@ -69,6 +65,9 @@ class provideFeedback(object):
         if self.writeCsvs:
             self.writeCsvFiles()
 
+        if self.writeTopSites:
+            self.writeDamSitesToFile()
+
         # provide summary html file for metrics per-dataset
         if self.writeSumFile:
 
@@ -77,10 +76,7 @@ class provideFeedback(object):
             else:
                 n = 'Calpha normalised'
 
-            self.summaryHTML(primaryMetric='loss', primaryNorm=n)
-
-        if self.writeTopSites:
-            self.writeDamSitesToFile()
+            self.summaryHTML(primaryMetric='density_weighted_mean_negOnly', primaryNorm=n)
 
         # create heatmap plots (large files) if requested
         if self.plot:
@@ -98,7 +94,7 @@ class provideFeedback(object):
                         outputDir=outDir)
 
     def writeCsvFiles(self,
-                      moveCsv=True, inclGroupby=True, inclGainMet=False,
+                      inclGroupby=False, inclGainMet=False,
                       inclMeanMet=False, inclBfactor=False, numDP=4):
 
         # write atom numbers and density metrics to simple
@@ -108,7 +104,12 @@ class provideFeedback(object):
 
         self.fillerLine()
         self.logFile.writeToLog(
-            str='Writing .csv file for per-atom density metric:')
+            str='Writing .csv files for per-atom density metrics')
+
+        csvDir = self.outputDir+'csvFiles/'
+        self.makeOutputDir(dirName=csvDir)
+        self.makeOutputDir(dirName=csvDir+'Calpha-normalised/')
+        self.makeOutputDir(dirName=csvDir+'Standard/')
 
         if self.csvExtent == 'simple':
             n = 'Standard'
@@ -146,38 +147,29 @@ class provideFeedback(object):
 
         for densMet in metrics:
             self.logFile.writeToLog(
-                str='\tmetric: {}, normalisation: {}'.format(*densMet))
-            self.atmsObjs.writeMetric2File(
-                where=self.outputDir, metric=densMet[0],
+                str='\tmetric: {}, normalisation: {}'.format(*densMet),
+                priority='minor')
+
+            if densMet[1] == 'Standard':
+                dr = csvDir+'Standard/'
+            else:
+                dr = csvDir+'Calpha-normalised/'
+
+            csvFile = self.atmsObjs.writeMetric2File(
+                where=dr, metric=densMet[0],
                 normType=densMet[1], numDP=numDP)
+
+            self.madeCsvFiles.append(densMet+[csvFile])
 
         if inclGroupby:
             for m in ['loss']:
                 for groupBy in ('atomtype', 'residue'):
                     self.atmsObjs.writeMetric2File(
-                        where=self.outputDir, metric=m, groupBy=groupBy)
+                        where=csvDir+'Standard/', metric=m, groupBy=groupBy)
                     if self.calphaPresent:
                         self.atmsObjs.writeMetric2File(
-                            where=self.outputDir, groupBy=groupBy,
+                            where=csvDir+'Calpha-normalised/', groupBy=groupBy,
                             metric=m, normType='Calpha normalised')
-
-        # make csvFiles dir and move all generated csv files to this
-        if moveCsv:
-            self.makeOutputDir(
-                dirName='{}csvFiles/'.format(self.outputDir))
-            self.makeOutputDir(
-                dirName='{}csvFiles/Calpha-normalised/'.format(self.outputDir))
-            self.makeOutputDir(
-                dirName='{}csvFiles/Standard/'.format(self.outputDir))
-
-            for fName in listdir(self.outputDir):
-                if fName.endswith(".csv"):
-                    if '-Calphanormalised' in fName:
-                        loc = 'Calpha-normalised/'
-                    else:
-                        loc = 'Standard/'
-                    move('{}{}'.format(self.outputDir, fName),
-                         '{}csvFiles/{}{}'.format(self.outputDir, loc, fName))
 
     def summaryHTML(self,
                     primaryMetric='loss', primaryNorm='Calpha normalised'):
@@ -240,17 +232,33 @@ class provideFeedback(object):
         # provide some links to useful output files
         bodyString = '<h3>Links to useful output files</h3><ul>\n'
 
-        for m, norm in zip([primaryMetric]*len(norms), norms):
-            bodyString += '<li><a href = "csvFiles/{}/{}-'.format(
-                norm.replace(' ', '-'), m) +\
-                '{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(
-                    norm.replace(' ', ''), norm, m)
+        # provide links to csv files
+        bodyString += '<h4>CSV-format metric files:</h4><ul>\n'
+        if self.madeCsvFiles == []:
+            for m, norm in zip([primaryMetric]*len(norms), norms):
+                bodyString += '<li><a href = "{}csvFiles/{}/{}-'.format(
+                    self.outputDir, norm.replace(' ', '-'), m) +\
+                    '{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(
+                        norm.replace(' ', ''), norm, m)
+        else:
+            for csv in self.madeCsvFiles:
+                bodyString += '<li><a href = {}>'.format(csv[2]) +\
+                    'Metric: {}, Normalisation: {} </a></li>\n'.format(*csv[:2])
 
+        # provide links to top 25 damage site information
+        bodyString += '</ul><h4>Top 25 damage sites:</h4><ul>\n'
         bodyString += '<li><a href = "{}{}">'.format(
             plotDir, figName.split('/')[-1]) +\
-            'Top 25 damage sites per residue/nucleotide type</a></li>'
+            'Per residue/nucleotide barplot ' +\
+            '(detected by D<sub>loss</sub> metric) </a></li>'
+
+        if self.writeTopSites:
+            bodyString += '<li><a href = "{}">'.format(self.damSitesPDB) +\
+                'PDB-format file (detected by ' +\
+                'D<sub>loss</sub> metric) </a></li>'
 
         # create heatmap plots (large files) if requested
+        # NOT DEFAULT - TAKES A LONG TIME TO RUN
         if self.plotHeatMaps:
             for m, norm in zip([primaryMetric]*len(norms), norms):
                 bodyString += '<li><a href="RIDL-metrics/plots/metric_heatm' +\
@@ -388,18 +396,18 @@ class provideFeedback(object):
                                         dataset=i,
                                         sumFile=summaryFile)
 
-            # # TO MAKE METRIC VERSUS METRIC SCATTER PLOTS, UNCOMMENT THIS BIT
+            # # # TO MAKE METRIC VERSUS METRIC SCATTER PLOTS, UNCOMMENT THIS BIT
             # subdir = 'metricVmetric-scatterplots/'
             # outDir = self.makeNewPlotSubdir(subdir=subdir)
-            # m1s = ['loss','loss']
-            # m2s = ['Bfactor','BfactorChange']
-            # for m1,m2 in zip(m1s,m2s):
-            #   self.atmsObjs.compareMetrics(metric1=m1,
-            #                                metric2=m2,
-            #                                atomtype='P',
-            #                                dSet=i,
-            #                                outputDir=outDir,
-            #                                fileType='.svg')
+            # m1s = ['loss', 'loss']
+            # m2s = ['density_weighted_loss', 'density_weighted_mean_negOnly']
+            # for m1, m2 in zip(m1s, m2s):
+            #     self.atmsObjs.compareMetrics(metric1=m1,
+            #                                  metric2=m2,
+            #                                  atomtype='',
+            #                                  dSet=i,
+            #                                  outputDir=outDir,
+            #                                  fileType='.svg')
 
             ###################################################################
             # Create distribution plots for metric values over whole structure
@@ -700,13 +708,11 @@ class provideFeedback(object):
                 log=self.logFile, type='warning')
             return
 
-        self.damSitesPDB = []
-        for i in range(self.getNumDatasets()):
-            damPDB = self.atmsObjs.getTopNAtomsPDBfile(
-                metric=metric, normType=normType, dataset='all',
-                n=numDamSites, pdbFile=pdbTemplate)
+        damPDB = self.atmsObjs.getTopNAtomsPDBfile(
+            metric=metric, normType=normType, dataset='all',
+            n=numDamSites, pdbFile=pdbTemplate)
 
-            self.damSitesPDB.append(damPDB)
+        self.damSitesPDB = os.path.abspath(damPDB)
 
     def colorByMetric(self,
                       metric='loss', normType='Standard',

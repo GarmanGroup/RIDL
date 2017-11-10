@@ -275,24 +275,21 @@ class processFiles():
                 '\t{}'.format(self.pklDataFile))
 
         # retrieve the combinedAtoms object from the pkl file
-        combinedAtoms = retrieveGenericObject(
-            fileName=self.dir+'RIDL-metrics/'+self.pklDataFile)
-
-        outputPlotDir = '{}RIDL-metrics/plots/'.format(self.dir)
-        self.makeOutputDir(dirName=outputPlotDir)
+        combinedAtoms = retrieveGenericObject(fileName=self.pklDataFile)
 
         if not includeTests:
+            outputDir = self.dir + 'RIDL-metrics/'
             provideFeedback(csvOnly=csvOnly, atmsObjs=combinedAtoms,
-                            logFile=self.logFile, outputDir=self.dir,
-                            outputPlotDir=outputPlotDir, doses=self.getDoses(),
+                            logFile=self.logFile, outputDir=outputDir,
+                            doses=self.getDoses(),
                             pklSeries=self.pklDataFile,
                             inputDir=self.mapProcessDir,
                             pdbNames=self.name2, initialPDB=self.name1,
                             inclFCmetrics=self.includeFCmaps())
         else:
             furtherAnalysis(csvOnly=csvOnly, atmsObjs=combinedAtoms,
-                            logFile=self.logFile, outputDir=self.dir,
-                            outputPlotDir=outputPlotDir, doses=self.getDoses(),
+                            logFile=self.logFile, outputDir=outputDir,
+                            doses=self.getDoses(),
                             pklSeries=self.pklDataFile,
                             inputDir=self.mapProcessDir,
                             pdbNames=self.name2, initialPDB=self.name1,

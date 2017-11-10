@@ -2,149 +2,134 @@ import numpy as np
 import os
 from sklearn.cluster import KMeans
 from scipy.interpolate import griddata
-
-import random
 import time
+
 
 class perAtomClusterAnalysis():
 
-        # class to determine the full set of voxels around an atom (including symmetry 
-        # related voxels). Then can find clusters of positive and negative dnesity 
-        # values. Can determine 3d density shift vectors describing the shift in 
-        # electron density from negative to positive regions (based on these
-        # particular defined clusters of voxels)  
+        # class to determine the full set of voxels around an atom (including
+        # symmetry related voxels). Then can find clusters of positive and
+        # negative dnesity values. Can determine 3d density shift vectors
+        # describing the shift in electron density from negative to positive
+        # regions (based on these particular defined clusters of voxels)
 
     def __init__(self,
-                 atmNum            = 0,
-                 atmId             = '',
-                 densMapObj        = [],
-                 vxlsPerAtom       = [],
-                 xyzsPerAtom       = [],
-                 prevAtmMidPt      = [0,0,0],
-                 showDens          = True,
-                 showSymm          = False,
-                 makePlot          = False,
-                 report            = False,
-                 findClusters      = False,
-                 plotCentroids     = False,
-                 numPosClusts      = 10,
-                 writeVecsToFile   = False,
-                 mainVecOnly       = False,
-                 doInterpolation   = False,
-                 partitionPtsByVec = True,
-                 autoRun           = True):
+                 atmNum=0, atmId='', densMapObj=[], vxlsPerAtom=[],
+                 xyzsPerAtom=[], prevAtmMidPt=[0, 0, 0], showDens=True,
+                 showSymm=False, makePlot=False, report=False,
+                 findClusters=True, plotCentroids=False,
+                 numPosClusts=5, writeVecsToFile=False,  mainVecOnly=True,
+                 doInterpolation=False,  partitionPtsByVec=False,
+                 autoRun=True, vxlRefPoint=[]):
 
-        self.atmNum            = atmNum
-        self.atmId             = atmId
-        self.prevAtmMidPt      = prevAtmMidPt
-        self.showDens          = showDens
-        self.showSymm          = showSymm
-        self.makePlot          = makePlot
-        self.report            = report
-        self.findClusters      = findClusters
-        self.plotCentroids     = plotCentroids
-        self.numPosClusts      = numPosClusts
-        self.mainVecOnly       = mainVecOnly
-        self.writeVecsToFile   = writeVecsToFile
-        self.doInterpolation   = doInterpolation
+        self.atmNum = atmNum
+        self.atmId = atmId
+        self.prevAtmMidPt = prevAtmMidPt
+        self.showDens = showDens
+        self.showSymm = showSymm
+        self.makePlot = makePlot
+        self.report = report
+        self.findClusters = findClusters
+        self.plotCentroids = plotCentroids
+        self.numPosClusts = numPosClusts
+        self.mainVecOnly = mainVecOnly
+        self.writeVecsToFile = writeVecsToFile
+        self.doInterpolation = doInterpolation
         self.partitionPtsByVec = partitionPtsByVec
+        self.vxlRefPoint = vxlRefPoint
+        self.densMapObj = densMapObj
+        self.xyzsPerAtomDic = xyzsPerAtom
+        self.vxlsPerAtomDic = vxlsPerAtom
 
-        self.densMapObj        = densMapObj
-        self.xyzsPerAtomDic    = xyzsPerAtom
-        self.vxlsPerAtomDic    = vxlsPerAtom
-
-        self.output            = []
+        self.output = []
 
         if autoRun:
             self.run()
 
     def run(self,
-            printRunTime = False):
+            printRunTime=False):
 
         # run main function of class
 
         if printRunTime:
             tRun = time.time()
 
-        (X,Y,Z)  = self.getxyzPerAtom(xyzsPerAtomDic = self.xyzsPerAtomDic) 
-    
-        density  = self.getVxlDensitiesPerAtom(vxlsPerAtomDic = self.vxlsPerAtomDic)
-
-        symOps   = self.getExtendedSymRelatedPoints(densMapObj = self.densMapObj,
-                                                    XYZ        = [X,Y,Z])
-
-        refPoint = self.findVoxRefPoint(symOps,[X,Y,Z],density)
-
-        props    = self.decideWhichVoxToKeep(refPoint = refPoint,
-                                             symOps   = symOps,
-                                             X        = X,
-                                             dens     = density,
-                                             refThres = 0.01)
+        XYZ = self.getxyzPerAtom(xyzsPerAtomDic=self.xyzsPerAtomDic)
+        density = self.getVxlDensitiesPerAtom()
+        symOps = self.getExtendedSymRelatedPoints(XYZ=XYZ)
+        refPoint = self.findVoxRefPoint(XYZ, density)
+        props = self.decideWhichVoxToKeep(refPoint=refPoint, symOps=symOps,
+                                          X=XYZ[0], dens=density,
+                                          refThres=0.01)
+        # props = self.decideWhichVoxToKeepNew(refPoint=refPoint, XYZ=XYZ,
+        #                                      dens=density)
 
         keptPoints = props[0]
-        symOrOrig  = props[1]
-
-        # self.keptPoints = keptPoints
-        # self.symOrOrig  = symOrOrig
+        symOrOrig = props[1]
 
         if self.doInterpolation:
             keptPointsNew = self.interpolateGrid(keptPoints)
-            self.interpolatedPts = np.ndarray.flatten(np.array(keptPointsNew)) # remove this test after use
+            self.interpolatedPts = np.ndarray.flatten(np.array(keptPointsNew))
 
         if self.findClusters:
-            (negClustInfo,posClustInfo) = self.findPosNegClusters(keptPoints)
+            (negClustInfo, posClustInfo) = self.findPosNegClusters(keptPoints)
 
             if self.foundNegClust and self.foundPosClust:
-                vecDic = self.findNegToPosDensShift(negClustInfo,posClustInfo)
+                vecDic = self.findNegToPosDensShift(negClustInfo, posClustInfo)
 
                 if self.writeVecsToFile:
-                    self.writeVecStartStopToPDBFile(mainNegCentroid = negClustInfo['main centroid'],
-                                                    weightedVectors = vecDic['weighted vectors'],
-                                                    densMapObj      = self.densMapObj)
+                    self.writeVecStartStopToPDBFile(
+                        mainNegCentroid=negClustInfo['main centroid'],
+                        weightedVectors=vecDic['weighted vectors'],
+                        densMapObj=self.densMapObj)
             else:
                 vecDic = {}
-                self.addToOutput(np.nan)     
+                self.addToOutput(np.nan)
 
         else:
             negClustInfo = {}
             posClustInfo = {}
-            vecDic       = {}
+            vecDic = {}
             self.addToOutput(np.nan)
 
             self.findMinToMaxVector(keptPoints)
 
         if self.partitionPtsByVec:
-            carboxyls = ['GLU-CD','GLU-OE1','GLU-OE2','ASP-CG','ASP-OD1','ASP-OD2']
+            carboxyls = ['GLU-CD', 'GLU-OE1', 'GLU-OE2',
+                         'ASP-CG', 'ASP-OD1', 'ASP-OD2']
             if '-'.join(self.atmId.split('-')[2:]) in carboxyls:
                 method = 'previous atom'
             else:
                 method = 'density shift'
-            self.splitDensPointsBasedOnVector(keptPoints,method=method)
+            self.findVoxelMidPt(keptPoints)
+            self.splitDensPointsBasedOnVector(keptPoints, method=method)
             densByReg = self.calcSumDensForPartition(keptPoints)
             self.densByRegion = densByReg
         else:
+            self.findVoxelMidPt(keptPoints)
             self.densByRegion = []
 
         if self.makePlot:
-            self.make3dScatterPlot(keptPoints    = keptPoints,
-                                   negClustInfo  = negClustInfo,
-                                   posClustInfo  = posClustInfo,
-                                   symOrOriginal = symOrOrig,
-                                   vectorDic     = vecDic,
-                                   plotVectors   = True)
+            print 'about to plot'
+            self.make3dScatterPlot(keptPoints=keptPoints,
+                                   negClustInfo=negClustInfo,
+                                   posClustInfo=posClustInfo,
+                                   symOrOriginal=symOrOrig,
+                                   vectorDic=vecDic,
+                                   plotVectors=True)
 
         if printRunTime:
-            print 'Total Run time: {}s'.format(round(time.time()-tRun,3))
+            print 'Total Run time: {}s'.format(round(time.time()-tRun, 3))
 
     def addToOutput(self,
-                    prop = []):
+                    prop=[]):
 
         # append to the list of desired outputs
 
         self.output.append(prop)
 
     def getxyzPerAtom(self,
-                      xyzsPerAtomDic = {}):
+                      xyzsPerAtomDic={}):
 
         # get list of xyz positions of voxels for atom.
         # 'xyzsPerAtomDic' is taken from readAtomMap.py
@@ -152,45 +137,46 @@ class perAtomClusterAnalysis():
         if self.atmNum not in xyzsPerAtomDic.keys():
             return False
 
-        (X,Y,Z) = np.transpose(xyzsPerAtomDic[self.atmNum])
-       
-        return X,Y,Z
+        (X, Y, Z) = np.transpose(xyzsPerAtomDic[self.atmNum])
 
-    def getVxlDensitiesPerAtom(self,
-                               vxlsPerAtomDic = {}):
+        return [X, Y, Z]
+
+    def getVxlDensitiesPerAtom(self):
 
         # get list of density values of voxels for atom.
         # 'vxlsPerAtomDic' is taken from readAtomMap.py.
-        # Keep densities here to 3dp since sym copies may have 
+        # Keep densities here to 3dp since sym copies may have
         # differing densities to higher accuracy than this
 
-        return np.round(np.array(vxlsPerAtomDic[self.atmNum]),3) 
+        return np.round(np.array(self.vxlsPerAtomDic[self.atmNum]), 3)
 
     def getbasicSymRelatedPoints(self,
-                                 densMapObj = [],
-                                 XYZ        = []):
+                                 densMapObj=[], XYZ=[]):
 
         # retrieve the symmetry operations for the map file.
         # 'densMapObj' is taken from readAtomMap.py (self.densmap).
         # For any sym op that takes a point outside of unit cell,
         # move translate this back into the unit cell of interest
 
-        symOps = densMapObj.getSymOps(XYZ[0],XYZ[1],XYZ[2])
-        symOps = np.mod(symOps,1).tolist()
+        symOps = densMapObj.getSymOps(XYZ[0], XYZ[1], XYZ[2])
+        symOps = np.mod(symOps, 1).tolist()
 
         return symOps
 
     def getExtendedSymRelatedPoints(self,
-                                    densMapObj = [],
-                                    XYZ        = [],
-                                    threshold  = 0.01):
+                                    densMapObj=[],  XYZ=[], threshold=0.01,
+                                    doNull=True):
 
         # retrieve the symmetry operations for the map file.
         # 'densMapObj' is taken from readAtomMap.py (self.densmap).
         # for case where original xyz points are close to a unit
         # cell boundary, include additional adjacent unit cells
 
-        symOps = self.getbasicSymRelatedPoints(densMapObj,XYZ)
+        if doNull:
+            symOps = [XYZ]
+            return symOps
+
+        symOps = self.getbasicSymRelatedPoints(self.densMapObj, XYZ)
 
         translateUnitCell = []
 
@@ -200,17 +186,17 @@ class perAtomClusterAnalysis():
             z = symOps[0][2][i]
             trans = []
             if x < threshold:
-                trans = [[-1],[0],[0]]
+                trans = [[-1], [0], [0]]
             if x > 1-threshold:
-                trans = [[1],[0],[0]]
+                trans = [[1], [0], [0]]
             if y < threshold:
-                trans = [[0],[-1],[0]]
+                trans = [[0], [-1], [0]]
             if y > 1-threshold:
-                trans = [[0],[1],[0]]
+                trans = [[0], [1], [0]]
             if z < threshold:
-                trans = [[0],[0],[-1]]
+                trans = [[0], [0], [-1]]
             if z > 1-threshold:
-                trans = [[0],[0],[1]]
+                trans = [[0], [0], [1]]
             if trans != []:
                 if trans not in translateUnitCell:
                     translateUnitCell.append(trans)
@@ -221,80 +207,113 @@ class perAtomClusterAnalysis():
                 for sym in np.array(symOps) + t:
                     symOps.append(sym)
             if self.report:
-                print 'Necessary to consider {} adjacent unit cell(s)'.format(l)
+                print 'Must consider {} adjacent unit cell(s)'.format(l)
 
         return symOps
 
     def findVoxRefPoint(self,
-                        symOps = [],
-                        XYZ    = [],
-                        dens   = []):
+                        XYZ=[], dens=[]):
 
-        # find suitable reference voxel point (out of those assigned to the atom)
-        # that is nearest to centre of asym unit. This will be the reference point
-        # from to which the distance to over voxels will be determined
-        
-        centreOfInterest = np.mean(symOps[0], axis = 1)
-        originalXYZs = np.array([[symOps[0][j][ii] for j in range(3)] for ii in range(len(XYZ[0]))])
-        dists = list(np.linalg.norm(originalXYZs - np.array(centreOfInterest),axis = 1))
+        # find suitable reference voxel point (out of those assigned to atom)
+        # that is nearest to centre of asym unit. This will be the reference
+        # point from to which the distance to over voxels will be determined
+
+        if self.vxlRefPoint == []:
+            centOfInterest = np.mean(XYZ, axis=1)
+        else:
+            centOfInterest = self.vxlRefPoint
+
+        xyzs = [[XYZ[j][ii] for j in range(3)] for ii in range(len(XYZ[0]))]
+        dists = list(np.linalg.norm(np.array(xyzs) - np.array(centOfInterest),
+                     axis=1))
         minInd = dists.index(min(dists))
-        refPoint = [XYZ[0][minInd],XYZ[1][minInd],XYZ[2][minInd]] + [dens[minInd]]
+        refPoint = [XYZ[0][minInd], XYZ[1][minInd],
+                    XYZ[2][minInd]] + [dens[minInd]]
 
         return refPoint
 
+    def decideWhichVoxToKeepNew(self,
+                                refPoint=[], XYZ=[], dens=[], refThres=2,
+                                performEndCheck=True, doNothing=False):
+
+        # this version of the decision function can only work when the map
+        # is centred on the molecule. In this case, a single well formed
+        # cluster must be present for the atom, however symmetry-related
+        # additional voxels may be present, which should be removed
+
+        xyzs = [[XYZ[j][ii] for j in range(3)] for ii in range(len(XYZ[0]))]
+        xyzds = [xyz+[d] for xyz, d in zip(xyzs, dens)]
+
+        if doNothing:
+            return xyzds, [0]*len(xyzds)
+
+        A = np.array(xyzs) - np.array(refPoint[:3])
+        distToRef = np.linalg.norm(A, axis=-1)
+        xyzds = [xyzd for _, xyzd in sorted(zip(distToRef, xyzds))]
+        distToRef.sort()
+        keptPts = []
+        for xyzd, dist in zip(xyzds, distToRef):
+            if dist < refThres:
+                keptPts.append(xyzd)
+                continue
+            A = np.array(keptPts)[:, None, :3] - np.array(xyzd[0:3])
+            distToFound = np.linalg.norm(A, axis=2)
+            minDist = np.min(distToFound, axis=0)[0]
+            if minDist < refThres:
+                keptPts.append(xyzd)
+
+        # print '{}/{} points kept'.format(len(keptPts), len(XYZ[0]))
+
+        return keptPts, [0]*len(keptPts)
+
     def decideWhichVoxToKeep(self,
-                             refPoint  = [],
-                             symOps    = [],
-                             X         = [],
-                             dens      = [],
-                             threshold = 1e-10,
-                             refThres  = 0.01,
-                             performEndCheck = True,
-                             doNothing = False,
-                             returnAll = False):
+                             refPoint=[], symOps=[], X=[], dens=[],
+                             threshold=1e-10, refThres=0.01,
+                             performEndCheck=True, doNothing=False,
+                             returnAll=False):
 
         # loop through all the located voxels assigned to the atom
         # and decide which ones form a single well defined cluster
-        # in space. This will then be what is treated as the 
+        # in space. This will then be what is treated as the
         # voxel set of this particular atom
 
-        # provide the null choice to return original points (but not sym-related)
+        # provide the null choice to return original points
+        # (but not sym-related points)
         if doNothing:
             xyz = [[symOps[0][j][ii] for j in range(3)] + [dens[ii]] for ii in range(len(X))]
             symOrOrig = [0 for i in range(len(xyz))]
-            return xyz,symOrOrig
+            return xyz, symOrOrig
 
         # provide the choice to not exclude any sym-related points
         if returnAll:
             symPointsAll = []
-            symOrOrig    = []
+            symOrOrig = []
             for i in range(len(X)):
-                symxyzs   = [[symOp[j][i] for j in range(3)] for symOp in symOps]
+                symxyzs = [[symOp[j][i] for j in range(3)] for symOp in symOps]
                 symPoints = [sym + [dens[i]] for sym in symxyzs]
                 symPointsAll += symPoints
                 symOrOrig += [0]+[1]*(len(symxyzs)-1)
-            return symPointsAll,symOrOrig
+            return symPointsAll, symOrOrig
 
-        keptPoints  = np.array([refPoint])
+        keptPoints = np.array([refPoint])
         keptPointsL = [refPoint]
-
-        symOrOrig   = [0]
-        samexyzs    = 0
-        dupcount    = 0
+        symOrOrig = [0]
+        samexyzs = 0
+        dupcount = 0
 
         xyz = [[symOps[0][j][ii] for j in range(3)] for ii in range(len(X))]
-        A   = np.array(xyz) - np.array(refPoint[:3])
-        distToRef  = np.linalg.norm(A,axis = -1)
+        A = np.array(xyz) - np.array(refPoint[:3])
+        distToRef = np.linalg.norm(A, axis=-1)
 
-        for ii,refDist in enumerate(distToRef):
+        for ii, refDist in enumerate(distToRef):
 
             if refDist > refThres:
 
-                symxyzs   = [[symOp[j][ii] for j in range(3)] for symOp in symOps]
+                symxyzs = [[symOp[j][ii] for j in range(3)] for symOp in symOps]
                 symPoints = [sym + [dens[ii]] for sym in symxyzs]
 
                 copy = False
-                for i,symPt in enumerate(symPoints):
+                for i, symPt in enumerate(symPoints):
                     if symPt in keptPointsL:
                         copy = True
                         dupcount += 1
@@ -305,22 +324,23 @@ class perAtomClusterAnalysis():
                 if copy:
                     continue
 
-                A = np.array(symxyzs) - keptPoints[:,None,:3]
-                distToFound  = np.linalg.norm(A,axis = 2)            
+                A = np.array(symxyzs) - keptPoints[:, None, :3]
+                distToFound = np.linalg.norm(A, axis=2)
 
-                minDist      = np.min(distToFound, axis = 0).tolist()
+                minDist = np.min(distToFound, axis=0).tolist()
                 minOfMinDist = min(minDist)
-                closestInd   = minDist.index(minOfMinDist)
-                closestSym   = symPoints[closestInd]
+                closestInd = minDist.index(minOfMinDist)
+                closestSym = symPoints[closestInd]
 
                 if minOfMinDist < threshold:
-                    samexyzs += 1 
+                    samexyzs += 1
 
-                    # if new point is part of original asym unit, use this point instead
+                    # if new point is part of original asym unit,
+                    # use this point instead
                     if closestInd == 0:
                         dists = [dist[0] for dist in distToFound]
                         nearestPtId = dists.index(min(minDist))
-                        keptPoints = np.delete(keptPoints,nearestPtId,axis=0)
+                        keptPoints = np.delete(keptPoints, nearestPtId, axis=0)
                         keptPointsL = keptPointsL[:nearestPtId]+keptPointsL[nearestPtId+1:]
                         symOrOrig = symOrOrig[:nearestPtId]+symOrOrig[nearestPtId+1:]
                     else:
@@ -330,16 +350,16 @@ class perAtomClusterAnalysis():
                 closestInd = 0
                 closestSym = xyz[ii] + [dens[ii]]
 
-                distsToPoint = np.linalg.norm(keptPoints[:,:3]-np.array(xyz[ii]),axis=-1)
+                distsToPoint = np.linalg.norm(keptPoints[:, :3]-np.array(xyz[ii]), axis=-1)
                 minDist = min(distsToPoint)
                 if minDist < threshold:
                     nearestPtId = distsToPoint.tolist().index(minDist)
-                    keptPoints = np.delete(keptPoints,nearestPtId,axis=0)
+                    keptPoints = np.delete(keptPoints, nearestPtId, axis=0)
                     keptPointsL = keptPointsL[:nearestPtId]+keptPointsL[nearestPtId+1:]
                     symOrOrig = symOrOrig[:nearestPtId]+symOrOrig[nearestPtId+1:]
 
             # add the newly found point to the list of found points
-            keptPoints = np.append(keptPoints,[closestSym],axis = 0)
+            keptPoints = np.append(keptPoints, [closestSym], axis=0)
             keptPointsL.append(closestSym)
 
             if closestInd != 0:
@@ -347,39 +367,39 @@ class perAtomClusterAnalysis():
             else:
                 symOrOrig.append(0)
 
-        # check for included points with same xyz coordinates - should not happen
+        # check for included points with same xyz coordinates
+        # - this should not happen
         if performEndCheck:
-            for i,keptPoint in enumerate(keptPoints):
-                keptPoints2 = np.delete(keptPoints,i,axis=0)
-                dists = np.linalg.norm(keptPoints2[:,:3]-keptPoint[:3],axis=-1)
+            for i, keptPoint in enumerate(keptPoints):
+                keptPoints2 = np.delete(keptPoints, i, axis=0)
+                dists = np.linalg.norm(keptPoints2[:, :3]-keptPoint[:3], axis=-1)
                 if min(dists) < threshold:
                     print 'Error! Two density points included with identical xyz'
                     import sys
                     sys.exit()
 
         if self.report:
-            self.decideWhichVoxToKeepReport(keptPoints,symOrOrig,dupcount,samexyzs)
+            self.decideWhichVoxToKeepReport(keptPoints, symOrOrig, dupcount, samexyzs)
 
-        return keptPoints.tolist(),symOrOrig
+        return keptPoints.tolist(), symOrOrig
 
     def decideWhichVoxToKeepReport(self,
-                                   keptPoints = [],
-                                   symOrOrig  = [],
-                                   dupcount   = [], 
-                                   samexyzs   = []):
+                                   keptPoints=[], symOrOrig=[], dupcount=[],
+                                   samexyzs=[]):
 
         # print to command line how the previous method did
 
         print 'Atom Identity: {}'.format(self.atmId)
         print 'Number points found: {}'.format(len(keptPoints))
-        print '\tNumber that are original: {}'.format(len(symOrOrig) - np.sum(symOrOrig))
+        print '\tNumber that are original: {}'.format(
+            len(symOrOrig) - np.sum(symOrOrig))
         print '\tNumber that are sym copies: {}'.format(np.sum(symOrOrig))
         print '\tNumber of duplicate positions: {}'.format(dupcount + samexyzs)
         print '\t\tidentical: {}'.format(dupcount)
         print '\t\tsame xyz: {}'.format(samexyzs)
 
     def findPosNegClusters(self,
-                           keptPoints = []):
+                           keptPoints=[]):
 
         # now that a complete set of voxels have been found around an atom
         # determine the location of clusters of positive and negative density
@@ -387,14 +407,13 @@ class perAtomClusterAnalysis():
         posVals = [pt for pt in keptPoints if pt[3] >= 0]
         negVals = [pt for pt in keptPoints if pt[3] < 0]
 
-        negClustInfo = self.findNegClusters(negVals = negVals)
-        posClustInfo = self.findPosClusters(posVals = posVals)
+        negClustInfo = self.findNegClusters(negVals=negVals)
+        posClustInfo = self.findPosClusters(posVals=posVals)
 
-        return negClustInfo,posClustInfo
+        return negClustInfo, posClustInfo
 
     def findNegClusters(self,
-                        n_clusters = 2,
-                        negVals    = []):
+                        n_clusters=2, negVals=[]):
 
         # find negative point clusters
 
@@ -403,43 +422,42 @@ class perAtomClusterAnalysis():
         if len(negVals) > 1:
             self.foundNegClust = True
 
-            negKmeans    = KMeans(n_clusters = n_clusters)
-            negClusters  = negKmeans.fit_predict(negVals)
-            negCluster1  = [val for i,val in enumerate(negVals) if negClusters[i] == 0]
-            negCluster2  = [val for i,val in enumerate(negVals) if negClusters[i] == 1]
-            mean1        = np.mean([c[3] for c in negCluster1])
-            mean2        = np.mean([c[3] for c in negCluster2])
-            centroids    = negKmeans.cluster_centers_
+            negKmeans = KMeans(n_clusters=n_clusters)
+            negClusters = negKmeans.fit_predict(negVals)
+            negCluster1 = [val for i, val in enumerate(negVals) if negClusters[i] == 0]
+            negCluster2 = [val for i, val in enumerate(negVals) if negClusters[i] == 1]
+            mean1 = np.mean([c[3] for c in negCluster1])
+            mean2 = np.mean([c[3] for c in negCluster2])
+            centroids = negKmeans.cluster_centers_
 
             if mean2 > mean1:
-                mainClust   = negCluster1
+                mainClust = negCluster1
                 mainCentrID = 0
-                clusters    = np.mod(np.array(negClusters)-1,2)
+                clusters = np.mod(np.array(negClusters)-1, 2)
                 self.addToOutput(mean1)
 
             else:
-                mainClust   = negCluster2
+                mainClust = negCluster2
                 mainCentrID = 1
-                clusters    = negClusters
-                self.addToOutput(mean2)   
+                clusters = negClusters
+                self.addToOutput(mean2)
 
-            negClustInfo['clusters']      = clusters
-            negClustInfo['main cluster']  = mainClust
-            negClustInfo['centroids']     = centroids
+            negClustInfo['clusters'] = clusters
+            negClustInfo['main cluster'] = mainClust
+            negClustInfo['centroids'] = centroids
             negClustInfo['main centroid'] = centroids[mainCentrID, :]
-            negClustInfo['mean 1']        = mean1
-            negClustInfo['mean 2']        = mean2
+            negClustInfo['mean 1'] = mean1
+            negClustInfo['mean 2'] = mean2
 
         else:
-            self.foundNegClust       = False
+            self.foundNegClust = False
             negClustInfo['clusters'] = [1]
             self.addToOutput(np.nan)
 
         return negClustInfo
 
     def findPosClusters(self,
-                        numPosClusts = 10,
-                        posVals      = []):
+                        numPosClusts=10, posVals=[]):
 
         # find positive point clusters
 
@@ -448,42 +466,40 @@ class perAtomClusterAnalysis():
         if len(posVals) > 1:
             # reduce number of clusters if too many specified
             if numPosClusts > len(posVals):
-                numPosClusts = len(posVals) 
+                numPosClusts = len(posVals)
 
             self.foundPosClust = True
-            posKmeans = KMeans(n_clusters = numPosClusts)
-            clusters  = posKmeans.fit_predict([pt[:3] for pt in posVals])
-            posClustList  = []
+            posKmeans = KMeans(n_clusters=numPosClusts)
+            clusters = posKmeans.fit_predict([pt[:3] for pt in posVals])
+            posClustList = []
 
             for j in range(numPosClusts):
-                posClustList.append([val for i,val in enumerate(posVals) if clusters[i] == j])   
+                posClustList.append([val for i, val in enumerate(posVals) if clusters[i] == j])   
 
-            posClustMeans  = [np.mean([c[3] for c in clust]) for clust in posClustList]
-            maxPosInd      = posClustMeans.index(max(posClustMeans))
+            posClustMeans = [np.mean([c[3] for c in clust]) for clust in posClustList]
+            maxPosInd = posClustMeans.index(max(posClustMeans))
 
-            posClustInfo['clusters']     = clusters
-            posClustInfo['centroids']    = posKmeans.cluster_centers_
+            posClustInfo['clusters'] = clusters
+            posClustInfo['centroids'] = posKmeans.cluster_centers_
             posClustInfo['main cluster'] = maxPosInd
             posClustInfo['cluster list'] = posClustList
-            posClustInfo['means']        = posClustMeans
+            posClustInfo['means'] = posClustMeans
 
         else:
             self.foundPosClust = False
-            posClustInfo['clusters']     = [1]
+            posClustInfo['clusters'] = [1]
             posClustInfo['cluster list'] = [1]
             self.addToOutput(np.nan)
 
         return posClustInfo
 
     def findNegToPosDensShift(self,
-                              negClustInfo = {},
-                              posClustInfo = {},
-                              printText    = False,
-                              performCheck = True):
+                              negClustInfo={}, posClustInfo={},
+                              printText=False, performCheck=True):
 
-        # now that clusters have been located, find the shift vectors 
+        # now that clusters have been located, find the shift vectors
         # which determine the magnitude and direction in which density
-        # appears to have shifted. A choice can be made between only 
+        # appears to have shifted. A choice can be made between only
         # considering one main positive cluster of interest or all of them
 
         if self.mainVecOnly:
@@ -495,10 +511,11 @@ class perAtomClusterAnalysis():
         resultantVectors = []
 
         for clust in clusterLoop:
-            vecChange = np.array(clust)[:,:3] - np.array(negClustInfo['main cluster'])[:,None,:3]
-            densDiffs = np.array(clust)[:,3] - np.array(negClustInfo['main cluster'])[:,None,3]
-            norms = np.linalg.norm(vecChange,axis=-1)
-            directions = vecChange/(norms[:,:,None])
+            vecChange = np.array(clust)[:, :3] - np.array(negClustInfo['main cluster'])[:, None, :3]
+            densDiffs = np.array(clust)[:, 3] - np.array(negClustInfo['main cluster'])[:, None, 3]
+
+            norms = np.linalg.norm(vecChange, axis=-1)
+            directions = vecChange/(norms[:, :, None])
 
             if performCheck:
                 for vecs in vecChange:
@@ -508,17 +525,17 @@ class perAtomClusterAnalysis():
                             import sys
                             sys.exit()
 
-            totalComponent = (densDiffs[:,:,None]*directions).sum(1)
-            resultantVectors.append(np.mean(np.array(totalComponent),axis=0))
+            totalComponent = (densDiffs[:, :, None]*directions).mean(1)
+            resultantVectors.append(np.mean(np.array(totalComponent), axis=0))
 
         vectorDic = {}
-        vMagnitudes = np.linalg.norm(resultantVectors,axis=1)
-        vectorDic['normed vectors']   = np.array(resultantVectors)/(vMagnitudes[:,None])
+        vMagnitudes = np.linalg.norm(resultantVectors, axis=1)
+        vectorDic['normed vectors'] = np.array(resultantVectors)/(vMagnitudes[:, None])
         vectorDic['weighted vectors'] = np.array(resultantVectors)*(0.03/20)
         vectorDic['magnitudes'] = vMagnitudes
 
-        self.netDensShiftVec = np.sum(resultantVectors,0)
-        netDensShift         = np.linalg.norm(self.netDensShiftVec)
+        self.netDensShiftVec = np.sum(resultantVectors, 0)
+        netDensShift = np.linalg.norm(self.netDensShiftVec)
 
         self.addToOutput(vectorDic['normed vectors'])
         self.addToOutput(vectorDic['magnitudes'])
@@ -526,15 +543,15 @@ class perAtomClusterAnalysis():
 
         if printText:
             for k in vectorDic.keys():
-                print '{}: {}'.format(k,np.around(vectorDic[k],decimals = 2))
+                print '{}: {}'.format(k, np.around(vectorDic[k], decimals=2))
 
         return vectorDic
 
     def findMinToMaxVector(self,
-                           points = []):
+                           points=[]):
 
         # as an alternative to determining positive and negative clusters
-        # and then the density shift vectors between them, find location 
+        # and then the density shift vectors between them, find location
         # of max and min points and calculate direction vector between them
 
         minPt = self.findVoxelMinPt(points)
@@ -545,7 +562,7 @@ class perAtomClusterAnalysis():
         self.netDensShiftVec = dirVector
 
     def findVoxelMaxPt(self,
-                       points = []):
+                       points=[]):
 
         # find the max point assigned to the atom
 
@@ -555,78 +572,76 @@ class perAtomClusterAnalysis():
         maxY = self.getYcoords(points)[maxPtId]
         maxZ = self.getZcoords(points)[maxPtId]
 
-        return [maxX,maxY,maxZ]
+        return [maxX, maxY, maxZ]
 
     def findVoxelMinPt(self,
-                       points = []):
+                       points=[]):
 
-        # find them in point assigned to the atom
+        # find the min point assigned to the atom
 
         densities = self.getDensities(points)
         minPtId = densities.index(min(densities))
         minX = self.getXcoords(points)[minPtId]
         minY = self.getYcoords(points)[minPtId]
-        minZ = self.getZcoords(points)[minPtId]   
+        minZ = self.getZcoords(points)[minPtId]
 
-        return [minX,minY,minZ]
+        return [minX, minY, minZ]
 
     def findVoxelMidPt(self,
-                       points = []):
+                       points=[]):
 
         # find the mid point assigned to the atom
 
-        midX  = np.median(self.getXcoords(points))
-        midY  = np.median(self.getYcoords(points))
-        midZ  = np.median(self.getZcoords(points))
+        midX = np.median(self.getXcoords(points))
+        midY = np.median(self.getYcoords(points))
+        midZ = np.median(self.getZcoords(points))
 
-        self.midPt = [midX,midY,midZ]
+        self.midPt = [midX, midY, midZ]
 
-        return [midX,midY,midZ]
+        return [midX, midY, midZ]
 
     def findAtomToNeighbourVector(self,
-                                  points = []):
+                                  points=[]):
 
-        # instead of defining a vector based on density around 
-        # an atom, define a vector in the direction from the 
+        # instead of defining a vector based on density around
+        # an atom, define a vector in the direction from the
         # previous atomic centre (as labeled in the pdb file)
         # to the current atom (were the centres are defined by)
         # the mid voxel position for that atom.
-        # Note that this may not be suitable for atoms at the 
+        # Note that this may not be suitable for atoms at the
         # start of residues and is designed with Glu/Asp carboxyls
         # in mind
 
         currentMid = self.findVoxelMidPt(points)
-        lastMid    = self.prevAtmMidPt
-        dirVector  = np.array(currentMid) - np.array(lastMid)
+        lastMid = self.prevAtmMidPt
+        dirVector = np.array(currentMid) - np.array(lastMid)
         return dirVector/np.linalg.norm(dirVector)
 
     def findVoxelsAlongVector(self,
-                              points = [],
-                              dirVec = [1,0,0],
-                              posVec = [0,0,0],
-                              thres  = 5e-3,
-                              method = 'interpolation'):
+                              points=[], dirVec=[1, 0, 0],
+                              posVec=[0, 0, 0], thres=5e-3,
+                              method='interpolation'):
 
-        # supplied with a 3d vector, the voxels lying in on the 
+        # supplied with a 3d vector, the voxels lying in on the
         # line defined by direction vector 'dirVec' and passing
-        # through the point posVec are returned (or within a 
+        # through the point posVec are returned (or within a
         # specified distance threshold 'thres')
-        
+
         x1 = np.array(posVec)
         x2 = x1 + np.array(dirVec)
         distsToMid = []
-        densKept   = []
+        densKept = []
 
         if method == 'projection':
             for pt in points:
                 x0minusx1 = np.array(pt[:3]) - x1
                 x0minusx2 = np.array(pt[:3]) - x2
                 x2minusx1 = x2 - x1
-                top = np.linalg.norm(np.cross(x0minusx1,x0minusx2))
+                top = np.linalg.norm(np.cross(x0minusx1, x0minusx2))
                 dist = float(top)/np.linalg.norm(x2minusx1)
 
                 if dist < thres:
-                    proj = x1 + np.dot(x0minusx1,x2minusx1)/np.dot(x2minusx1,x2minusx1) * x2minusx1
+                    proj = x1 + np.dot(x0minusx1, x2minusx1)/np.dot(x2minusx1, x2minusx1) * x2minusx1
                     distToMid = np.linalg.norm(proj-np.array(posVec))/np.linalg.norm(np.array(dirVec))
                     for i in range(3):
                         if np.abs(proj[i] - x1[i] - distToMid*dirVec[i]) > 1e-3:

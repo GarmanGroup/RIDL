@@ -70,6 +70,7 @@ class maps2DensMetrics():
 
         if self.calcFCmap:
             self.readFCMap()
+            self.reportDensMapInfo(mapType='calc')
 
         self.createVoxelList()
 
@@ -162,14 +163,19 @@ class maps2DensMetrics():
         self.stopTimer()
 
     def reportDensMapInfo(self,
-                          numSfs=4):
+                          numSfs=4, mapType='density'):
 
         # report the density map summary information to a log file
 
+        if mapType == 'density':
+            mp = self.densmap
+        elif mapType == 'calc':
+            mp = self.FCmap
+
         totalNumVxls = np.product(self.atmmap.nxyz.values())
-        structureNumVxls = len(self.densmap.vxls_val)
-        totalMean = self.densmap.density['mean']
-        structureMean = np.mean(self.densmap.vxls_val)
+        structureNumVxls = len(mp.vxls_val)
+        totalMean = mp.density['mean']
+        structureMean = np.mean(mp.vxls_val)
         solvNumVxls = totalNumVxls - structureNumVxls
         solvMean = (totalNumVxls*totalMean -
                     structureNumVxls*structureMean)/solvNumVxls
@@ -179,11 +185,11 @@ class maps2DensMetrics():
                '\tmean structure density : {}\n'.format(
                 round(structureMean, numSfs)) +
                '\tmax structure density : {}\n'.format(
-                round(max(self.densmap.vxls_val), numSfs)) +
+                round(max(mp.vxls_val), numSfs)) +
                '\tmin structure density : {}\n'.format(
-                round(min(self.densmap.vxls_val), numSfs)) +
+                round(min(mp.vxls_val), numSfs)) +
                '\tstd structure density : {}\n'.format(
-                round(np.std(self.densmap.vxls_val), numSfs)) +
+                round(np.std(mp.vxls_val), numSfs)) +
                '\t# voxels included : {}\n'.format(structureNumVxls) +
                '\nFor voxels assigned to solvent:\n' +
                '\tmean solvent-region density : {}\n'.format(
@@ -382,8 +388,7 @@ class maps2DensMetrics():
                 # mean. This is implemented such that all per-voxel weights
                 # (see below) are positive and so therefore sensible
                 # weighted-means can be calculated. This may need to be
-                # reconsidered
-                # for future use!
+                # reconsidered for future use!
                 atomFCvals = [v if v > 0 else 0 for v in atomFCvals]
 
                 atomFCvalsMaxNormed = np.array(atomFCvals)/max(atomFCvals)
@@ -431,10 +436,9 @@ class maps2DensMetrics():
                 if plotDistn:
                     # typically only to be used for testing purposes
                     self.plotFCdistnPlot(
-                        atomsToPlot=['CYS-SG'], atomOfInterest=atom,
+                        atomsToPlot=['GLU-CD', 'CYS-SG'], atomOfInterest=atom,
                         atomFCvals=atomFCvals, FCatMin=atomFCvals[minIndex],
-                        atomFCvalsMaxNorm=atomFCvalsMaxNormed,
-                        reliability=atom.reliability)
+                        atomFCvalsMaxNorm=atomFCvalsMaxNormed)
 
             if clustAnalys:
                 # provides the user with the option to also run
@@ -570,7 +574,7 @@ class maps2DensMetrics():
     def plotFCdistnPlot(self,
                         plot=True, atomOfInterest='',
                         atomsToPlot=['GLU-CD', 'CYS-SG'], atomFCvals=[],
-                        atomFCvalsMaxNorm=[], FCatMin=[], reliability=[],
+                        atomFCvalsMaxNorm=[], FCatMin=[],
                         plotType='.png', axesFont=18):
 
         # plot a kde & histrogram distribution plot for the FCalc values for an
@@ -595,10 +599,6 @@ class maps2DensMetrics():
                 plt.plot((FCatMin, FCatMin),
                          (ylims[0], ylims[1]),
                          label='Fcalc, at position of min diff density')
-                plt.plot((reliability, reliability),
-                         (ylims[0], ylims[1]),
-                         label='Fcalc/max(Fcalc), at ' +
-                               'position of min diff density')
                 leg = plt.legend(frameon=1)
                 frame = leg.get_frame()
                 frame.set_color('white')

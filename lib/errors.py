@@ -33,7 +33,7 @@ class error():
         self.printError(
             message='\n****ERROR!****\n{}\n\nPlease contact '.format(message) +
                     'charles.bury@dtc.ox.ac.uk for queries regarding this ' +
-                    'failure\n--->Terminating script...\n**************',
+                    'failure\n--->Terminating script...\n**************\n',
             killRun=True)
 
     def warningMessage(self,
@@ -41,7 +41,7 @@ class error():
 
         # template for warning message printed to screen
 
-        self.printError(message='Warning! >>> {}'.format(message),
+        self.printError(message='\n***Warning!***: {}\n'.format(message),
                         killRun=False)
 
     def printError(self,
