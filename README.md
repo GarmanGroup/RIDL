@@ -30,7 +30,7 @@ Please email *charles.bury@dtc.ox.ac.uk*
 
 - Run on command line using ```python runRIDL.py -i input.txt -pco```
 
-- If RIDL does not run to completion, please see the section *RIDL did not finish, help!* below for help. 
+- If RIDL does not run to completion, please see the section "*RIDL did not finish, help!*" below for help. 
 
 ## Quick hints:
 
@@ -204,10 +204,12 @@ The summary file will be output to the output subdirectory `RIDL-metrics/`. The 
 ## RIDL did not finish, help!
 
 - Please check that you are running `Python` version 2.7 or higher, but not version 3.x. If run with version 3.x, the script will break with the error:
-``` File "runRIDL.py", line 110
+```
+File "runRIDL.py", line 110
     print 'Can use -j command for help on how to ' +\
                                                  ^
-SyntaxError: Missing parentheses in call to 'print'```
+SyntaxError: Missing parentheses in call to 'print'
+```
 
 ## Citing when using the scripts
 
