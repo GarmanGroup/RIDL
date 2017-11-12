@@ -297,6 +297,57 @@ class combinedAtomList(object):
 				currentMetrics.append([metric,normType])
 		return currentMetrics
 
+	def getFormattedmetricName(self,
+		                       metric='loss', norm='Standard', form='HTML'):
+
+		# return a formatted version of the metric name
+
+		if form == 'HTML':
+			if norm == 'Standard':
+				if metric == 'loss':
+					name = r"\(D_\text{loss}\text{(atom)}\)"
+				elif metric == 'density_weighted_loss':
+					name = r"\(D_\text{loss}^{\rho}\text{(atom)}\)"
+				elif metric == 'density_weighted_mean_negOnly':
+					name = r"\(D_\text{mean}^{-,\,\rho}\text{(atom)}\)"
+				else:
+					name = metric
+			elif norm == 'Calpha normalised':
+				if metric == 'loss':
+					name = r"\(C_\alpha\text{-normalised}\ D_\text{loss}\text{(atom)}\)"
+				elif metric == 'density_weighted_loss':
+					name = r"\(C_\alpha\text{-normalised}\ D_\text{loss}^{\rho}\text{(atom)}\)"
+				elif metric == 'density_weighted_mean_negOnly':
+					name = r"\(C_\alpha\text{-normalised}\ D_\text{mean}^{-,\,\rho}\text{(atom)}\)"
+				else:
+					name = 'Calpha-normalised ' + metric
+			else:
+				name = norm + ' ' + metric
+
+		elif form == 'TEX':
+			if norm == 'Standard':
+				if metric == 'loss':
+					name = r"$D_\mathrm{loss}\mathrm{(atom)}$"
+				elif metric == 'density_weighted_loss':
+					name = r"$D_\mathrm{loss}^{\rho}\mathrm{(atom)}$"
+				elif metric == 'density_weighted_mean_negOnly':
+					name = r"$D_\mathrm{mean}^{-,\,\rho}\mathrm{(atom)}$"
+				else:
+					name = metric
+			elif norm == 'Calpha normalised':
+				if metric == 'loss':
+					name = r"$C_\alpha\mathrm{-normalised}\ D_\mathrm{loss}\mathrm{(atom)}$"
+				elif metric == 'density_weighted_loss':
+					name = r"$C_\alpha\mathrm{-normalised}\ D_\mathrm{loss}^{\rho}\mathrm{(atom)}$"
+				elif metric == 'density_weighted_mean_negOnly':
+					name = r"$C_\alpha\mathrm{-normalised}\ D_\mathrm{mean}^{-,\,\rho}\mathrm{(atom)}$"
+				else:
+					name = 'Calpha-normalised ' + metric
+			else:
+				name = norm + ' ' + metric
+
+		return name
+
 	def calcBfactorChange(self):
 
 		# calculate Bfactor change between initial 
@@ -1061,40 +1112,40 @@ class combinedAtomList(object):
 		return stringOut
 
 	def getTopNAtomsDotPlot(self,
-						    metrics   = ['loss','loss'],
-						    normTypes = ['Standard','Calpha normalised'],
+						    metrics   = ['loss', 'loss'],
+						    normTypes = ['Standard', 'Calpha normalised'],
 						    dataset   = 0,
 						    numHits   = 25,
 						    savePlot  = True,
 						    fileType  = '.png'):
 
-		# make a dot plot for top n atoms in structure in terms of 
+		# make a dot plot for top n atoms in structure in terms of
 		# metric 'metric'. 'numHits' takes values 'all' or an integer
 		# Top n atoms are ranked based of the primary metric as
 		# specified by the lists 'metrics' and 'normTypes'
 
 		if len(metrics) != len(normTypes):
-			print 'getTopNAtomsDotPlot() requires "metrics" and '+\
+			print 'getTopNAtomsDotPlot() requires "metrics" and ' +\
 				  '"normTypes" inputs to be lists of same length'
 			return
 
-		primaryMetric = '{}\n({})'.format(metrics[0],normTypes[0])
+		primaryMetric = self.getFormattedmetricName(metrics[0], normTypes[0], form='TEX')
 
 		topN = self.getTopNAtoms(metric   = metrics[0],
 								 normType = normTypes[0],
 								 dataset  = dataset,
 								 n        = numHits)
 
-		metricsToPlot = ['{}\n({})'.format(m,n) for m,n in zip(metrics,normTypes)]
-
-		plotData = {m:[] for m in metricsToPlot}
+		metricsToPlot = [self.getFormattedmetricName(m, n, form='TEX') for m, n in zip(metrics, normTypes)]
+		plotData = {m: [] for m in metricsToPlot}
 		plotData['Atom ID'] = []
 
 		for atom in topN:
 			plotData['Atom ID'].append(atom.getAtomID())
-			for m,n in zip(metrics,normTypes):
+			for m, n in zip(metrics, normTypes):
+				metName = self.getFormattedmetricName(m, n, form='TEX')
 				val = atom.densMetric[m][n]['values'][dataset]
-				plotData['{}\n({})'.format(m,n)].append(val)
+				plotData[metName].append(val)
 
 		plotdf = DataFrame(plotData)
 
@@ -2246,6 +2297,7 @@ class combinedAtomList(object):
 						 sideOnly   = False,
 						 requireAll = False,
 						 save       = True,
+						 xLabel     = '',
 						 fileType   = '.svg',
 						 outputDir  = './',
 						 printText  = True,
@@ -2449,16 +2501,14 @@ class combinedAtomList(object):
 		if len(datax.keys()) == 0:
 			return {},''
 
-		self.plotHist(plotType = plotType,
-					  datax    = datax,
-					  order    = dataxOrder)
+		self.plotHist(plotType=plotType, datax=datax, order=dataxOrder)
 
-		plt.legend(loc = 'best',
-			   	   fontsize = legFont)
-		plt.xlabel('{} D{} per atom'.format(normType,metric), 
-			       fontsize = axesFont)
-		plt.ylabel('Normed-frequency',
-			       fontsize = axesFont)
+		if xLabel == '':
+			xLabel = '{} D{} per atom'.format(normType,metric)
+
+		plt.legend(loc='best', fontsize=legFont)
+		plt.xlabel(xLabel, fontsize=axesFont)
+		plt.ylabel('Normed-frequency', fontsize=axesFont)
 		sns.despine()
 
 		if plotTitle == '':
@@ -2821,6 +2871,7 @@ class combinedAtomList(object):
 					resiNum   = '',
 					chainType = '',
 					errorBars = 'NONE',
+					yLabel    = '',
 					saveFig   = False,
 					outputDir = './',
 					fileType  = '.svg',
@@ -2886,10 +2937,11 @@ class combinedAtomList(object):
 			print 'No atoms found..'
 			return
 		
-		if normType == 'Calpha normalised':
-			yLabel = r'$C_\alpha$-normalised D{}'.format(densMet)
-		else:
-			yLabel = r'{} D{}'.format(normType,densMet)
+		if yLabel == '':
+			if normType == 'Calpha normalised':
+				yLabel = r'$C_\alpha$-normalised D{}'.format(densMet)
+			else:
+				yLabel = r'{} D{}'.format(normType,densMet)
 
 		# determine y values here dependent 
 		# on density metric type specified 
@@ -2949,7 +3001,7 @@ class combinedAtomList(object):
 		else:
 			name = saveName
 
-		if useDoses is True:
+		if useDoses:
 			xVals = 'doses'
 		else:
 			xVals = 'dataset'

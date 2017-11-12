@@ -124,12 +124,12 @@ class processFiles():
         if self.sepSIGFPlabel1:
             sigFP1 = self.mtzSIGFPlabel1_current
         else:
-            sigFP1 = self.mtzlabels1_current
+            sigFP1 = 'SIG' + self.mtzlabels1_current
 
         if self.sepSIGFPlabel2:
             sigFP2 = self.mtzSIGFPlabel2_current
         else:
-            sigFP2 = self.mtzlabels2_current
+            sigFP2 = 'SIG' + self.mtzlabels2_current
 
         pam, sg, am, ma, gs = '', '', '', [], []
         fcMaps = self.includeFCmaps()

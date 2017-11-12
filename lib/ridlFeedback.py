@@ -35,7 +35,6 @@ class provideFeedback(object):
         self.writeSumFile = writeSumFile
         self.writeTopSites = writeTopSites
         self.csvExtent = csvExtent
-        self.madeCsvFiles = []
 
         if plotGraphs:
             self.outputPlotDir = '{}data/plots/'.format(self.outputDir)
@@ -95,7 +94,7 @@ class provideFeedback(object):
 
     def writeCsvFiles(self,
                       inclGroupby=False, inclGainMet=False,
-                      inclMeanMet=False, inclBfactor=False, numDP=4):
+                      inclMeanMet=True, inclBfactor=False, numDP=4):
 
         # write atom numbers and density metrics to simple
         # csv files,one for each density metric separately.
@@ -139,9 +138,15 @@ class provideFeedback(object):
                 n = 'Calpha normalised'
                 metrics += [['loss', n]]
 
+                if inclMeanMet:
+                    metrics += [['mean', n]]
+
                 if self.inclFCmetrics:
                     metrics += [['density_weighted_loss', n],
                                 ['density_weighted_mean_negOnly', n]]
+
+                    if inclMeanMet:
+                        metrics += [['density_weighted_mean', n]]
         else:
             metrics = self.atmsObjs.getDensMetrics()
 
@@ -155,11 +160,9 @@ class provideFeedback(object):
             else:
                 dr = csvDir+'Calpha-normalised/'
 
-            csvFile = self.atmsObjs.writeMetric2File(
+            self.atmsObjs.writeMetric2File(
                 where=dr, metric=densMet[0],
                 normType=densMet[1], numDP=numDP)
-
-            self.madeCsvFiles.append(densMet+[csvFile])
 
         if inclGroupby:
             for m in ['loss']:
@@ -177,6 +180,7 @@ class provideFeedback(object):
         # produce a selection of per-dataset summary statistics
         # and write in a HTML summary format
 
+        # perform some initial checks to ensure metric info is present
         if primaryNorm == 'Calpha normalised' and not self.calphaPresent:
             error(
                 text='Error! Tried to write summary file for ' +
@@ -184,11 +188,15 @@ class provideFeedback(object):
                 log=self.logFile, type='error')
 
         self.logFile.writeToLog(
-            str='Writing HTML summary output file for metric:' +
-                ' {}, normalisation: {}'.format(primaryMetric, primaryNorm))
+            str='Writing HTML summary output file for metric analysis')
 
-        calphaNorm = 'C<sub>&#945</sub>-normalised'
+        # create a formatted version of the primary metric
+        primMetricName = self.atmsObjs.getFormattedmetricName(
+            primaryMetric, primaryNorm)
+        primMetricNameTEX = self.atmsObjs.getFormattedmetricName(
+            primaryMetric, primaryNorm, form='TEX')
 
+        # decide which metrics to feature in the HTML summary file
         if primaryNorm == 'Calpha normalised':
             norms = ['Standard', 'Calpha normalised']
         else:
@@ -211,7 +219,10 @@ class provideFeedback(object):
             '</script>\n<title>RIDL summary file</title>\n<style>\ntable,' +
             ' th, td {\nborder: 1px solid black;\nborder-collapse: ' +
             'collapse;\n}\nth, td {\npadding: 5px;\ntext-align: center;' +
-            '\n}\n</style>\n</head>\n')
+            '\n}\n</style>\n<script type="text/javascript" async\n' +
+            'src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/' +
+            '2.7.2/MathJax.js?config=TeX-MML-AM_CHTML"></script>' +
+            ' </head>\n')
 
         summaryFile.write(
             '<body>\n<div class="container">\n<h1>RIDL summary file</h1>\n' +
@@ -221,41 +232,72 @@ class provideFeedback(object):
             '\nEmail charles.bury@dtc.ox.ac.uk for queries<br>\n' +
             'Number of datasets reported in file: {}<br>\n'.format(numDsets))
 
-        #######################################################################
-        # Plot of top n damage sites per dataset by residue type created here
-
-        subdir = 'topDamSites/'
-        plotDir = self.makeNewPlotSubdir(subdir=subdir)
-        figName = self.atmsObjs.getTopAtomsStackedBarplot(
-            outputDir=plotDir, metric=primaryMetric)
-
         # provide some links to useful output files
         bodyString = '<h3>Links to useful output files</h3><ul>\n'
 
+        # definition of metrics present in the file
+        bodyString += r"""
+<button type="button" class="panel panel-default" data-toggle="collapse" data-target="#metricDefs">Click for definitions of metrics</button>
+<div id="metricDefs" class="collapse">
+<h3>Indicators of radiation damage:</h3>
+For a given atom, let \(V_\text{atom}\) be the set of density map voxels assigned to the atom.
+The \(D_\text{loss}\text{(atom)}\) metric is defined as:
+$$D_\text{loss}\text{(atom)} = \max_{v\in V_\text{(atom)}} [ -\rho_\Delta(v)]$$
+where \(\rho_\Delta(v)\) is the density map value at voxel \(v\in V_\text{atom}\). This metric provides a worst case scenario for the electron density lost by an atom, and provides a useful indicator to screen for potential damage sites.
+<p><p>
+The \(D_\text{loss}^{\rho}\text{(a)}\) is defined as:
+$$D_\text{loss}^{\rho}\text{(atom)} = \frac{\max_{v \in V_\text{atom}} - \rho_\Delta (v)\cdot \rho_\text{calc} (v) }{\max_{v \in V_\text{atom}} \rho_\text{calc} (v)}$$
+where \(\rho_\text{calc}(v)\) is the value of the calculated electron density at voxel \(v\), as derived from the input coordinate model. It provides a weighted-version of the \(D_\text{loss}\text{(atom)}\) metric, where voxels contributing more to the electron density of the atom are up-weighted, and noisy background in the vicinity of each atom should be suppressed.
+<p><p>
+<h3>Quantifying the magnitude of electron density loss:</h3>
+Whereas the \(D_\text{loss}\text{(atom)}\) and \(D_\text{loss}^{\rho}\text{(atom)}\) metrics provide useful indicators for potential damage sites, they does not provide a suitable description of the overall magnitude of electron density lost at an atomic site. It is non-trivial to define such metrics, since metrics that require any averaging or integration of voxel values inside a specified search radius are particularly sensitive to the search radius used, due to the inclusion/exclusion of voxels as the search radius is varied. A possible solution is to apply a voxel-weighting scheme, in which the each voxel is weighted by how much of an atom's electron density contributed to that voxel. The \(D_\text{mean}^{-,\,\rho}\text{(atom)}\) is defined as:
+$$D_\text{mean}^{-,\, \rho}\text{(atom)} = \frac{\sum_{v \in V_\text{atom}^{-}} - \rho_\Delta (v)\cdot \rho_\text{calc} (v) }{\sum_{v \in V_\text{atom}^{-}} \rho_\text{calc}(v) }$$
+as a weighted average over all voxels \(V_\text{atom}^{-}\) in the vicinity of the atom that attain \(\rho_\Delta(v) < 0\). 
+<p><p>
+<h3>The \(C_\alpha\)-normalisation scheme:</h3>
+It is anticipated that even for non-radiation sensitive atoms, the above metrics will increase with dose, due mainly to the inevitable increase in density map noise as a result of diminishing diffraction data quality with increasing dose. As such the metric values are insufficient alone to distinguish whether an atom has experienced significant electron density loss, without reference to the rest of the structure. This is particularly relevant if comparing damage between independent crystals. 
+A normalisation scheme can be constructed in which metric values are compared relative to the reference set of \(C_\alpha\) atoms of the protein backbone. The normalised version of the \(D_\text{mean}^{-,\,\rho}\text{(atom)}\) metric is:
+$$C_\alpha\text{-normalised}\ D^{-,\, \rho}_\text{mean}\text{(atom)} = \frac{D^{-,\, \rho}_\text{mean}\text{(atom)}-\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha} }{\sigma_{a\in C_\alpha} [D^{-,\, \rho}_\text{mean}\text{(a)}]}$$
+where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and \(\sigma_{a\in C_\alpha} [D^{-,\, \rho}_\text{mean}\text{(a)}]\) represent the average and standard deviation of \(D_\text{mean}^{-,\,\rho}\text{(atom)}\) values attained by the set of \(C_\alpha\) atoms. The \(C_\alpha\)-normalised versions of the other metrics are defined similarly.
+</div>
+"""
+
         # provide links to csv files
         bodyString += '<h4>CSV-format metric files:</h4><ul>\n'
-        if self.madeCsvFiles == []:
-            for m, norm in zip([primaryMetric]*len(norms), norms):
-                bodyString += '<li><a href = "{}csvFiles/{}/{}-'.format(
-                    self.outputDir, norm.replace(' ', '-'), m) +\
-                    '{}.csv">{} D<sub>{}</sub> csv file</a></li>\n'.format(
-                        norm.replace(' ', ''), norm, m)
-        else:
-            for csv in self.madeCsvFiles:
-                bodyString += '<li><a href = {}>'.format(csv[2]) +\
-                    'Metric: {}, Normalisation: {} </a></li>\n'.format(*csv[:2])
+
+        metToDisplay = [['loss', 'Standard']]
+        if self.calphaPresent:
+            metToDisplay += [['loss', 'Calpha normalised']]
+        if self.inclFCmetrics:
+            metToDisplay += [['density_weighted_loss', 'Standard'],
+                             ['density_weighted_mean_negOnly', 'Standard']]
+            if self.calphaPresent:
+                metToDisplay += [['density_weighted_loss', 'Calpha normalised'],
+                                 ['density_weighted_mean_negOnly', 'Calpha normalised']]
+        for m in metToDisplay:
+            t = self.atmsObjs.getFormattedmetricName(m[0], m[1])
+            bodyString += '<li><a href = "{}csvFiles/{}/{}-'.format(
+                self.outputDir, m[1].replace(' ', '-'), m[0]) +\
+                '{}.csv">{}</a></li>\n'.format(m[1].replace(' ', ''), t)
 
         # provide links to top 25 damage site information
+        topDamSitesMetric = 'loss'
+        metName = self.atmsObjs.getFormattedmetricName(topDamSitesMetric)
+        subdir = 'topDamSites/'
+        plotDir = self.makeNewPlotSubdir(subdir=subdir)
+        figName = self.atmsObjs.getTopAtomsStackedBarplot(
+            outputDir=plotDir, metric=topDamSitesMetric)
         bodyString += '</ul><h4>Top 25 damage sites:</h4><ul>\n'
         bodyString += '<li><a href = "{}{}">'.format(
             plotDir, figName.split('/')[-1]) +\
             'Per residue/nucleotide barplot ' +\
-            '(detected by D<sub>loss</sub> metric) </a></li>'
+            '(detected by {} metric) </a></li>'.format(metName)
 
         if self.writeTopSites:
             bodyString += '<li><a href = "{}">'.format(self.damSitesPDB) +\
                 'PDB-format file (detected by ' +\
-                'D<sub>loss</sub> metric) </a></li>'
+                '{} </a></li>'.format(
+                    self.atmsObjs.getFormattedmetricName('loss'))
 
         # create heatmap plots (large files) if requested
         # NOT DEFAULT - TAKES A LONG TIME TO RUN
@@ -279,69 +321,78 @@ class provideFeedback(object):
 
         else:
 
-            ###################################################################
+            # Distn plots over entire structure to indicate
+            # the role of Calpha normalisation
+            subdir = 'metricDistn_allAtoms/'
+            plotDir = self.makeNewPlotSubdir(subdir=subdir)
+            info = '<h3>Metric distribution</h3>\n<div class = "row">\n'
+
+            for n in norms:
+                m = self.atmsObjs.getFormattedmetricName(
+                    primaryMetric, n)
+                info += '<div class = "col-sm-6">{} metric:</div>\n'.format(m)
+
+            for n in norms:
+
+                m = self.atmsObjs.getFormattedmetricName(
+                    primaryMetric, n, form='TEX')
+
+                data, saveName = self.makeDistnPlots(
+                    densMet=primaryMetric, normType=n, plotSet=4,
+                    outputDir=plotDir, dataset='all', xLabel=m)
+
+                f = '<img class="img-responsive" src="{}{}">'.format(
+                    plotDir, saveName.split('/')[-1])
+
+                info += '<div class = "col-sm-6">{}</div>\n'.format(f)
+
+            info += '</div>\n'
+            summaryFile.write(info)
+
             # Line plots of metric values versus dose provided for top and
             # bottom 10 atoms located in structure (top and bottom determined
             # over whole dataset range)
 
             subdir = 'topDamSites/'
             plotDir = self.makeNewPlotSubdir(subdir=subdir)
-
             numDamSites = 10
-            figCallsDistnPlots = []
-            figCallsLinePlots = []
-
-            for metric, norm in zip([primaryMetric]*len(norms), norms):
-
-                topAtoms = self.atmsObjs.getTopNAtoms(
-                    dataset='all', metric=metric, normType=norm, n=numDamSites)
-
-                keys = ['chain', 'num', 'res', 'atm']
-                info = {k: [] for k in keys}
-
-                for atm in topAtoms:
-                    aInfo = atm.split('-')
-                    for i, j in zip(keys, aInfo):
-                        info[i].append(j)
-
-                figName = self.atmsObjs.graphMetric(
-                    atomType=info['atm'], resType=info['res'],
-                    chainType=info['chain'], resiNum=info['num'],
-                    densMet=metric, normType=norm, saveFig=True,
-                    outputDir=self.outputPlotDir+subdir,
-                    figTitle='Top {} D{} damage sites'.format(
-                        numDamSites, metric),
-                    saveName='Lineplot_Metric-D{}'.format(metric) +
-                             '_Normalisation-{}_topDamSites'.format(norm))
-
-                figCallsLinePlots.append(
-                    '<img class="img-responsive" src="{}{}">'.format(
-                        plotDir, figName.split('/')[-1]))
-
-            # make distn plots over entire structure to indicate
-            # the role of Calpha normalisation
-            subdir = 'metricDistn_allAtoms/'
-            plotDir = self.makeNewPlotSubdir(subdir=subdir)
-
-            for n in norms:
-                data, saveName = self.makeDistnPlots(
-                    densMet=primaryMetric, normType=n, plotSet=4,
-                    outputDir=plotDir, dataset='all')
-
-                figCallsDistnPlots.append(
-                    '<img class="img-responsive" src="{}{}">'.format(
-                        plotDir, saveName.split('/')[-1]))
-
-            info = '<h3>Metric distribution</h3>\n<div class = "row">\n'
-            for f in figCallsDistnPlots:
-                info += '<div class = "col-sm-6">{}</div>\n'.format(f)
-            info += '</div>\n'
-            summaryFile.write(info)
 
             info = '<h3>Top 10 density loss sites with dose:</h3>\n' +\
                    '<div class = "row">\n'
 
-            for f in figCallsLinePlots:
+            for n in norms:
+                m = self.atmsObjs.getFormattedmetricName(
+                    primaryMetric, n)
+                info += '<div class = "col-sm-6">{} metric:</div>\n'.format(m)
+
+            for n in norms:
+                topAtoms = self.atmsObjs.getTopNAtoms(
+                    dataset='all', metric=primaryMetric,
+                    normType=n, n=numDamSites)
+
+                m = self.atmsObjs.getFormattedmetricName(
+                    primaryMetric, n, form='TEX')
+
+                keys = ['chain', 'num', 'res', 'atm']
+                atmInfo = {k: [] for k in keys}
+
+                for atm in topAtoms:
+                    aInfo = atm.split('-')
+                    for i, j in zip(keys, aInfo):
+                        atmInfo[i].append(j)
+
+                figName = self.atmsObjs.graphMetric(
+                    atomType=atmInfo['atm'], resType=atmInfo['res'],
+                    chainType=atmInfo['chain'], resiNum=atmInfo['num'],
+                    densMet=primaryMetric, normType=n, saveFig=True,
+                    outputDir=self.outputPlotDir+subdir, figTitle=' ',
+                    saveName='Lineplot_Metric-D{}'.format(primaryMetric) +
+                             '_Normalisation-{}_topDamSites'.format(n),
+                    yLabel=m)
+
+                f = '<img class="img-responsive" src="{}{}">'.format(
+                        plotDir, figName.split('/')[-1])
+
                 info += '<div class = "col-sm-6">{}</div>\n'.format(f)
             info += '</div>\n'
             summaryFile.write(info)
@@ -413,14 +464,14 @@ class provideFeedback(object):
             # Create distribution plots for metric values over whole structure
             # and key residue types that are typically damaged
 
-            t = 'D<sub>{}</sub> Distribution Plots'.format(primaryMetric)
+            t = '{} Distribution Plots'.format(primMetricName)
 
             subdir = 'metricDistn_allAtoms/'
             plotDir = self.makeNewPlotSubdir(subdir=subdir)
 
             failedPlots = self.makeDistnPlots(
                 densMet=primaryMetric, normType=plotNorm, plotSet=4,
-                outputDir=plotDir, dataset=i)
+                outputDir=plotDir, dataset=i, xLabel=primMetricNameTEX)
 
             figCall = '<img class="img-responsive" src="' +\
                       '{}DistnPlot_Residues-all_Metric-D'.format(plotDir) +\
@@ -438,7 +489,8 @@ class provideFeedback(object):
 
                 failedPlots, saveName = self.makeDistnPlots(
                     densMet=primaryMetric, normType=plotNorm,
-                    plotSet=paramSet[1], outputDir=plotDir, dataset=i)
+                    plotSet=paramSet[1], outputDir=plotDir, dataset=i,
+                    xLabel=primMetricNameTEX)
 
                 if not failedPlots[paramSet[2]]:
                     figCall = '<img class="img-responsive" src="' +\
@@ -476,7 +528,7 @@ class provideFeedback(object):
             if firstToPlot in metsToPlot:
                 metsToPlot.remove(firstToPlot)
             metsToPlot = [firstToPlot] + metsToPlot
-            metsToPlot = [[m[j] for m in metsToPlot] for j in range(2)]
+            metsToPlot = [[mt[j] for mt in metsToPlot] for j in range(2)]
 
             saveName = self.atmsObjs.getTopNAtomsDotPlot(
                 dataset=i, metrics=metsToPlot[0], normTypes=metsToPlot[1],
@@ -514,17 +566,12 @@ class provideFeedback(object):
 
             c += '<div class="tab-content">'
 
-            if primaryNorm == 'Calpha normalised':
-                tag = calphaNorm
-            else:
-                tag = primaryNorm
-
             # per-atom statistics
             c += '<div id="byatom{}" class="tab-pane '.format(i) +\
                  'fade in active">'
             statsOut = self.atmsObjs.getPerAtmtypeStats(
                 metric=primaryMetric, normType=primaryNorm, dataset=i)
-            c += '{} D<sub>{}</sub> '.format(tag, primaryMetric) +\
+            c += '{} '.format(primMetricName) +\
                  'metric ranked by mean value:<br><br>\n'
             c += self.convertPlainTxtTable2html(statsOut[0])
             c += '</div>'
@@ -533,7 +580,7 @@ class provideFeedback(object):
             c += '<div id="byresidue{}" class="tab-pane fade">'.format(i)
             statsOut = self.atmsObjs.getPerResidueStats(
                 metric=primaryMetric, normType=primaryNorm, dataset=i)
-            c += '{} D<sub>{}</sub> metric '.format(tag, primaryMetric) +\
+            c += '{} '.format(primMetricName) +\
                  'ranked by mean value:<br><br>\n'
             c += self.convertPlainTxtTable2html(statsOut[0])
             c += '</div>'
@@ -542,7 +589,7 @@ class provideFeedback(object):
             c += '<div id="bychain{}" class="tab-pane fade">'.format(i)
             statsOut = self.atmsObjs.getPerChainStats(
                 metric=primaryMetric, normType=primaryNorm, dataset=i, n='all')
-            c += '{} D<sub>{}</sub> metric '.format(tag, primaryMetric) +\
+            c += '{} '.format(primMetricName) +\
                  'ranked by mean value:<br><br>\n'
             c += self.convertPlainTxtTable2html(statsOut[0])
             c += '</div>'
@@ -551,7 +598,7 @@ class provideFeedback(object):
             c += '<div id="bystructure{}" class="tab-pane fade">'.format(i)
             statsOut = self.atmsObjs.getStructureStats(
                 metric=primaryMetric, normType=primaryNorm, dataset=i)
-            c += '{} D<sub>{}</sub> metric '.format(tag, primaryMetric) +\
+            c += '{} '.format(primMetricName) +\
                  'ranked by mean value:<br><br>\n'
             c += self.convertPlainTxtTable2html(statsOut[0])
             c += '</div>'
@@ -576,7 +623,7 @@ class provideFeedback(object):
             suspAtomLens = []
             notDoneBefore = True
 
-            for t in [6, 5, 4, 3]:
+            for t in [6, 5, 4]:
                 suspAtoms, highOrLow = self.atmsObjs.detectSuspiciousAtoms(
                     dataset=i, metric=primaryMetric, threshold=t)
 
@@ -828,7 +875,7 @@ class provideFeedback(object):
 
     def makeDistnPlots(self,
                        densMet='loss', normType='Standard', plotType='both',
-                       inclTitle=False, plotSet=1, calcKSstat=False,
+                       inclTitle=False, plotSet=1, calcKSstat=False, xLabel='',
                        calcADstat=False, sideOnly=False, resSplit=False,
                        outputDir='', dataset=0, requireAll=False):
 
@@ -878,7 +925,7 @@ class provideFeedback(object):
                 plotType=plotType, resiType=resGroup, resSplit=resSplit,
                 sideOnly=sideOnly, outputDir=outputDir, printText=False,
                 plotTitle=title, inclTitle=inclTitle, calcKSstat=calcKSstat,
-                calcADstat=calcADstat, requireAll=requireAll)
+                calcADstat=calcADstat, requireAll=requireAll, xLabel=xLabel)
             if data == {}:
                 failedPlots[k] = True
             else:
