@@ -11,8 +11,8 @@ import os
 class provideFeedback(object):
     # create series of output feedback files and graphs
     def __init__(self,
-                 standardFeedback=True, csvOnly=False, writeCsvs=False,
-                 writeSumFile=False, writeTopSites=False, plotHeatMaps=False,
+                 csvOnly=False, writeCsvs=False, writeSumFile=False,
+                 writeTopSites=False, plotHeatMaps=False,
                  atmsObjs=[], outputDir='./', csvExtent='simple',
                  plotGraphs=True, logFile=[], pklSeries='',
                  doses=[], densMaps=[], inputDir='./', autoRun=True,
@@ -69,14 +69,12 @@ class provideFeedback(object):
             self.outputPlotDir = '{}data/plots/'.format(self.outputDir)
             self.makeOutputDir(dirName=self.outputPlotDir)
 
-        # define a 'standard' feedback for the program
-        if standardFeedback:
+        if csvOnly:
+            self.writeCsvs = True
+        else:
             self.writeCsvs = True
             self.writeSumFile = True
             self.writeTopSites = True
-
-        if csvOnly:
-            self.writeCsvs = True
 
         if autoRun:
             self.run()
@@ -96,7 +94,6 @@ class provideFeedback(object):
         if self.writeTopSites:
             self.writeDamSitesToFile()
 
-        # provide summary html file for metrics per-dataset
         if self.writeSumFile:
 
             if not self.calphaPresent:
