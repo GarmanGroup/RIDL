@@ -265,7 +265,6 @@ class processFiles():
         # file and no plots)
 
         # retrieve list of atom objects from .pkl file
-
         self.logFile.writeToLog(
             str='Retrieving per-atom damage metric information from ' +
                 ' .pkl file for each dataset within damage series.')
@@ -284,7 +283,7 @@ class processFiles():
                             doses=self.getDoses(),
                             pklSeries=self.pklDataFile,
                             inputDir=self.mapProcessDir,
-                            pdbNames=self.name2, initialPDB=self.name1,
+                            densMaps=self.name2, initialPDB=self.name1,
                             inclFCmetrics=self.includeFCmaps())
         else:
             furtherAnalysis(csvOnly=csvOnly, atmsObjs=combinedAtoms,

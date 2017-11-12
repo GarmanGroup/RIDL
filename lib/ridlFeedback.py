@@ -9,31 +9,60 @@ import os
 
 
 class provideFeedback(object):
-
+    # create series of output feedback files and graphs
     def __init__(self,
                  standardFeedback=True, csvOnly=False, writeCsvs=False,
                  writeSumFile=False, writeTopSites=False, plotHeatMaps=False,
-                 atmsObjs=[], outputDir='./',
-                 csvExtent='simple', plotGraphs=True, logFile=[], pklSeries='',
-                 doses=[], pdbNames=[], inputDir='./', autoRun=True,
+                 atmsObjs=[], outputDir='./', csvExtent='simple',
+                 plotGraphs=True, logFile=[], pklSeries='',
+                 doses=[], densMaps=[], inputDir='./', autoRun=True,
                  initialPDB='untitled.pdb', inclFCmetrics=False):
 
-        # create series of output feedback files and graphs
-
+        # object containing per atom metric information across all doses
         self.atmsObjs = atmsObjs
+
+        # the output directory
         self.outputDir = os.path.abspath(outputDir)+'/'
+
+        # determine whether to plot any graphs
         self.plot = plotGraphs
+
+        # the log file used for the whole RIDL run
         self.logFile = logFile
+
+        # the pkl file where the per-atom metric info is stored
+        # (for reference only)
         self.pklSeries = pklSeries
+
+        # decide whether to plot a per-atom metric
+        # heatmap to visualise damage sites (very slow)
         self.plotHeatMaps = False
-        self.doses = doses
-        self.pdbNames = pdbNames
+
+        # list of doses for higher dose datasets
+        self.doses = map(float, doses.split(','))
+
+        # list of density map names (for reference only)
+        self.densMaps = [d + '_density.map' for d in densMaps]
+
+        # input file directory
         self.inDir = inputDir
+
+        # the input coordinate model file
         self.initialPDB = initialPDB
+
+        # whether to include density-weighted metrics
         self.inclFCmetrics = inclFCmetrics
+
+        # whether to write CSV-format files
         self.writeCsvs = writeCsvs
+
+        # whether to write HTML-format summary file
         self.writeSumFile = writeSumFile
+
+        # whether to write PDB-format file of top dam sites
         self.writeTopSites = writeTopSites
+
+        # whether to include only key metrics (='simple') or all metrics
         self.csvExtent = csvExtent
 
         if plotGraphs:
@@ -75,7 +104,8 @@ class provideFeedback(object):
             else:
                 n = 'Calpha normalised'
 
-            self.summaryHTML(primaryMetric='density_weighted_mean_negOnly', primaryNorm=n)
+            self.summaryHTML(
+                primaryMetric='density_weighted_mean_negOnly', primaryNorm=n)
 
         # create heatmap plots (large files) if requested
         if self.plot:
@@ -435,7 +465,7 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
                 'Number of atoms  : {}<br>\n'.format(
                     self.atmsObjs.getNumAtoms()) +\
                 'Fourier diff map : <a href ="../RIDL-maps/' +\
-                '{}_density.map">Download</a><br>\n'.format(self.pdbNames[i])
+                '{}">Download</a><br>\n'.format(self.densMaps[i])
 
             if self.calphaPresent:
                 CAweights = self.atmsObjs.retrieveCalphaWeight(
@@ -447,7 +477,7 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
                                         dataset=i,
                                         sumFile=summaryFile)
 
-            # # # TO MAKE METRIC VERSUS METRIC SCATTER PLOTS, UNCOMMENT THIS BIT
+            # # TO MAKE METRIC VERSUS METRIC SCATTER PLOTS, UNCOMMENT THIS BIT
             # subdir = 'metricVmetric-scatterplots/'
             # outDir = self.makeNewPlotSubdir(subdir=subdir)
             # m1s = ['loss', 'loss']
