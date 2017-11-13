@@ -56,7 +56,6 @@ To mitigate such subjective bias and permit systematic categorisation of radiati
 In **RIDL**, each *F<sub>obs,n</sub> - F<sub>obs,1</sub>* Fourier difference map is sampled in the localised region around each atom, and several metrics are output:
 
 #### D<sub>loss</sub>
-$ \sum_{\forall i}{x_i^{2}} $
 - *D<sub>loss</sub>* is the maximum density loss value in sampled region for each atom. 
 - For atoms in close proximity to negative Fourier difference map peaks, this is equivalent to determining the high of the Fourier difference map peak (in electrons per cubic Angstrom) and assigning this value to that atom, however this procedure now assigns a *D<sub>loss</sub>* density change value to *every* atom within the structure, regardless of the proximity of Fourier difference map peaks.
 
