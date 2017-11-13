@@ -187,7 +187,7 @@ Several optional command line flags also exist:
 
 ## Inspecting the output
 
-RIDL has two output modes. To generate simply CSV-format files of the *D<sub>loss</sub>* metric per atom, run:
+RIDL has two output modes. To generate simply CSV-format files of the damage metrics per atom, run:
 
 ```python runRIDL.py -pc```
 
@@ -205,7 +205,7 @@ The summary file is designed to be self expanatory. Please email *charles.bury@d
 
 ## Issues and errors, help!
 
-- Please check that you are running `Python` version 2.7 or higher, but not version 3.x. If run with version 3.x, the script will break with the error:
+- Please check that you are running `Python` version **2.7** or higher, but **not** version **3.x**. If run with version 3.x, the script will break with the error:
 ```
 File "runRIDL.py", line 110
     print 'Can use -j command for help on how to ' +\
@@ -213,7 +213,7 @@ File "runRIDL.py", line 110
 SyntaxError: Missing parentheses in call to 'print'
 ```
 
-- If the *summaryFile.html* file displays unformatted in the web browser, check you have internet access in order for the necessary bootstrap dependency
+- If the ```summaryFile.html``` file displays unformatted in the web browser, check you have internet access in order for the necessary bootstrap dependency
 
 
 ## Citing when using the scripts
