@@ -1,106 +1,142 @@
-from ccp4Job import ccp4Job,checkInputsExist,fillerLine
+from ccp4Job import ccp4Job, checkInputsExist
 from mapTools import mapTools
+from errors import error
+
 
 class SFALLjob():
 
-	def __init__(self,
-				 inputPDBfile   = '',
-				 outputDir      = './',
-				 VDWR           = 1,
-				 symmetrygroup  = 'P1',
-				 gridDimensions = [],
-				 mapoutType     = 'ATMMOD',
-				 runLog         = ''):
+    def __init__(self,
+                 inputPDBfile='', outputDir='./', VDWR=1, symmetrygroup='P1',
+                 gridDimensions=[], task='atom map', mapoutType='ATMMOD',
+                 outputMapFile='', outputMtzFile='', runLog=''):
 
-		self.inputPDBfile  = inputPDBfile
-		self.outputMapFile = '{}_sfall.map'.format(inputPDBfile.split('_reordered.pdb')[0])
-		self.outputDir 	   = outputDir
-		self.symGroup 	   = symmetrygroup
-		self.VDWR 		   = VDWR
-		self.gridDims 	   = gridDimensions
-		self.mapoutType    = mapoutType # atom-map ATMMOD or solvent-map SOLVMAP
-		self.runLog 	   = runLog
+        self.inputPDBfile = inputPDBfile
+        self.outputDir = outputDir
+        self.symGroup = symmetrygroup
+        self.VDWR = VDWR
+        self.gridDims = gridDimensions
+        # atom-map 'ATMMOD' or solvent-map 'SOLVMAP' if task is 'atom map'
+        self.mapoutType = mapoutType
+        self.runLog = runLog
 
-	def run(self):
-		inputFiles = [self.inputPDBfile]
-		if checkInputsExist(inputFiles,self.runLog) is False:
-			return False
-		self.runSFALL()
-		if self.jobSuccess is True:
-			self.provideFeedback()
-			return True
-		else:
-			ln = 'Job did not run successfully, see job log file "{}"'.format(self.outputLogfile)
-			self.runLog.writeToLog(ln)
-			return False
+        if task == 'atom map':
+            self.makeAtomMap = True
+            if outputMapFile == '':
+                self.outputMapFile = '{}_SFALL.map'.format(
+                    inputPDBfile.split('.pdb')[0])
+            else:
+                self.outputMapFile = outputMapFile
+            self.outputFile = self.outputMapFile
+        elif task == 'fcalc mtz':
+            self.makeAtomMap = False
+            if outputMtzFile == '':
+                self.outputMtzFile = '{}_SFALL.mtz'.format(
+                    inputPDBfile.split('.pdb')[0])
+            else:
+                self.outputMtzFile = outputMtzFile
+            self.outputFile = self.outputMtzFile
 
-	def runSFALL(self):
+    def run(self):
+        inputFiles = [self.inputPDBfile]
+        if not checkInputsExist(inputFiles, self.runLog):
+            return False
+        self.runSFALL()
+        if self.jobSuccess:
+            self.provideFeedback()
+            return True
+        else:
+            error(
+                text='Job did not run successfully, see job log file ' +
+                     '"{}"'.format(self.outputLogfile),
+                log=self.runLog, type='error')
+            return False
 
-		# run SFALL job using the external ccp4Job class
+    def runSFALL(self):
 
-		self.printPurpose()
-		title = 'run of sfall'
+        # run SFALL job using the external ccp4Job class
 
-		self.commandInput1 = 'sfall '+\
-				 'XYZIN {} '.format(self.inputPDBfile)+\
-				 'ATOMSF atomsf.lib '+\
-			 	 'MAPOUT {} '.format(self.outputMapFile)+\
-				 'SYMINFO syminfo.lib '
+        self.printPurpose()
+        title = 'run of sfall'
 
-		if len(self.gridDims) == 0:
-			self.commandInput2 = 'MODE ATMMAP {}\n'.format(self.mapoutType)+\
-							 	 'SYMMETRY {}\n'.format(self.symGroup)+\
-							 	 'VDWR {}\n'.format(self.VDWR)+\
-							 	 'title {}\n'.format(title)+\
-				   			 	 'END'
-		else:
-			self.commandInput2 = 'MODE ATMMAP {}\n'.format(self.mapoutType)+\
-							 	 'SYMMETRY {}\n'.format(self.symGroup)+\
-							 	 'VDWR {}\n'.format(self.VDWR)+\
-							 	 'title {}\n'.format(title)+\
-							 	 'GRID {} {} {}\n'.format(self.gridDims[0],self.gridDims[1],self.gridDims[2])+\
-							 	 'END'
+        if self.makeAtomMap:
+            # use to make an atom-tagged map from a coordinate model
+            self.commandInput1 = 'sfall ' +\
+                     'XYZIN {} '.format(self.inputPDBfile) +\
+                     'ATOMSF atomsf.lib ' +\
+                     'MAPOUT {} '.format(self.outputMapFile) +\
+                     'SYMINFO syminfo.lib '
 
-		self.outputLogfile = 'SFALLlogfile.txt'
+            if len(self.gridDims) == 0:
+                gridDims = ''
+            else:
+                gridDims = 'GRID {} {} {}\n'.format(
+                    self.gridDims[0], self.gridDims[1], self.gridDims[2])
 
-		# run SFALL job
-		job = ccp4Job(jobName       = 'SFALL',
-					  commandInput1 = self.commandInput1,
-					  commandInput2 = self.commandInput2,
-					  outputDir     = self.outputDir,
-					  outputLog     = self.outputLogfile,
-					  outputFile    = self.outputMapFile)
+            self.commandInput2 = 'MODE ATMMAP {}\n'.format(self.mapoutType) +\
+                                 'SYMMETRY {}\n'.format(self.symGroup) +\
+                                 'VDWR {}\n'.format(self.VDWR) +\
+                                 'title {}\n'.format(title) +\
+                                 '{}'.format(gridDims) +\
+                                 'END'
 
-		self.jobSuccess = job.checkJobSuccess()
+        else:
+            # otherwise make a new Fcalc column in a new mtz file
+            self.commandInput1 = 'sfall ' +\
+                     'XYZIN {} '.format(self.inputPDBfile) +\
+                     'ATOMSF atomsf.lib ' +\
+                     'HKLOUT {} '.format(self.outputMtzFile) +\
+                     'SYMINFO syminfo.lib '
 
-	def provideFeedback(self,
-						includeDir = False):
+            self.commandInput2 = 'title {}\n'.format(title) +\
+                                 'labout  FC=FCalc PHIC=PHICalc\n' +\
+                                 'NAME -\nPROJECT RIDL -\nCRYSTAL RIDL -\n' +\
+                                 'DATASET RIDL\nMODE SFCALC -\nXYZIN\n' +\
+                                 'SYMMETRY {}\n'.format(self.symGroup) +\
+                                 'BADD 0.0\nVDWR 2.5\nEND'
 
-		# provide some feedback
+        self.outputLogfile = 'SFALLlogfile.txt'
 
-		if includeDir is False:
-			fileIn  = self.inputPDBfile.split('/')[-1]
-			fileOut = self.outputMapFile.split('/')[-1]
-		else:
-			fileIn  = self.inputPDBfile
-			fileOut = self.outputMapFile
+        # run SFALL job
+        job = ccp4Job(jobName='SFALL',
+                      commandInput1=self.commandInput1,
+                      commandInput2=self.commandInput2,
+                      outputDir=self.outputDir,
+                      outputLog=self.outputLogfile,
+                      outputFile=self.outputFile)
 
-		txt = 'SFALL Summary:\n'+\
-			  'Input pdb file: {}\n'.format(fileIn)+\
-			  'Output map file: {}'.format(fileOut)
-		self.runLog.writeToLog(txt)
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
 
-		Map = mapTools(mapName = self.outputMapFile,
-					   logFile = self.runLog)
-		Map.printMapInfo()
+    def provideFeedback(self,
+                        includeDir=False):
 
-	def printPurpose(self,
-					 include = True):
+        # provide some feedback
 
-		# provide a summary of what this does 
-		# (within ETRACK) to the command line
+        if not includeDir:
+            fileIn = self.inputPDBfile.split('/')[-1]
+            fileOut = self.outputFile.split('/')[-1]
+        else:
+            fileIn = self.inputPDBfile
+            fileOut = self.outputFile
 
-		ln = 'Creating atom-tagged .map file over unit cell for model "{}"'.format(self.inputPDBfile.split('/')[-1])
-		self.runLog.writeToLog(ln)
+        self.runLog.writeToLog(
+            'SFALL Summary:\nInput pdb file: {}\nOutput file: {}'.format(
+                fileIn, fileOut))
 
+        if self.makeAtomMap:
+            Map = mapTools(mapName=self.outputMapFile, logFile=self.runLog)
+            Map.printMapInfo()
 
+    def printPurpose(self,
+                     include=True):
+
+        # provide a summary of what this does
+        # (within RIDL) to the command line
+
+        if self.makeAtomMap:
+            self.runLog.writeToLog(
+                'Creating atom-tagged .map file over unit cell for model ' +
+                '"{}"'.format(self.inputPDBfile.split('/')[-1]))
+        else:
+            self.runLog.writeToLog(
+                'generating new mtz with Fcalc column derived from model ' +
+                '"{}"'.format(self.inputPDBfile.split('/')[-1]))

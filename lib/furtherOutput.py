@@ -20,6 +20,7 @@ class furtherAnalysis(provideFeedback):
 			     pdbNames         = [],
 			     inputDir         = './',
 			     initialPDB       = 'untitled.pdb',
+			     inclFCmetrics    = False,
 				 metSigPlots      = False,
 				 mainSideCmp      = False,
 				 distToDiSulp     = False,
@@ -30,7 +31,9 @@ class furtherAnalysis(provideFeedback):
 				 atmCorels        = False,
 				 HbondCorr        = False,
 				 sensAtmPlts      = False,
-				 doAll            = True,
+				 overallDamProb   = False,
+				 neighHighProb    = False,
+				 doAll            = False,
 				 autoRun          = False):
 
 		# collection of statistics and further analysis.
@@ -53,6 +56,7 @@ class furtherAnalysis(provideFeedback):
 											   pdbNames,
 											   inputDir,
 											   initialPDB,
+											   inclFCmetrics,
 											   autoRun )
 
 		# first perform standard output
@@ -60,40 +64,125 @@ class furtherAnalysis(provideFeedback):
 
 		# now include extra analysis
 		if doAll:
-			metSigPlots  = True,
-			mainSideCmp  = True,
-			distToDiSulp = True,
-			tTests       = True,
-			topOfType    = True,
-			rankings     = True,
-			sigKSstats   = True,
-			atmCorels    = True,
-			HbondCorr    = True,
-			sensAtmPlts  = True,
+			overallDamProb = True
+			neighHighProb  = True, 
+			metSigPlots    = True,
+			mainSideCmp    = True,
+			distToDiSulp   = True,
+			tTests         = True,
+			topOfType      = True,
+			rankings       = True,
+			sigKSstats     = True,
+			atmCorels      = True,
+			HbondCorr      = True,
+			sensAtmPlts    = True,
 
 		self.metric = 'loss'
+
 		for norm in ('Standard','Calpha normalised'):
+
 			self.normType = norm
+
+			if overallDamProb:
+				self.calcOverallDamageProb()
+
+			if neighHighProb:
+				self.calcProbHighNeighbourMetricGivenHigh()
+
 			if metSigPlots:
 				self.metSigPlots()
+
 			if mainSideCmp:
 				self.mainSideCmp()
+
 			if distToDiSulp:
 				self.distToDiSulp()
+
 			if tTests:
 				self.tTests()
+
 			if topOfType:
 				self.topOfType()
+
 			if rankings:
 				self.rankings()
+
 			if sigKSstats:
 				self.sigKSstats()
+
 			if atmCorels:
 				self.atmCorels()
+
 			if HbondCorr:
 				self.HbondCorr()
+
 			if sensAtmPlts:
 				self.sensAtmPlts()
+
+			self.susceptAtmComparisonBarplot()
+
+	def calcOverallDamageProb(self,
+							  thres = 0):
+
+		# calculate an overall metric for a structure 
+		# of how damaged it is, in terms of a specified
+		# metric. This works by calculating the fraction
+		# of atoms that attain a metric value above a 
+		# specified threshold value
+
+		self.atmsObjs.findProbAboveAvDam(metric    = self.metric,
+						   				 normType  = self.normType,
+						   				 threshold = thres)
+
+	def calcProbHighNeighbourMetricGivenHigh(self):
+
+		# for a specified damage metric, determine the probability
+		# that neighbouring atom sites attain high metric values,
+		# given that an atom itself attains high metric values.
+		# This is compared to Bfactor, for which it may be 
+		# expected that nearby atoms attain similar B-factor values
+
+		for n in [1,2,3]:
+			csvOut = open(self.outputDir+'CalphaDloss-probNeighbourHigh-{}.csv'.format(n),'w')
+			print '\nFor Calpha Dloss:'
+			for dist in [4,5,6,7,8,9,10]:
+				print '>>> Distance: {} Angstroms'.format(dist)
+				prbList = []
+				for d in range(self.getNumDatasets()):
+					prb = atmsObjs.findProbHighNeighbourGivenHighAtom(densMet = self.metric,
+																	  normType = self.normType,
+																	  dataset  = d,
+																	  distance = dist,
+																	  criteria = '{}std'.format(n))
+					prbList.append(str(prb))
+				ln = '{},{}'.format(dist,','.join(prbList))
+				csvOut.write(ln+'\n')
+			csvOut.close()
+		for n in [1,2,3]:
+			csvOut = open(self.outputDir+'Bfactor-probNeighbourHigh-{}.csv'.format(n),'w')
+			print '\nFor Bfactor:'
+			for dist in [4,5,6,7,8,9,10]:
+				print '>>> Distance: {} Angstroms'.format(dist)
+				prbList = []
+				for d in range(self.getNumDatasets()):
+					prb = atmsObjs.findProbHighNeighbourGivenHighAtom(densMet = 'Bfactor',
+																	  normType = 'Standard',
+																	  dataset  = d,
+																	  distance = dist,
+																	  criteria = '{}std'.format(n))
+					prbList.append(str(prb))
+				ln = '{},{}'.format(dist,','.join(prbList))
+				csvOut.write(ln+'\n')
+			csvOut.close()
+
+	def susceptAtmComparisonBarplot(self):
+		
+		outDir = self.makeNewPlotSubdir(subdir = 'residueBoxPlots/')
+		for d in range(self.getNumDatasets()):
+			self.atmsObjs.susceptAtmComparisonBarplot(metric    = self.metric,
+												  	  normType  = self.normType,
+												  	  outputDir = outDir,
+													  dataset   = d)
 
 	def metSigPlots(self):
 

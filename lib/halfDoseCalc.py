@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
-from checkSeabornPresent import checkSeabornPresent as checkSns
-seabornFound = checkSns()
-if seabornFound is True:
+from checkDependencies import checkDependencies
+c = checkDependencies()
+if c.checkSeaborn():
 	from seaborn import set as sns_set
 	from seaborn import despine as sns_despine
 

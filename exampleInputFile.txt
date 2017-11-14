@@ -1,28 +1,21 @@
-dir ./testOutput/RIDL-example/
+dir ./RIDL-testRun/
 
 INITIALDATASET
-name1 1qid
-mtz1 ./testOutput/1qid/1qid.mtz
-mtzlabels1 P_1qid
-pdb1 ./testOutput/1qid/1qid.pdb
+name1 GH7-1
+mtz1 ./GH7-damageSeries/GH7-1.mtz
+mtzlabels1 F_FROMDIALS1
+pdb1 ./GH7-damageSeries/GH7-1-fromRefmac.pdb
 RfreeFlag1 FreeR_flag
-dose1 1
+dose1 1.11
 
 LATERDATASET
-name2 1qie,1qif
-mtz2 ./testOutput/1qie/1qie.mtz,./testOutput/1qif/1qif.mtz
-mtzlabels2 P_1qie,P_1qif
-pdb2 ./testOutput/1qie/1qie.pdb,./testOutput/1qif/1qif.pdb
-dose2 2,3
+name2 GH7-3,GH7-5,GH7-7,GH7-9,GH7-11
+mtz2 ./GH7-damageSeries/GH7-3.mtz,./GH7-damageSeries/GH7-5.mtz,./GH7-damageSeries/GH7-7.mtz,./GH7-damageSeries/GH7-9.mtz,./GH7-damageSeries/GH7-11.mtz
+mtzlabels2 F_FROMDIALS3, F_FROMDIALS5, F_FROMDIALS7, F_FROMDIALS9, F_FROMDIALS11
+dose2 5.43,9.75,14.1,18.4,22.7
 
 PHASEDATASET
-name3 1qid
-mtz3 ./testOutput/1qid/1qid.mtz
+name3 GH7-1
+mtz3 ./GH7-damageSeries/GH7-1-fromRefmac.mtz
 phaseLabel PHIC
 FcalcLabel FC
-
-MAPINFO
-sfall_VDWR 1
-densMapType DIFF
-FFTmapWeight False
-deleteIntermediateFiles TRUE

@@ -1,271 +1,257 @@
 from classHolder import StructurePDB
 from scipy import stats
 import numpy as np
-import string
+
 
 class combinedAtom(StructurePDB):
 
-	# A subclass extension for a collection of multiple different
-	#  dose pdb file structures as defined by the StructurePDB 
-	# class. This class adds additonal attributes and methods
+    # A subclass extension for a collection of multiple different
+    #  dose pdb file structures as defined by the StructurePDB
+    # class. This class adds additonal attributes and methods
 
-	def __init__(self,
-				 atomnum            = 0,
-				 residuenum         = 0,
-				 atomtype           = "",
-				 basetype           = "",
-				 chaintype          = "",
-				 X_coord            = 0,
-				 Y_coord            = 0,
-				 Z_coord            = 0,
-				 atomID             = "",
-				 numsurroundatoms   = 0,
-				 numsurroundprotons = 0,
-				 densMetric         = {},
-				 partialInfo        = False):
+    def __init__(self,
+                 atomnum=0, residuenum=0, atomtype="", basetype="",
+                 chaintype="", X_coord=0, Y_coord=0, Z_coord=0, atomID="",
+                 numsurroundatoms=0, numsurroundprotons=0, densMetric={},
+                 partialInfo=False):
 
-		super(combinedAtom, self).__init__(atomnum,
-										   residuenum,
-										   atomtype,
-										   basetype,
-										   chaintype,
-										   X_coord,
-										   Y_coord,
-										   Z_coord,
-										   atomID,
-										   numsurroundatoms,
-										   numsurroundprotons)
+        super(combinedAtom, self).__init__(atomnum, residuenum, atomtype,
+                                           basetype, chaintype, X_coord,
+                                           Y_coord, Z_coord, atomID,
+                                           numsurroundatoms,
+                                           numsurroundprotons)
 
-		self.densMetric = {} # dictionary of density metrics to be filled
+        # dictionary of density metrics to be filled
+        self.densMetric = {}
 
-	def getPresentDatasets(self):
+    def getPresentDatasets(self):
 
-		# for atoms only present within subset of datasets, 
-		# get the datasets for which present
-		presentList = []
-		i = -1
-		for val in self.densMetric['loss']['Standard']['values']:
-			i += 1
-			if not np.isnan(val):
-				presentList.append(i)
-		return presentList
+        # for atoms only present within subset of datasets,
+        # get the datasets for which present
+        presentList = []
+        i = -1
+        for val in self.densMetric['loss']['Standard']['values']:
+            i += 1
+            if not np.isnan(val):
+                presentList.append(i)
+        return presentList
 
-	def getDensMetricInfo(self,
-						  metric   = 'loss',
-						  normType = 'Standard',
-						  values   = []):
+    def getDensMetricInfo(self,
+                          metric='loss', normType='Standard', values=[]):
 
-		# these attributes are dictionaries and will contain 
-		# values for multiple variations of the density 
-		# change metrics 'normType' is 'standard' or 
-		# 'Calpha weighted'
+        # these attributes are dictionaries and will contain
+        # values for multiple variations of the density
+        # change metrics 'normType' is 'standard' or
+        # 'Calpha weighted'
 
-		# special case for Dloss metric (change sign of values)
-		if metric == 'loss' and normType == 'Standard':
-			values = list(-np.array(values))
+        # decide whether a sign change is required for particular
+        # metric values. For example Dloss will naturally give
+        # more negative values for larger negative difference
+        # map peaks, however these are multipled by -1, such that
+        # higher positive Dloss values indicate a larger negative
+        # difference map peak
+        needSignChange = ['loss', 'mean-negOnly',
+                          'density_weighted_mean_negOnly',
+                          'density_weighted_loss']
+        if metric in needSignChange and normType == 'Standard':
+            values = list(-np.array(values))
 
-		try:
-			self.densMetric[metric]
-		except KeyError: 
-			self.densMetric[metric] = {}
+        try:
+            self.densMetric[metric]
+        except KeyError:
+            self.densMetric[metric] = {}
 
-		self.densMetric[metric][normType] = {}
-		self.densMetric[metric][normType]['values'] = values
+        self.densMetric[metric][normType] = {}
+        self.densMetric[metric][normType]['values'] = values
 
-	def calcAvMetric(self,type,densMetric):
+    def calcAvMetric(self,
+                     type='Standard', densMetric='loss'):
 
-		# calculate the average of a given
-		#  metric over series of datasets
+        # calculate the average of a given
+        #  metric over series of datasets
 
-		densVals = self.densMetric[densMetric][type]['values']
-		self.densMetric[densMetric][type]['average'] = np.nanmean(densVals)
-		
-	def calcLinReg(self,
-				   numLinRegDsets = 1,
-				   normType       = 'Standard',
-				   metric         = 'loss'):
+        densVals = self.densMetric[densMetric][type]['values']
+        self.densMetric[densMetric][type]['average'] = np.nanmean(densVals)
 
-		# Calculates linear regression for the density metric 
-		# 'metric' and determines the linear slope of density 
-		# change 'numLinRegDsets' in the number of difference 
-		# map datasets across which linear regression will be 
-		# preformed. 'normType' specifies whether 'Standard'
-		# or 'Calpha normalised' metric values should be used
+    def calcLinReg(self,
+                   numLinRegDsets=1, normType='Standard', metric='loss'):
 
-		x = np.array(range(2,numLinRegDsets+1))
+        # Calculates linear regression for the density metric
+        # 'metric' and determines the linear slope of density
+        # change 'numLinRegDsets' in the number of difference
+        # map datasets across which linear regression will be
+        # preformed. 'normType' specifies whether 'Standard'
+        # or 'Calpha normalised' metric values should be used
 
-		# this ensures no calculation performed if metric values are empty list
-		if len(self.densMetric[metric][normType]['values']) == 0: return
+        x = np.array(range(2, numLinRegDsets+1))
 
-		self.densMetric[metric][normType]['lin reg'] = {}
-		y = np.array(self.densMetric[metric][normType]['values'][0:len(x)])
-		linRegRslts = stats.linregress(x,y)
+        # this ensures no calculation performed if metric values are empty list
+        if len(self.densMetric[metric][normType]['values']) == 0:
+            return
 
-		for v1,v2 in zip(['slope','intercept','r_squared','p_value','std_err'],linRegRslts):
-			if v1 == 'r_value': v2 = v2**2
-			self.densMetric[metric][normType]['lin reg'][v1] = v2
+        self.densMetric[metric][normType]['lin reg'] = {}
+        y = np.array(self.densMetric[metric][normType]['values'][0:len(x)])
+        linRegRslts = stats.linregress(x, y)
 
-	def CalphaWeightedDensChange(self,
-								 CalphaWeights = [],
-								 metric        = 'loss'):
+        statsLbls = ['slope', 'intercept', 'r_squared', 'p_value', 'std_err']
 
-		# calculates the Calpha weighted density metrics for metric "metric",
-		# compensating for the overall background degregation of the electron 
-		# density maps with increasing dose/dataset number. Since the same 
-		# CalphaWeights (per dataset) are applied to all atoms within the structure,
-		# these are an input (and thus not recalculated for every single atom)
-		# - see the CalphaWeights class for details on how to calculate these
+        for v1, v2 in zip(statsLbls, linRegRslts):
+            if v1 == 'r_value':
+                v2 = v2**2
+            self.densMetric[metric][normType]['lin reg'][v1] = v2
 
-		try:
-			CalphaWeights.weight[metric]
-		except AttributeError:
-			print 'Calpha weights not yet calculated for metric "{}"\n'.format(metric)+\
-				  'Need to calculate first this weight first --> see CalphaWeight class'
-			return
+    def CalphaWeightedDensChange(self,
+                                 CalphaWeights=[], metric='loss', version=2):
 
-		weight = CalphaWeights.weight[metric]
-		metricVals = self.densMetric[metric]['Standard']['values']
-		self.getDensMetricInfo(metric   = metric,
-							   normType = 'Calpha normalised',
-							   values   = list(np.sign(weight)*np.divide(metricVals-weight,weight)))
+        # calculates the Calpha weighted density metrics for metric "metric",
+        # compensating for the overall background degregation of the electron
+        # density maps with increasing dose/dataset number. Since the same
+        # CalphaWeights (per dataset) are applied to all atoms within the
+        # structure, these are an input (and thus not recalculated for every
+        # single atom). see CalphaWeights class for details on how to calculate
 
-	def calcFirstDatasetSubtractedMetric(self,
-										 normType = 'Standard',
-										 metric   = 'loss'):
+        try:
+            CalphaWeights.meanweight[metric]
+        except AttributeError:
+            print 'Calpha weights not yet calculated for metric' +\
+                  ' "{}"\n'.format(metric) +\
+                  'Need to calculate first this weight first ' +\
+                  '--> see CalphaWeight class'
+            return
 
-		# for a specified metric calculate a new metric: 
-		# metric(dn)-metric(d1) where dn is dataset n
+        metVals = self.densMetric[metric]['Standard']['values']
 
-		metricVals = self.densMetric[metric][normType]['values']
-		self.getDensMetricInfo(metric   = metric,
-							   normType = 'dataset 1 subtracted',
-							   values   = metricVals-metricVals[0]*(np.ones(len(metricVals))))
+        if version == 1:
+            weight = CalphaWeights.meanweight[metric]
+            vals = list(np.sign(weight)*np.divide(metVals-weight, weight))
+        else:
+            weight1 = CalphaWeights.meanweight[metric]
+            weight2 = CalphaWeights.stdweight[metric]
+            vals = list(np.sign(weight1)*np.divide(metVals-weight1, weight2))
 
-	def getNumDatasets(self,*metric):
+        self.getDensMetricInfo(metric=metric, normType='Calpha normalised',
+                               values=vals)
 
-		# get number of datasets in current series
+    def calcFirstDatasetSubtractedMetric(self,
+                                         normType='Standard', metric='loss'):
 
-		if len(metric) == 0:
-			return len(self.densMetric['loss']['Standard']['values'])
-		else:
-			return len(self.densMetric[metric[0]]['Standard']['values'])
+        # for a specified metric calculate a new metric:
+        # metric(dn)-metric(d1) where dn is dataset n
 
-	def calcDiffFromMeanMetric(self,
-							   metric   = 'loss',
-							   normType = 'Standard',
-							   avMetric = []):
+        mVals = self.densMetric[metric][normType]['values']
+        self.getDensMetricInfo(metric=metric, normType='dataset 1 subtracted',
+                               values=mVals-mVals[0]*(np.ones(len(mVals))))
 
-		# for a specified metric calculate difference between 
-		# metric for atom and from mean of structure 'avMetric' 
-		# is average metric over whole structure
+    def getNumDatasets(self,
+                       *metric):
 
-		metricVals = self.densMetric[metric][normType]['values']
-		self.getDensMetricInfo(metric   = metric,
-							   normType = 'subtract mean',
-							   values   = list(np.array(metricVals)-np.array(avMetric)))
+        # get number of datasets in current series
 
-	def calcRatioToMeanMetric(self,
-							  metric   = 'loss',
-							  normType = 'Standard',
-							  avMetric = []):
+        if len(metric) == 0:
+            return len(self.densMetric['loss']['Standard']['values'])
+        else:
+            return len(self.densMetric[metric[0]]['Standard']['values'])
 
-		# for a specified metric calculate difference between
-		#  metric for atom and from mean of structure 'avMetric' 
-		# is average metric over whole structure
+    def calcDiffFromMeanMetric(self,
+                               metric='loss', normType='Standard',
+                               avMetric=[]):
 
-		metricVals = self.densMetric[metric][normType]['values']
-		self.getDensMetricInfo(metric   = metric,
-							   normType = 'divide mean',
-							   values   = list(np.array(metricVals)/np.array(avMetric)))
+        # for a specified metric calculate difference between
+        # metric for atom and from mean of structure 'avMetric'
+        # is average metric over whole structure
 
-	def calcNumStdFromMeanMetric(self,
-								 metric    = 'loss',
-								 normType  = 'Standard',
-								 avMetric  = [],
-								 stdMetric = []):
+        mVals = self.densMetric[metric][normType]['values']
+        self.getDensMetricInfo(metric=metric, normType='subtract mean',
+                               values=list(np.array(mVals)-np.array(avMetric)))
 
-		# for a specified metric calculate number of structure-wide
-		# standard deviations between metric for atom and from mean
-		# of structure. 'avMetric' is average metric over whole structure
+    def calcRatioToMeanMetric(self,
+                              metric='loss', normType='Standard', avMetric=[]):
 
-		self.calcDiffFromMeanMetric(metric   = metric,
-									normType = normType,
-									avMetric = avMetric)
+        # for a specified metric calculate difference between
+        #  metric for atom and from mean of structure 'avMetric'
+        # is average metric over whole structure
 
-		metricVals = self.densMetric[metric]['subtract mean']['values']
-		self.getDensMetricInfo(metric   = metric,
-							   normType = 'num stds',
-							   values   = list(np.array(metricVals)/np.array(stdMetric)))
+        mVals = self.densMetric[metric][normType]['values']
+        self.getDensMetricInfo(metric=metric, normType='divide mean',
+                               values=list(np.array(mVals)/np.array(avMetric)))
 
-	def calcNetChangeMetric(self,
-							normType = 'Standard'):
+    def calcNumStdFromMeanMetric(self,
+                                 metric='loss', normType='Standard',
+                                 avMetric=[], stdMetric=[]):
 
-		# the following metric attempts to determine whether there 
-		# is a net loss, gain or disordering of density associated 
-		# with a specific atom
+        # for a specified metric calculate number of structure-wide
+        # standard deviations between metric for atom and from mean
+        # of structure. 'avMetric' is average metric over whole structure
 
-		self.getDensMetricInfo(metric   = 'net',
-							   normType = normType,
-							   values   = [])
+        self.calcDiffFromMeanMetric(metric=metric, normType=normType,
+                                    avMetric=avMetric)
 
-		for dataset in range(0,self.getNumDatasets()):
-			abs_maxDensLoss = np.abs(self.densMetric['loss'][normType]['values'][dataset]) 
-			abs_maxDensGain = np.abs(self.densMetric['gain'][normType]['values'][dataset]) 
-			metricVal = (abs_maxDensLoss - abs_maxDensGain)
-			self.densMetric['net'][normType]['values'].append(metricVal)
+        mVls = self.densMetric[metric]['subtract mean']['values']
+        self.getDensMetricInfo(metric=metric, normType='num stds',
+                               values=list(np.array(mVls)/np.array(stdMetric)))
 
-	def calcVectorWeightedMetric(self,
-								 metric   = 'loss',
-								 normType = 'Standard',
-								 vector   = []):
+    def calcNetChangeMetric(self,
+                            normType='Standard'):
 
-		# for a specified metric calculate new vector-weighted 
-		# values, where the metric over a series of doses
-		# is multiplied by a vector of per-dataset scalings
+        # the following metric attempts to determine whether there
+        # is a net loss, gain or disordering of density associated
+        # with a specific atom
 
-		metricVals = self.densMetric[metric][normType]['values']
-		if len(vector) != len(metricVals):
-			print 'Incompatible metric and per-dataset scale vector lengths'
-			return
-		self.getDensMetricInfo(metric   = metric,
-							   normType = 'vector-weighted',
-							   values   = metricVals/np.array(vector))
+        self.getDensMetricInfo(metric='net', normType=normType, values=[])
 
-	def calcVectorSubtractedMetric(self,
-								   metric   = 'loss',
-								   normType = 'Standard',
-								   vector   = []):
+        for d in range(0, self.getNumDatasets()):
+            absMaxLoss = np.abs(self.densMetric['loss'][normType]['values'][d])
+            absMaxGain = np.abs(self.densMetric['gain'][normType]['values'][d])
+            metricVal = (absMaxLoss - absMaxGain)
+            self.densMetric['net'][normType]['values'].append(metricVal)
 
-		# for a specified metric calculate new vector-weighted 
-		# values, where the metric over a series of doses
-		# is multiplied by a vector of per-dataset scalings
+    def calcVectorWeightedMetric(self,
+                                 metric='loss', normType='Standard',
+                                 vector=[]):
 
-		metricVals = self.densMetric[metric][normType]['values']
-		if len(vector) != len(metricVals):
-			print 'Incompatible metric and per-dataset scale vector lengths'
-			return
-		self.getDensMetricInfo(metric   = metric,
-							   normType = 'vector-subtracted',
-							   values   = metricVals - np.array(vector))
+        # for a specified metric calculate new vector-weighted
+        # values, where the metric over a series of doses
+        # is multiplied by a vector of per-dataset scalings
 
-	def findSolventAccessibility(self,
-								 inputPDBfile = 'untitled.pdb',
-								 printText    = False):
+        metricVals = self.densMetric[metric][normType]['values']
+        if len(vector) != len(metricVals):
+            print 'Incompatible metric and per-dataset scale vector lengths'
+            return
+        self.getDensMetricInfo(metric=metric, normType='vector-weighted',
+                               values=metricVals/np.array(vector))
 
-		# read in a pdb file output by ccp4 program 'areaimol' 
-		# (run independently) which calculates solvent accessibility
-		# for each atom within a pdb file and writes value in Bfactor column
+    def calcVectorSubtractedMetric(self,
+                                   metric='loss', normType='Standard',
+                                   vector=[]):
 
-		openFile =  open(str(inputPDBfile), "r")
-		for line in openFile.readlines():
-			if (self.atomtype == str(line[12:16].strip())
-				and self.residuenum == str(line[22:27].strip())
-				and self.chaintype == str(line[21])  
-				and self.basetype == str(line[17:20].strip())):
-				self.solventAccess = str(line[60:66].strip()) 
-				break
+        # for a specified metric calculate new vector-weighted
+        # values, where the metric over a series of doses
+        # is multiplied by a vector of per-dataset scalings
 
-		if printText is True:
-			print 'Solvent Accessibility: {}'.format(self.solventAccess)
-		openFile.close()
-		return self.solventAccess
+        metricVals = self.densMetric[metric][normType]['values']
+        if len(vector) != len(metricVals):
+            print 'Incompatible metric and per-dataset scale vector lengths'
+            return
+        self.getDensMetricInfo(metric=metric, normType='vector-subtracted',
+                               values=metricVals - np.array(vector))
+
+    def findSolventAccessibility(self,
+                                 inputPDBfile='untitled.pdb', printText=True):
+
+        # read in a pdb file output by ccp4 program 'areaimol'
+        # (run independently) which calculates solvent accessibility
+        # for each atom within a pdb file and writes value in Bfactor column
+
+        openFile = open(str(inputPDBfile), "r")
+        for line in openFile.readlines():
+            if (self.atomtype == str(line[12:16].strip()) and
+                self.residuenum == str(line[22:27].strip()) and
+                self.chaintype == str(line[21]) and
+                    self.basetype == str(line[17:20].strip())):
+                self.solventAccess = str(line[60:66].strip())
+                break
+
+        if printText is True:
+            print 'Solvent Accessibility: {}'.format(self.solventAccess)
+        openFile.close()
+        return self.solventAccess
