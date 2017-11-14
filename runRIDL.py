@@ -121,8 +121,9 @@ inputFileToUse = args.inputFile
 # first to generate higher dose coordinate models
 if args.performRigidBodyRefine:
     if inputFileToUse is None:
-        print '\nRun error:\nMust specify input file with ' +\
+        print '\nRIDL run error:\nMust specify input file with ' +\
               '-i tag to perform rigid body refinement job'
+        sys.exit()
     else:
         r = reRefine(inputFile=inputFileToUse)
         inputFileToUse = r.newInputFile
@@ -137,6 +138,11 @@ if args.process or args.calculate or args.output:
     # run the pipeline, including generating density and atom-tagged
     # maps from input pdb and mtz files (in a damage series), as
     # specified within an input file
+
+    if inputFileToUse is None:
+        print '\nRIDL run error:\nMust specify input file with ' +\
+              '-i tag to when using either -p or -c flags'
+        sys.exit()
 
     p = process(inputFile=inputFileToUse,
                 makeMaps=args.process,
