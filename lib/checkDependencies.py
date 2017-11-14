@@ -42,7 +42,7 @@ class checkDependencies():
                                    txt='Checking whether CCP4 ' +
                                        'program suite accessible...')
 
-        if 'ccp4' not in os.environ["PATH"]:
+        if 'ccp4' not in os.environ["PATH"].lower():
             self.printOrWriteToLog(logFile=logFile,
                                    txt='CCP4 program suite not ' +
                                    'found in PATH..\n')
