@@ -14,7 +14,7 @@ It has been primarily developed as a high-throughput tool for site-specific radi
 
 - Please email *charles.bury@dtc.ox.ac.uk*
 
-- Let me know your thoughts so that I can improve the program: https://goo.gl/forms/yCke1LnCnptDwAsk1 (this is an anonymous form)
+- Let me know your thoughts so that I can improve the program: https://goo.gl/forms/9aRrEwT1TUUqLroB2 (this is an anonymous form)
 
 ## Contents
 - [How to run in brief](#how-to-run-in-brief)
