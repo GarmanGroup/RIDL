@@ -10,9 +10,11 @@
 A program to calculate per-atom metrics to describe electron density change between **complete diffraction datasets** collected at **successive doses**. 
 It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data.
 
-## Queries
+## Queries and feedback
 
-Please email *charles.bury@dtc.ox.ac.uk*
+- Please email *charles.bury@dtc.ox.ac.uk*
+
+- Let me know your thoughts so that I can improve the program: https://goo.gl/forms/yCke1LnCnptDwAsk1 (this is an anonymous form)
 
 ## Contents
 - [How to run in brief](#how-to-run-in-brief)
