@@ -6,13 +6,17 @@ import os
 class checkDependencies():
 
     def __init__(self,
-                 checkAll=False):
+                 checkAll=False,
+                 optionals=False):
 
         pythonPackageList = ['sys', 'argparse', 'os',  'time',
                              'shutil', 'numpy', 'imp', 'matplotlib',
-                             'math', 'scipy', 'numexpr', 'string',
+                             'math', 'scipy', 'string',
                              'pandas', 'operator', 'warnings',
                              'struct', 'mmap', 'random']
+
+        if optionals:
+            pythonPackageList += ['numexpr']
 
         allFound = True
         if checkAll:
