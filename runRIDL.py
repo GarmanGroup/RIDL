@@ -1,9 +1,8 @@
 import sys
 sys.path.insert(0, './lib')
 from checkDependencies import checkDependencies
-from rigidBodyRefine import reRefine
-from runRIDL_class import process
 import argparse
+import sys
 
 # an outer layer for the pipeline scripts. This allows
 # the pipeline to be run from the command line by simply
@@ -39,12 +38,12 @@ parser.add_argument('-i',
                          'names, as well as relevant mtz column labels.')
 
 parser.add_argument('-p',
-                    dest='process', action='store_const',
+                    dest='makeMaps', action='store_const',
                     default=False, const=True,
                     help='Generate electron density difference maps.')
 
 parser.add_argument('-c',
-                    dest='calculate', action='store_const',
+                    dest='calcMetrics', action='store_const',
                     default=False, const=True,
                     help='Calculate damage metrics per atom. Will output ' +
                          'csv-format files of metric per atom upon completion')
@@ -101,6 +100,12 @@ args = parser.parse_args()
 # check RIDL dependencies are present
 if args.checkDependencies:
     checkDependencies(checkAll=True)
+    sys.exit()
+
+# these are here so that they don't interfere with dependency checks
+from rigidBodyRefine import reRefine
+from runRIDL_class import process
+
 
 # create a template input file to be filled in manually by the user
 if args.template != 0:
@@ -127,14 +132,14 @@ if args.performRigidBodyRefine:
     else:
         r = reRefine(inputFile=inputFileToUse)
         inputFileToUse = r.newInputFile
-        if args.process or args.calculate or args.output:
+        if args.makeMaps or args.calcMetrics or args.output:
             print '\nUsing newly generated RIDL input file ' +\
                   'for remainder of pipeline'
         else:
             print '\nUse this newly generated RIDL input ' +\
                   'file on next RIDL run'
 
-if args.process or args.calculate or args.output:
+if args.makeMaps or args.calcMetrics or args.output:
     # run the pipeline, including generating density and atom-tagged
     # maps from input pdb and mtz files (in a damage series), as
     # specified within an input file
@@ -145,8 +150,8 @@ if args.process or args.calculate or args.output:
         sys.exit()
 
     p = process(inputFile=inputFileToUse,
-                makeMaps=args.process,
-                makeMetrics=args.calculate,
+                makeMaps=args.makeMaps,
+                makeMetrics=args.calcMetrics,
                 cleanUpFinalFiles=args.cleanUpFinalFiles,
                 printverboseOutput=args.verboseOutput,
                 printOutput=args.suppressOutput,
