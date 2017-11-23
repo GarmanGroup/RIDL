@@ -1,7 +1,11 @@
 import math
 import sys
 import numpy as np
-import numexpr as ne
+
+# try:
+#     import numexpr as ne
+# except ImportError:
+#     print 'numexpr not found - RIDL may fail to complete'
 
 
 class StructurePDB(object):
@@ -337,6 +341,11 @@ class MapInfo:
         # given a series of xyz values, find symmetry equivalent
         # points in space, using symmetry ops supplied in map
         # file header information.
+
+        # TODO: move this back to top of file. It is here
+        # since it is non essential and users struggle to
+        # import numexpr correctly
+        import numexpr as ne
 
         try:
             self.symOpsStr
