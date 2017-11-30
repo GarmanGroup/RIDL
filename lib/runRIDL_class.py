@@ -16,14 +16,10 @@ class process():
 
     def __init__(self,
                  inputFile='fullInput.txt',
-                 run=True,
-                 makeMaps=True,
-                 makeMetrics=False,
-                 cleanUpFinalFiles=False,
-                 printverboseOutput=False,
-                 printOutput=True,
-                 makeSummaryFile=False,
-                 keepMapDir=True):
+                 run=True, makeMaps=True,
+                 makeMetrics=False, cleanUpFinalFiles=False,
+                 printverboseOutput=False, printOutput=True,
+                 makeSummaryFile=False, keepMapDir=True):
 
         self.inputFile = inputFile
         self.makeMaps = makeMaps
@@ -67,13 +63,11 @@ class process():
         self.titleCaption()
         self.info()
 
-        pro = processFiles(inputFile=self.inputFile,
-                           makeMaps=self.makeMaps,
-                           makeMetrics=self.makeMetrics,
-                           makeSummaryFile=self.makeSummaryFile,
-                           cleanFinalFiles=self.cleanUpFinalFiles,
-                           logFileObj=self.logFile,
-                           keepMapDir=self.keepMapDir)
+        pro = processFiles(
+            inputFile=self.inputFile, makeMaps=self.makeMaps,
+            makeMetrics=self.makeMetrics, makeSummaryFile=self.makeSummaryFile,
+            cleanFinalFiles=self.cleanUpFinalFiles, logFileObj=self.logFile,
+            keepMapDir=self.keepMapDir)
 
         return pro.jobSuccess
 
@@ -131,7 +125,6 @@ LATERDATASET
     name2       : assign a name to your high dose damage set (e.g. a pdb code "1qid")
     mtz2        : full path to the high dose mtz file
     mtzlabels2  : F & SIGF column labels (look in high dose mtz file), if "FP_X" then type "FP_X"
-    pdb2        : full path to the high dose pdb file
 
 PHASEDATASET
     name3       : assign a name to your low dose damage set (same as INITIALDATASET above)
