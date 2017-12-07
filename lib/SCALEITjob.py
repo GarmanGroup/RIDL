@@ -132,8 +132,7 @@ class SCALEITjob():
     def printPurpose(self,
                      include=True):
 
-        # provide a summary of what this does
-        # (within ETRACK) to the command line
+        # provide a summary of what this does to the command line
 
         self.runLog.writeToLog(
             'Scaling 2nd dataset Fobs column against' +

@@ -6,22 +6,23 @@ class NCONTjob():
 
     def __init__(self,
                  inputPDBfile='untitiled.pdb', outputDir='./', symGroup='P1',
-                 seriesName='untitled', printText=True):
+                 seriesName='untitled', printText=True, runLog=''):
 
         self.inputPDBfile = inputPDBfile
         self.outputDir = outputDir
         self.symGroup = symGroup
         self.seriesName = seriesName
         self.printText = printText
+        self.runLog = runLog
 
     def run(self):
 
         # run the ccp4 program NCONT
 
-        if os.path.isfile(self.inputPDBfile) is False:
+        if not os.path.isfile(self.inputPDBfile):
             return False
         self.runNCONT()
-        if self.jobSuccess is True:
+        if self.jobSuccess:
             self.provideFeedback()
             return True
         else:
@@ -43,7 +44,7 @@ class NCONTjob():
         job = ccp4Job('NCONT', self.commandInput1, self.commandInput2,
                       self.outputDir, self.outputLogfile,
                       self.outputDir+'/'+self.outputLogfile)
-        self.jobSuccess = job.checkJobSuccess()
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
 
     def provideFeedback(self):
 

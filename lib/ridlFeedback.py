@@ -11,12 +11,11 @@ import os
 class provideFeedback(object):
     # create series of output feedback files and graphs
     def __init__(self,
-                 csvOnly=False, writeCsvs=False, writeSumFile=False,
-                 writeTopSites=False, plotHeatMaps=False,
-                 atmsObjs=[], outputDir='./', csvExtent='simple',
-                 plotGraphs=True, logFile=[], pklSeries='',
+                 csvOnly=False, atmsObjs=[], outputDir='./',
+                 csvExtent='simple', plotGraphs=True, logFile=[], pklSeries='',
                  doses=[], densMaps=[], inputDir='./', autoRun=True,
-                 initialPDB='untitled.pdb', inclFCmetrics=False):
+                 initialPDB='untitled.pdb', inclFCmetrics=False,
+                 normSet=[['', 'CA']]):
 
         # object containing per atom metric information across all doses
         self.atmsObjs = atmsObjs
@@ -33,6 +32,9 @@ class provideFeedback(object):
         # the pkl file where the per-atom metric info is stored
         # (for reference only)
         self.pklSeries = pklSeries
+
+        # set of atoms to metrics have been normalised against
+        self.normSet = normSet
 
         # decide whether to plot a per-atom metric
         # heatmap to visualise damage sites (very slow)
@@ -54,13 +56,13 @@ class provideFeedback(object):
         self.inclFCmetrics = inclFCmetrics
 
         # whether to write CSV-format files
-        self.writeCsvs = writeCsvs
+        self.writeCsvs = True
 
         # whether to write HTML-format summary file
-        self.writeSumFile = writeSumFile
+        self.writeSumFile = False
 
         # whether to write PDB-format file of top dam sites
-        self.writeTopSites = writeTopSites
+        self.writeTopSites = False
 
         # whether to include only key metrics (='simple') or all metrics
         self.csvExtent = csvExtent
@@ -69,10 +71,7 @@ class provideFeedback(object):
             self.outputPlotDir = '{}data/plots/'.format(self.outputDir)
             self.makeOutputDir(dirName=self.outputPlotDir)
 
-        if csvOnly:
-            self.writeCsvs = True
-        else:
-            self.writeCsvs = True
+        if not csvOnly:
             self.writeSumFile = True
             self.writeTopSites = True
 
@@ -83,7 +82,7 @@ class provideFeedback(object):
 
         # main procedure for writing output files
 
-        self.checkCalphasPresent(atomObjList=self.atmsObjs)
+        self.checkToIncludeAtomNormSet()
 
         # no plotting if seaborn not found
         self.checkSeaborn()
@@ -96,10 +95,10 @@ class provideFeedback(object):
 
         if self.writeSumFile:
 
-            if not self.calphaPresent:
+            if not self.inclNormSet:
                 n = 'Standard'
             else:
-                n = 'Calpha normalised'
+                n = 'X-normalised'
 
             self.summaryHTML(
                 primaryMetric='density_weighted_mean_negOnly', primaryNorm=n)
@@ -111,8 +110,8 @@ class provideFeedback(object):
                 subdir = 'metric_heatmap/'
                 outDir = self.makeNewPlotSubdir(subdir=subdir)
 
-                for norm in ('Standard', 'Calpha normalised'):
-                    if norm == 'Calpha normalised':
+                for norm in ('Standard', 'X-normalised'):
+                    if norm == 'X-normalised':
                         if not self.calphaPresent:
                             continue
                     self.atmsObjs.densityMetricHeatMap(
@@ -134,8 +133,9 @@ class provideFeedback(object):
 
         csvDir = self.outputDir+'csvFiles/'
         self.makeOutputDir(dirName=csvDir)
-        self.makeOutputDir(dirName=csvDir+'Calpha-normalised/')
         self.makeOutputDir(dirName=csvDir+'Standard/')
+        if self.inclNormSet:
+            self.makeOutputDir(dirName=csvDir+'Normalised/')
 
         if self.csvExtent == 'simple':
             n = 'Standard'
@@ -161,8 +161,8 @@ class provideFeedback(object):
                 if inclMeanMet:
                     metrics += [['density_weighted_mean', n]]
 
-            if self.calphaPresent:
-                n = 'Calpha normalised'
+            if self.inclNormSet:
+                n = 'X-normalised'
                 metrics += [['loss', n]]
 
                 if inclMeanMet:
@@ -185,7 +185,7 @@ class provideFeedback(object):
             if densMet[1] == 'Standard':
                 dr = csvDir+'Standard/'
             else:
-                dr = csvDir+'Calpha-normalised/'
+                dr = csvDir+'Normalised/'
 
             self.atmsObjs.writeMetric2File(
                 where=dr, metric=densMet[0],
@@ -196,22 +196,22 @@ class provideFeedback(object):
                 for groupBy in ('atomtype', 'residue'):
                     self.atmsObjs.writeMetric2File(
                         where=csvDir+'Standard/', metric=m, groupBy=groupBy)
-                    if self.calphaPresent:
+                    if self.inclNormSet:
                         self.atmsObjs.writeMetric2File(
-                            where=csvDir+'Calpha-normalised/', groupBy=groupBy,
-                            metric=m, normType='Calpha normalised')
+                            where=csvDir+'Normalised/', groupBy=groupBy,
+                            metric=m, normType='X-normalised')
 
     def summaryHTML(self,
-                    primaryMetric='loss', primaryNorm='Calpha normalised'):
+                    primaryMetric='loss', primaryNorm='X-normalised'):
 
         # produce a selection of per-dataset summary statistics
         # and write in a HTML summary format
 
         # perform some initial checks to ensure metric info is present
-        if primaryNorm == 'Calpha normalised' and not self.calphaPresent:
+        if primaryNorm == 'X-normalised' and not self.inclNormSet:
             error(
-                text='Error! Tried to write summary file for ' +
-                     'Calpha-normalised metric but not such metric exists',
+                text='Error! Tried to write summary file including ' +
+                     'normalised metric but no such metric exists',
                 log=self.logFile, type='error')
 
         self.logFile.writeToLog(
@@ -224,8 +224,8 @@ class provideFeedback(object):
             primaryMetric, primaryNorm, form='TEX')
 
         # decide which metrics to feature in the HTML summary file
-        if primaryNorm == 'Calpha normalised':
-            norms = ['Standard', 'Calpha normalised']
+        if primaryNorm == 'X-normalised':
+            norms = ['Standard', 'X-normalised']
         else:
             norms = [primaryNorm]
         plotNorm = primaryNorm
@@ -293,14 +293,14 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
         bodyString += '<h4>CSV-format metric files:</h4><ul>\n'
 
         metToDisplay = [['loss', 'Standard']]
-        if self.calphaPresent:
-            metToDisplay += [['loss', 'Calpha normalised']]
+        if self.inclNormSet:
+            metToDisplay += [['loss', 'X-normalised']]
         if self.inclFCmetrics:
             metToDisplay += [['density_weighted_loss', 'Standard'],
                              ['density_weighted_mean_negOnly', 'Standard']]
-            if self.calphaPresent:
-                metToDisplay += [['density_weighted_loss', 'Calpha normalised'],
-                                 ['density_weighted_mean_negOnly', 'Calpha normalised']]
+            if self.inclNormSet:
+                metToDisplay += [['density_weighted_loss', 'X-normalised'],
+                                 ['density_weighted_mean_negOnly', 'X-normalised']]
         for m in metToDisplay:
             t = self.atmsObjs.getFormattedmetricName(m[0], m[1])
             bodyString += '<li><a href = "{}csvFiles/{}/{}-'.format(
@@ -349,10 +349,10 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
         else:
 
             # Distn plots over entire structure to indicate
-            # the role of Calpha normalisation
+            # the role of any metric normalisation applied
             subdir = 'metricDistn_allAtoms/'
             plotDir = self.makeNewPlotSubdir(subdir=subdir)
-            info = '<h3>Metric distribution</h3>\n<div class = "row">\n'
+            info = '<h3>Metric distribution over all present atoms</h3>\n<div class = "row">\n'
 
             for n in norms:
                 m = self.atmsObjs.getFormattedmetricName(
@@ -392,7 +392,7 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
                     primaryMetric, n)
                 info += '<div class = "col-sm-6">{} metric:</div>\n'.format(m)
 
-            for n in norms:
+            for i, n in enumerate(norms):
                 topAtoms = self.atmsObjs.getTopNAtoms(
                     dataset='all', metric=primaryMetric,
                     normType=n, n=numDamSites)
@@ -464,15 +464,13 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
                 'Fourier diff map : <a href ="../RIDL-maps/' +\
                 '{}">Download</a><br>\n'.format(self.densMaps[i])
 
-            if self.calphaPresent:
-                CAweights = self.atmsObjs.retrieveCalphaWeight(
-                    metric=primaryMetric)
-                c += 'Calpha weight for current dataset: {}<br>\n'.format(
-                    round(CAweights.meanweight[primaryMetric][i], 3))
-            self.writeHtmlDropDownPanel(title=t,
-                                        content=c,
-                                        dataset=i,
-                                        sumFile=summaryFile)
+            if self.inclNormSet:
+                c += 'Normalisation weight for this dataset: {}<br>\n'.format(
+                    round(self.atmsObjs.metricNormWeights.meanweight[
+                        primaryMetric][i], 3))
+
+            self.writeHtmlDropDownPanel(
+                title=t, content=c, dataset=i, sumFile=summaryFile)
 
             # # TO MAKE METRIC VERSUS METRIC SCATTER PLOTS, UNCOMMENT THIS BIT
             # subdir = 'metricVmetric-scatterplots/'
@@ -480,12 +478,9 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
             # m1s = ['loss', 'loss']
             # m2s = ['density_weighted_loss', 'density_weighted_mean_negOnly']
             # for m1, m2 in zip(m1s, m2s):
-            #     self.atmsObjs.compareMetrics(metric1=m1,
-            #                                  metric2=m2,
-            #                                  atomtype='',
-            #                                  dSet=i,
-            #                                  outputDir=outDir,
-            #                                  fileType='.svg')
+            #     self.atmsObjs.compareMetrics(
+            #         metric1=m1, metric2=m2, atomtype='',
+            #         dSet=i, outputDir=outDir, fileType='.svg')
 
             ###################################################################
             # Create distribution plots for metric values over whole structure
@@ -528,8 +523,8 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
 
             figInfo += '</div>\n'
 
-            self.writeHtmlDropDownPanel(title=t, content=figInfo, dataset=i,
-                                        sumFile=summaryFile)
+            self.writeHtmlDropDownPanel(
+                title=t, content=figInfo, dataset=i, sumFile=summaryFile)
 
             ###################################################################
             # Determination of top N=25 damage sites for
@@ -565,8 +560,8 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
             c = '<img class="img-responsive" src="{}{}">'.format(
                 plotDir, saveName.split('/')[-1])
 
-            self.writeHtmlDropDownPanel(title=t, content=c,
-                                        dataset=i, sumFile=summaryFile)
+            self.writeHtmlDropDownPanel(
+                title=t, content=c, dataset=i, sumFile=summaryFile)
 
             ###################################################################
             # statistics breakdown (per-atom, per-chain,
@@ -581,7 +576,12 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
                 'the mode, number of atoms that fall outside this domain' +\
                 '</li>\n<li>skew: skewness of metric distribution for atoms' +\
                 'of specified type</li>\n<li>kurtosis: kurtosis of metric ' +\
-                'distribution for atoms of specified type</li>\n</ul>'
+                'distribution for atoms of specified type</li>\n' +\
+                '<li>asymmetry score: A measure of the asymmetry of ' +\
+                'distribution of metric values about 0, taken as the ' +\
+                'ratio of the sum of all metric values >0 divided by that ' +\
+                'for metric values <0 (needs both >0 and <0 values ' +\
+                'present, otherwise N/A</li></ul>'
 
             c += '<ul class="nav nav-tabs">' +\
                  '<li class="active"><a data-toggle="tab" href="#byatom' +\
@@ -631,9 +631,9 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
             c += '</div>'
             c += '</div>'
 
-            self.writeHtmlDropDownPanel(title='Statistics Breakdown',
-                                        content=c, dataset=i,
-                                        sumFile=summaryFile)
+            self.writeHtmlDropDownPanel(
+                title='Statistics Breakdown', content=c,
+                dataset=i, sumFile=summaryFile)
 
             ###################################################################
             # Detection of any atoms that behaviour unusually
@@ -686,8 +686,8 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
 
             t = 'Suspicious Atoms'
             c = infoString
-            self.writeHtmlDropDownPanel(title=t, content=c,
-                                        dataset=i, sumFile=summaryFile)
+            self.writeHtmlDropDownPanel(
+                title=t, content=c, dataset=i, sumFile=summaryFile)
 
             # end block of collapsible panels here
             summaryFile.write('</div>')
@@ -799,7 +799,7 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
         # the structure and only this is output to resulting PDB file,
         # otherwise use ''
 
-        if normType == 'Calpha normalised':
+        if normType == 'X-normalised':
             self.atmsObjs.calcAdditionalMetrics(metric=metric,
                                                 normType=normType)
 
@@ -960,13 +960,19 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
 
         return failedPlots, saveName
 
-    def checkCalphasPresent(self,
-                            atomObjList=[]):
+    def checkToIncludeAtomNormSet(self):
 
-        # check whether structure contains any Calpha
-        # protein backbone atoms within it
+        # check whether structure contains the atom
+        # set against which metric normalisation will be done
 
-        self.calphaPresent = atomObjList.checkCalphaAtomsExist()
+        if self.normSet == [[]]:
+            # don't include norm set if not calculated
+            self.inclNormSet = False
+
+        else:
+            # check atoms were found, if not ignore the set
+            self.inclNormSet = self.atmsObjs.checkSpecificAtomsExist(
+                self.normSet)
 
     def get1stDsetPDB(self):
 
