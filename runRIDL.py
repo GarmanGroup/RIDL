@@ -106,7 +106,6 @@ if args.checkDependencies:
 from rigidBodyRefine import reRefine
 from runRIDL_class import process
 
-
 # create a template input file to be filled in manually by the user
 if args.template != 0:
     p = process(run=False,

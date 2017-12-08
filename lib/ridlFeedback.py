@@ -1021,7 +1021,7 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
         # also do not allow this to be made
 
         c = checkDependencies()
-        if not c.checkSeaborn(logFile=self.logFile):
+        if not c.checkPyPackage(logFile=self.logFile, packageName='seaborn'):
             self.writeSumFile = False
 
     def makeOutputDir(self,

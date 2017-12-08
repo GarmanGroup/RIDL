@@ -88,7 +88,7 @@ class processFiles():
 
     def runMapGeneration(self):
 
-        self.logFile.writeToLog(str='\n\n**** DENSITY MAP GENERATION ****\n')
+        self.logFile.writeToLog(str='\n\n**** MAP GENERATION ****\n')
 
         if not self.multiDatasets:
             self.logFile.writeToLog(
@@ -266,13 +266,11 @@ class processFiles():
         # ONLY csv files will be output from the run (i.e. no html summary
         # file and no plots)
 
+        self.logFile.writeToLog(str='\n**** RIDL FEEDBACK ****\n')
+
         # retrieve list of atom objects from .pkl file
         self.logFile.writeToLog(
-            str='Retrieving per-atom damage metric information from ' +
-                ' .pkl file for each dataset within damage series.')
-
-        self.logFile.writeToLog(
-            str='Input pkl file for data retrieval chosen from input file:\n' +
+            str='Metric data retrieved from pkl file:\n' +
                 '\t{}'.format(self.pklDataFile))
 
         # retrieve the combinedAtoms object from the pkl file

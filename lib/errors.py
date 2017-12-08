@@ -22,7 +22,7 @@ class error():
             self.warningMessage(message=text)
 
         else:
-            self.errorMessage(message='Uknown error type specified!')
+            self.errorMessage(message='Unknown error type specified!')
             sys.exit()
 
     def errorMessage(self,
