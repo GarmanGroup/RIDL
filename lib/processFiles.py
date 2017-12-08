@@ -252,7 +252,8 @@ class processFiles():
                              seriesName=seriesName, doses=self.getDoses(),
                              pklDataFile=self.pklDataFile, autoRun=True,
                              pdbFileList=pdbFileList, normSet=self.normSet,
-                             RIDLinputFile=self.inputFile)
+                             RIDLinputFile=self.inputFile,
+                             sepPDBperDataset=self.useSeparatePDBperDataset())
 
         self.pklDataFile = c.pklDataFile
 

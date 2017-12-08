@@ -10,7 +10,11 @@ import numpy as np
 import sys
 import time
 import os
-import seaborn as sns
+# try to import seaborn here. Don't worry if not (not essential for main run)
+try:
+    import seaborn as sns
+except ImportError:
+    pass
 
 
 class maps2DensMetrics():

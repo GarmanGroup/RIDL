@@ -12,7 +12,7 @@ class provideFeedback(object):
     # create series of output feedback files and graphs
     def __init__(self,
                  csvOnly=False, atmsObjs=[], outputDir='./',
-                 csvExtent='simple', plotGraphs=True, logFile=[], pklSeries='',
+                 csvExtent='simple', logFile=[], pklSeries='',
                  doses=[], densMaps=[], inputDir='./', autoRun=True,
                  initialPDB='untitled.pdb', inclFCmetrics=False,
                  normSet=[['', 'CA']]):
@@ -22,9 +22,6 @@ class provideFeedback(object):
 
         # the output directory
         self.outputDir = os.path.abspath(outputDir)+'/'
-
-        # determine whether to plot any graphs
-        self.plot = plotGraphs
 
         # the log file used for the whole RIDL run
         self.logFile = logFile
@@ -67,13 +64,11 @@ class provideFeedback(object):
         # whether to include only key metrics (='simple') or all metrics
         self.csvExtent = csvExtent
 
-        if plotGraphs:
-            self.outputPlotDir = '{}data/plots/'.format(self.outputDir)
-            self.makeOutputDir(dirName=self.outputPlotDir)
-
         if not csvOnly:
             self.writeSumFile = True
             self.writeTopSites = True
+            self.outputPlotDir = '{}data/plots/'.format(self.outputDir)
+            self.makeOutputDir(dirName=self.outputPlotDir)
 
         if autoRun:
             self.run()
@@ -84,7 +79,7 @@ class provideFeedback(object):
 
         self.checkToIncludeAtomNormSet()
 
-        # no plotting if seaborn not found
+        # no plotting (and no html summary) if seaborn not found
         self.checkSeaborn()
 
         if self.writeCsvs:
@@ -104,19 +99,17 @@ class provideFeedback(object):
                 primaryMetric='density_weighted_mean_negOnly', primaryNorm=n)
 
         # create heatmap plots (large files) if requested
-        if self.plot:
-            if self.plotHeatMaps:
+        if self.plotHeatMaps:
+            subdir = 'metric_heatmap/'
+            outDir = self.makeNewPlotSubdir(subdir=subdir)
 
-                subdir = 'metric_heatmap/'
-                outDir = self.makeNewPlotSubdir(subdir=subdir)
-
-                for norm in ('Standard', 'X-normalised'):
-                    if norm == 'X-normalised':
-                        if not self.calphaPresent:
-                            continue
-                    self.atmsObjs.densityMetricHeatMap(
-                        saveFig=True, metric='loss', normType=norm,
-                        outputDir=outDir)
+            for norm in ('Standard', 'X-normalised'):
+                if norm == 'X-normalised':
+                    if not self.calphaPresent:
+                        continue
+                self.atmsObjs.densityMetricHeatMap(
+                    saveFig=True, metric='loss', normType=norm,
+                    outputDir=outDir)
 
     def writeCsvFiles(self,
                       inclGroupby=False, inclGainMet=False,
@@ -1023,22 +1016,13 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
 
     def checkSeaborn(self):
 
-        # force no plotting if seaborn library not found
+        # force no plotting if seaborn library not found.
+        # Since the html summary file seriously depends on seaborn
+        # also do not allow this to be made
 
         c = checkDependencies()
         if not c.checkSeaborn(logFile=self.logFile):
-            self.plot = False
-            self.printNoSeabornWarning()
-
-    def printNoSeabornWarning(self):
-
-        # if seaborn library not found, print a warning to command line
-
-        error(
-            text='Seaborn plotting library not found.\n' +
-                 'Some output plots could not be produced.\n' +
-                 'Use "pip install seaborn" to install package.',
-            log=self.logFile, type=type)
+            self.writeSumFile = False
 
     def makeOutputDir(self,
                       dirName='./'):

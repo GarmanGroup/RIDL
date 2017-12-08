@@ -108,7 +108,9 @@ class checkDependencies():
                                        'found.. Will not create any plots' +
                                        ' for current run.\nUse "pip ' +
                                        'install seaborn" to install for ' +
-                                       'future use.\n')
+                                       'future use. Note that the HTML-' +
+                                       'format summary file will not be ' +
+                                       'available if seaborn is not present\n')
             return False
 
         if printText:
