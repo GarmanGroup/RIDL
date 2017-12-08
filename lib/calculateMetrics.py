@@ -27,7 +27,8 @@ class calculateMetrics(object):
                  doses=[], plot='no', output='simple', logFile='',
                  inclFCmets=True, densMapList=[], atomMapList=[],
                  pdbFileList=[], FcMapList=[], autoRun=True,
-                 normSet=[['', 'CA']], RIDLinputFile='untitled.txt'):
+                 normSet=[['', 'CA']], RIDLinputFile='untitled.txt',
+                 sepPDBperDataset=False):
 
         # the input map file directory
         self.mapDir = mapDir
@@ -83,6 +84,9 @@ class calculateMetrics(object):
 
         # generate metrics which require FC maps to be made
         self.inclFCmets = inclFCmets
+
+        # whether to use a separate pdb file for each datasets' atom map
+        self.sepPDBperDataset = sepPDBperDataset
 
         # if number of initial datasets given doesn't match
         # number of later datasets, assume same initial dataset
@@ -199,25 +203,37 @@ class calculateMetrics(object):
 
         pklFileNames = []
 
+        # set up the class to calculate metrics from maps
+        maps2DensMets = maps2DensMetrics(
+            filesIn=self.mapDir, filesOut=self.outputDataDir,
+            pdbName=self.pdbFileList[0], atomTagMap=self.atomMapList[0],
+            FCmap=self.FcMapList[0], logFile=self.logFile,
+            calcFCmap=self.inclFCmets)
+
         for i in range(len(self.densMapList)):
-            atomMap = self.atomMapList[i]
-            densMap = self.densMapList[i]
-            FcMap = self.FcMapList[i]
-            pdbFile = self.pdbFileList[i]
+
+            if i == 0:
+                mapsAlreadyRead = False
+            else:
+                mapsAlreadyRead = True
+
+            if self.sepPDBperDataset:
+                maps2DensMets.atomMapIn = self.atomMapList[i]
+                maps2DensMets.FCmapIn = self.FcMapList[i]
+                maps2DensMets.pdbName = self.pdbFileList[i]
+                # if new maps per dataset, need to reread them
+                mapsAlreadyRead = False
 
             self.logFile.writeToLog(
                 str='\n---------------------------------\n' +
                     'Higher dose dataset {} starts here'.format(i))
 
-            maps2DensMets = maps2DensMetrics(
-                filesIn=self.mapDir, filesOut=self.outputDataDir,
-                pdbName=pdbFile, atomTagMap=atomMap, densityMap=densMap,
-                FCmap=FcMap, logFile=self.logFile, calcFCmap=self.inclFCmets)
+            maps2DensMets.densMapIn = self.densMapList[i]
 
-            maps2DensMets.maps2atmdensity()
+            maps2DensMets.maps2atmdensity(mapsAlreadyRead)
 
             # save list of atom objects to a .pkl file
-            tag = densMap.replace('_density.map', '')
+            tag = self.densMapList[i].replace('_density.map', '')
 
             pklFileName = save_objectlist(maps2DensMets.PDBarray, tag)
 
