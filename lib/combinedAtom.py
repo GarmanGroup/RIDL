@@ -12,14 +12,11 @@ class combinedAtom(StructurePDB):
     def __init__(self,
                  atomnum=0, residuenum=0, atomtype="", basetype="",
                  chaintype="", X_coord=0, Y_coord=0, Z_coord=0, atomID="",
-                 numsurroundatoms=0, numsurroundprotons=0, densMetric={},
-                 partialInfo=False):
+                 densMetric={}, partialInfo=False):
 
         super(combinedAtom, self).__init__(atomnum, residuenum, atomtype,
                                            basetype, chaintype, X_coord,
-                                           Y_coord, Z_coord, atomID,
-                                           numsurroundatoms,
-                                           numsurroundprotons)
+                                           Y_coord, Z_coord, atomID)
 
         # dictionary of density metrics to be filled
         self.densMetric = {}
@@ -100,8 +97,9 @@ class combinedAtom(StructurePDB):
                 v2 = v2**2
             self.densMetric[metric][normType]['lin reg'][v1] = v2
 
-    def CalphaWeightedDensChange(self,
-                                 CalphaWeights=[], metric='loss', version=2):
+    def calcNormalisedMetric(self,
+                             normWeights=[], metric='loss', version=2,
+                             normSet='Calpha'):
 
         # calculates the Calpha weighted density metrics for metric "metric",
         # compensating for the overall background degregation of the electron
@@ -111,26 +109,30 @@ class combinedAtom(StructurePDB):
         # single atom). see CalphaWeights class for details on how to calculate
 
         try:
-            CalphaWeights.meanweight[metric]
+            normWeights.meanweight[metric]
         except AttributeError:
-            print 'Calpha weights not yet calculated for metric' +\
+            print 'Normalisation weights not yet calculated for metric' +\
                   ' "{}"\n'.format(metric) +\
                   'Need to calculate first this weight first ' +\
-                  '--> see CalphaWeight class'
+                  '--> see metricNormalisation class'
             return
 
         metVals = self.densMetric[metric]['Standard']['values']
 
         if version == 1:
-            weight = CalphaWeights.meanweight[metric]
+            weight = normWeights.meanweight[metric]
             vals = list(np.sign(weight)*np.divide(metVals-weight, weight))
         else:
-            weight1 = CalphaWeights.meanweight[metric]
-            weight2 = CalphaWeights.stdweight[metric]
+            weight1 = normWeights.meanweight[metric]
+            weight2 = normWeights.stdweight[metric]
             vals = list(np.sign(weight1)*np.divide(metVals-weight1, weight2))
 
-        self.getDensMetricInfo(metric=metric, normType='Calpha normalised',
-                               values=vals)
+        if normSet == 'Calpha':
+            n = 'Calpha normalised'
+        else:
+            n = 'X-normalised'
+
+        self.getDensMetricInfo(metric=metric, normType=n, values=vals)
 
     def calcFirstDatasetSubtractedMetric(self,
                                          normType='Standard', metric='loss'):
@@ -234,6 +236,17 @@ class combinedAtom(StructurePDB):
             return
         self.getDensMetricInfo(metric=metric, normType='vector-subtracted',
                                values=metricVals - np.array(vector))
+
+    def calcStandardisedMetric(self,
+                               metric='loss', normType='Standard',
+                               meanOfDistn=[0], stdOfDistn=[1]):
+
+        # standardise the metric values for an atom using input mean
+        # and standard deviation values for metric across all atoms
+
+        metricVals = self.densMetric[metric][normType]['values']
+        self.getDensMetricInfo(metric=metric, normType='Standardised',
+                               values=(metricVals-meanOfDistn)/stdOfDistn)
 
     def findSolventAccessibility(self,
                                  inputPDBfile='untitled.pdb', printText=True):

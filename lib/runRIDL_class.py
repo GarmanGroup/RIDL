@@ -91,7 +91,6 @@ class process():
         string = 'dir ???\n\nINITIALDATASET\nname1 ???\nmtz1 ???' +\
                  '\nmtzlabels1 ???\npdb1 ???\nRfreeFlag1 ???\n' +\
                  '\nLATERDATASET\nname2 {}\nmtz2 {}\nmtzlabels2 '.format(*v) +\
-                 '{}\npdb2 {}\n'.format(*v) +\
                  '\nPHASEDATASET\nname3 ???\nmtz3 ???\nphaseLabel ' +\
                  '???\nFcalcLabel ???'
         f.write(string)

@@ -62,6 +62,7 @@ class processFiles():
         self.checkOutputDirsExists()
         self.findFilesInDir()
         self.checkForMultipleDatasets()
+        self.defineMetricNormSet()
 
         # don't proceed if error in input file
         try:
@@ -87,7 +88,7 @@ class processFiles():
 
     def runMapGeneration(self):
 
-        self.logFile.writeToLog(str='\n\n**** DENSITY MAP GENERATION ****\n')
+        self.logFile.writeToLog(str='\n\n**** MAP GENERATION ****\n')
 
         if not self.multiDatasets:
             self.logFile.writeToLog(
@@ -250,8 +251,9 @@ class processFiles():
                              mapDir=self.mapProcessDir, initialPDB=self.name1,
                              seriesName=seriesName, doses=self.getDoses(),
                              pklDataFile=self.pklDataFile, autoRun=True,
-                             pdbFileList=pdbFileList,
-                             RIDLinputFile=self.inputFile)
+                             pdbFileList=pdbFileList, normSet=self.normSet,
+                             RIDLinputFile=self.inputFile,
+                             sepPDBperDataset=self.useSeparatePDBperDataset())
 
         self.pklDataFile = c.pklDataFile
 
@@ -264,13 +266,11 @@ class processFiles():
         # ONLY csv files will be output from the run (i.e. no html summary
         # file and no plots)
 
+        self.logFile.writeToLog(str='\n**** RIDL FEEDBACK ****\n')
+
         # retrieve list of atom objects from .pkl file
         self.logFile.writeToLog(
-            str='Retrieving per-atom damage metric information from ' +
-                ' .pkl file for each dataset within damage series.')
-
-        self.logFile.writeToLog(
-            str='Input pkl file for data retrieval chosen from input file:\n' +
+            str='Metric data retrieved from pkl file:\n' +
                 '\t{}'.format(self.pklDataFile))
 
         # retrieve the combinedAtoms object from the pkl file
@@ -280,15 +280,14 @@ class processFiles():
             outputDir = self.dir + 'RIDL-metrics/'
             provideFeedback(csvOnly=csvOnly, atmsObjs=combinedAtoms,
                             logFile=self.logFile, outputDir=outputDir,
-                            doses=self.getDoses(),
-                            pklSeries=self.pklDataFile,
-                            inputDir=self.mapProcessDir,
-                            densMaps=self.name2, initialPDB=self.name1,
+                            doses=self.getDoses(), pklSeries=self.pklDataFile,
+                            inputDir=self.mapProcessDir, densMaps=self.name2,
+                            initialPDB=self.name1, normSet=self.normSet,
                             inclFCmetrics=self.includeFCmaps())
         else:
             furtherAnalysis(csvOnly=csvOnly, atmsObjs=combinedAtoms,
                             logFile=self.logFile, outputDir=outputDir,
-                            doses=self.getDoses(),
+                            doses=self.getDoses(), normSet=self.normSet,
                             pklSeries=self.pklDataFile,
                             inputDir=self.mapProcessDir,
                             pdbNames=self.name2, initialPDB=self.name1,
@@ -363,10 +362,10 @@ class processFiles():
         props = ['sfall_VDWR', 'mapResLimits', 'scaleType',
                  'densMapType', 'FFTmapWeight', 'calculateFCmaps',
                  'deleteIntermediateFiles', 'useLaterCellDims',
-                 'pklDataFile']
+                 'pklDataFile', 'normSet']
 
         defaults = [1, ',', 'ANISOTROPIC', 'DIFF',
-                    'False', 'TRUE', 'TRUE', 'FALSE', '']
+                    'False', 'TRUE', 'TRUE', 'FALSE', '', 'CALPHA']
 
         for i, prop in enumerate(props):
             try:
@@ -1032,12 +1031,33 @@ class processFiles():
 
     def includeFCmaps(self):
 
+        # interpret from input file whether to calculate FCALC maps
+
         if self.calculateFCmaps.upper() == 'FALSE':
             return False
         else:
             return True
 
+    def defineMetricNormSet(self):
+
+        # define how metrics should be normalised from input file
+
+        n = self.normSet.upper()
+        if n == 'CALPHA':
+            self.normSet = [['', 'CA']]
+        elif n == 'NONE':
+            self.normSet = [[]]
+        elif n.split(',')[0] == 'CUSTOM':
+            s = []
+            for n2 in n.split(',')[1:]:
+                s.append(n2.split('='))
+            self.normSet = s
+        else:
+            self.normSet = [[]]
+
     def getDoses(self):
+
+        # interpret set of doses from the input file
 
         if self.dose2 == 'NOTCALCULATED':
             doses = ','.join(map(str, range(len(self.name2.split(',')))))
@@ -1047,6 +1067,8 @@ class processFiles():
         return doses
 
     def deleteUnwantedFiles(self):
+
+        # interpret from input file whether to delete intermediate files
 
         if self.deleteIntermediateFiles.upper() == 'TRUE':
             return True

@@ -4,7 +4,8 @@ from savevariables import saveGenericObject
 from PDBFileManipulation import PDBtoList
 from mapsToDensityMetrics import maps2DensMetrics
 from shutil import move
-from os import path, makedirs, listdir, remove, rmdir
+from errors import error
+from os import path, makedirs, remove
 
 
 class calculateMetrics(object):
@@ -26,7 +27,8 @@ class calculateMetrics(object):
                  doses=[], plot='no', output='simple', logFile='',
                  inclFCmets=True, densMapList=[], atomMapList=[],
                  pdbFileList=[], FcMapList=[], autoRun=True,
-                 RIDLinputFile='untitled.txt'):
+                 normSet=[['', 'CA']], RIDLinputFile='untitled.txt',
+                 sepPDBperDataset=False):
 
         # the input map file directory
         self.mapDir = mapDir
@@ -51,6 +53,9 @@ class calculateMetrics(object):
 
         # list of PDB files
         self.pdbFileList = pdbFileList
+
+        # set of atoms to normalise metrics against
+        self.normSet = normSet
 
         # the general series name
         self.seriesName = seriesName
@@ -79,6 +84,9 @@ class calculateMetrics(object):
 
         # generate metrics which require FC maps to be made
         self.inclFCmets = inclFCmets
+
+        # whether to use a separate pdb file for each datasets' atom map
+        self.sepPDBperDataset = sepPDBperDataset
 
         # if number of initial datasets given doesn't match
         # number of later datasets, assume same initial dataset
@@ -195,29 +203,37 @@ class calculateMetrics(object):
 
         pklFileNames = []
 
+        # set up the class to calculate metrics from maps
+        maps2DensMets = maps2DensMetrics(
+            filesIn=self.mapDir, filesOut=self.outputDataDir,
+            pdbName=self.pdbFileList[0], atomTagMap=self.atomMapList[0],
+            FCmap=self.FcMapList[0], logFile=self.logFile,
+            calcFCmap=self.inclFCmets)
+
         for i in range(len(self.densMapList)):
-            atomMap = self.atomMapList[i]
-            densMap = self.densMapList[i]
-            FcMap = self.FcMapList[i]
-            pdbFile = self.pdbFileList[i]
+
+            if i == 0:
+                mapsAlreadyRead = False
+            else:
+                mapsAlreadyRead = True
+
+            if self.sepPDBperDataset:
+                maps2DensMets.atomMapIn = self.atomMapList[i]
+                maps2DensMets.FCmapIn = self.FcMapList[i]
+                maps2DensMets.pdbName = self.pdbFileList[i]
+                # if new maps per dataset, need to reread them
+                mapsAlreadyRead = False
 
             self.logFile.writeToLog(
                 str='\n---------------------------------\n' +
                     'Higher dose dataset {} starts here'.format(i))
 
-            maps2DensMets = maps2DensMetrics(filesIn=self.mapDir,
-                                             filesOut=self.outputDataDir,
-                                             pdbName=pdbFile,
-                                             atomTagMap=atomMap,
-                                             densityMap=densMap,
-                                             FCmap=FcMap,
-                                             logFile=self.logFile,
-                                             calcFCmap=self.inclFCmets)
+            maps2DensMets.densMapIn = self.densMapList[i]
 
-            maps2DensMets.maps2atmdensity()
+            maps2DensMets.maps2atmdensity(mapsAlreadyRead)
 
             # save list of atom objects to a .pkl file
-            tag = densMap.replace('_density.map', '')
+            tag = self.densMapList[i].replace('_density.map', '')
 
             pklFileName = save_objectlist(maps2DensMets.PDBarray, tag)
 
@@ -253,8 +269,9 @@ class calculateMetrics(object):
         for pkl_filename in self.pklFiles:
             ln = 'Damage file number: {}'.format(len(dList)+1)
             self.logFile.writeToLog(str=ln)
-            PDB_ret = retrieve_objectlist(fileName=pkl_filename,
-                                          logFile=self.logFile)
+            PDB_ret = retrieve_objectlist(
+                fileName=pkl_filename, logFile=self.logFile)
+
             # remove pkl file since no longer needed
             remove(pkl_filename)
 
@@ -265,37 +282,39 @@ class calculateMetrics(object):
         # dose range, only including atoms present in ALL damage datasets
         self.logFile.writeToLog(
             str='New list of atoms over full dose range calculated...')
-        combinedAtoms = combinedAtomList(datasetList=dList,
-                                         numLigRegDsets=len(dList),
-                                         doseList=self.doses,
-                                         initialPDBList=initialPDBlist,
-                                         outputDir=self.outputDataDir,
-                                         seriesName=self.seriesName,
-                                         inclFCmetrics=self.inclFCmets)
+        combinedAtoms = combinedAtomList(
+            datasetList=dList, numLigRegDsets=len(dList), doseList=self.doses,
+            initialPDBList=initialPDBlist, outputDir=self.outputDataDir,
+            seriesName=self.seriesName, inclFCmetrics=self.inclFCmets)
 
         combinedAtoms.getMultiDoseAtomList(logFile=self.logFile)
 
         # calculate 'average' variant Dloss metrics
         combinedAtoms.calcAdditionalMetrics(newMetric='average')
 
-        # calculate Calpha normalised metrics, if Calpha atoms exist
-        if self.checkCalphasPresent(atomObjList=combinedAtoms):
+        # calculate normalised metrics, if suitable atoms exist
+        if self.normSet != [[]]:
+            if combinedAtoms.checkSpecificAtomsExist(self.normSet):
 
-            metricsOfInterest = ['loss', 'mean', 'gain', 'Bfactor']
+                metricsOfInterest = ['loss', 'mean', 'gain', 'Bfactor']
 
-            if self.inclFCmets:
-                metricsOfInterest += ['density_weighted_mean_negOnly',
-                                      'density_weighted_loss',
-                                      'density_weighted_mean']
+                if self.inclFCmets:
+                    metricsOfInterest += ['density_weighted_mean_negOnly',
+                                          'density_weighted_loss',
+                                          'density_weighted_mean']
 
-            for m in metricsOfInterest:
-                combinedAtoms.calcAdditionalMetrics(metric=m)
-
-        self.combinedAtoms = combinedAtoms
+                for m in metricsOfInterest:
+                    combinedAtoms.calcAdditionalMetrics(
+                        metric=m, newMetric='X-normalised',
+                        normalisationSet=self.normSet)
+            else:
+                # if there is a problem finding the set of atoms
+                error(text='Failed to find the specified set of ' +
+                      'atoms to normalise metrics', log=self.logFile)
 
         # save metric data to pkl file
-        pklDataFile = saveGenericObject(obj=self.combinedAtoms,
-                                        fileName=self.seriesName)
+        pklDataFile = saveGenericObject(
+            obj=combinedAtoms, fileName=self.seriesName)
 
         move(pklDataFile, self.pklFileDir + pklDataFile)
         self.pklDataFile = self.pklFileDir + pklDataFile
@@ -312,14 +331,6 @@ class calculateMetrics(object):
             inputfile = open(self.RIDLinputFile, 'a')
             inputfile.write('\npklDataFile ' + self.pklDataFile)
             inputfile.close()
-
-    def checkCalphasPresent(self,
-                            atomObjList=[]):
-
-        # check whether structure contains any Calpha
-        # protein backbone atoms within it
-
-        return atomObjList.checkCalphaAtomsExist()
 
     def get1stDsetPDB(self):
 

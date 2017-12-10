@@ -1,5 +1,5 @@
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm, plotDensForAtm
-from perAtomClusterAnalysis import perAtomClusterAnalysis
+from perAtomClusterAnalysis import perAtomXYZAnalysis
 from densityAnalysisPlots import edens_scatter
 from itertools import izip as zip
 from PDBFileManipulation import PDBtoList
@@ -10,7 +10,11 @@ import numpy as np
 import sys
 import time
 import os
-import seaborn as sns
+# try to import seaborn here. Don't worry if not (not essential for main run)
+try:
+    import seaborn as sns
+except ImportError:
+    pass
 
 
 class maps2DensMetrics():
@@ -22,7 +26,8 @@ class maps2DensMetrics():
     def __init__(self,
                  filesIn='', filesOut='', pdbName='', atomTagMap='',
                  densityMap='', FCmap='',  plotScatter=False, plotHist=False,
-                 logFile='./untitled.log', calcFCmap=True):
+                 logFile='./untitled.log', calcFCmap=True,
+                 doXYZanalysis=False):
 
         # the input directory
         self.filesIn = filesIn
@@ -34,13 +39,13 @@ class maps2DensMetrics():
         self.pdbName = pdbName
 
         # atom-tagged map name
-        self.map1 = atomTagMap
+        self.atomMapIn = atomTagMap
 
         # density map name (typically Fo-Fo)
-        self.map2 = densityMap
+        self.densMapIn = densityMap
 
         # FC map name
-        self.map3 = FCmap
+        self.FCmapIn = FCmap
 
         # (bool) plot scatter plots or not
         self.plotScatter = plotScatter
@@ -54,7 +59,11 @@ class maps2DensMetrics():
         # whether FC map should be generated
         self.calcFCmap = calcFCmap
 
-    def maps2atmdensity(self):
+        # whether to do analysis based on xyz of each voxel
+        self.doXYZanalysis = doXYZanalysis
+
+    def maps2atmdensity(self,
+                        mapsAlreadyRead=False):
 
         # the map run method for this class. Will read in an atom-tagged map
         # and density map and assign density values for each individual atom
@@ -62,13 +71,14 @@ class maps2DensMetrics():
         # describing the density map behaviour in the vicinity of each refined
         # atom can be calculated
 
-        self.readPDBfile()
-        self.readAtomMap()
+        if not mapsAlreadyRead:
+            self.readPDBfile()
+            self.readAtomMap()
         self.readDensityMap()
         self.reportDensMapInfo()
         self.checkMapCompatibility()
 
-        if self.calcFCmap:
+        if self.calcFCmap and not mapsAlreadyRead:
             self.readFCMap()
             self.reportDensMapInfo(mapType='calc')
 
@@ -108,10 +118,10 @@ class maps2DensMetrics():
         self.printStepNumber()
         self.startTimer()
         self.lgwrite(ln='Reading atom-tagged map file...\n' +
-                        'Atom map name: {}'.format(self.map1))
+                        'Atom map name: {}'.format(self.atomMapIn))
 
         self.atmmap, self.atomIndices = readMap(
-            dirIn=self.filesIn, dirOut=self.filesOut, mapName=self.map1,
+            dirIn=self.filesIn, dirOut=self.filesOut, mapName=self.atomMapIn,
             mapType='atom_map', log=self.log)
         self.stopTimer()
 
@@ -138,10 +148,10 @@ class maps2DensMetrics():
         self.printStepNumber()
         self.startTimer()
         self.lgwrite(ln='Reading density map file...\n' +
-                        'Density map name: {}'.format(self.map2))
+                        'Density map name: {}'.format(self.densMapIn))
 
         self.densmap = readMap(dirIn=self.filesIn, dirOut=self.filesOut,
-                               mapName=self.map2, mapType='density_map',
+                               mapName=self.densMapIn, mapType='density_map',
                                atomInds=self.atomIndices, log=self.log)
         self.stopTimer()
 
@@ -154,10 +164,10 @@ class maps2DensMetrics():
         self.printStepNumber()
         self.startTimer()
         self.lgwrite(ln='Reading Fcalc density map file...\n' +
-                        'Density map name: {}'.format(self.map3))
+                        'Density map name: {}'.format(self.FCmapIn))
 
         self.FCmap = readMap(dirIn=self.filesIn, dirOut=self.filesOut,
-                             mapName=self.map3, mapType='density_map',
+                             mapName=self.FCmapIn, mapType='density_map',
                              atomInds=self.atomIndices, log=self.log)
 
         self.stopTimer()
@@ -254,7 +264,7 @@ class maps2DensMetrics():
                 len(self.atmmap.vxls_val)))
 
     def createVoxelList(self,
-                        getVoxelXYZs=False):
+                        inclOnlyGluAsp=False):
 
         # create dictionary of voxels with atom numbers as keys
 
@@ -270,19 +280,40 @@ class maps2DensMetrics():
         for atm, dens in zip(self.atmmap.vxls_val, self.densmap.vxls_val):
             vxlDic[atm].append(dens)
 
+        self.vxlsPerAtom = vxlDic
+
         # The following is not essential for run (TODO maybe omit)
-        if getVoxelXYZs:
+        if self.doXYZanalysis:
             xyz_list = self.densmap.getVoxXYZ(
                 self.atomIndices, coordType='fractional')
 
             for atm, xyz in zip(self.atmmap.vxls_val, xyz_list):
                 xyzDic[atm].append(xyz)
 
-            self.xyzsPerAtom = xyzDic
+            # get the mid points for each atom from the set of voxels
+            # per atom, whilst accounting for symmetry (the asym unit
+            # may not contain 1 single whole molecule, but split up)
+            xyzDic2 = {}
+            for atom in self.PDBarray:
 
-            self.meanXYZ = np.mean(xyz_list, 0)
+                # this is more of testing reasons that any clear use
+                if inclOnlyGluAsp:
+                    atmTypes = ['GLU-CD', 'GLU-OE1', 'GLU-OE2',
+                                'ASP-OD1', 'ASP-OD2', 'ASP-CG',
+                                'CYS-SG', 'CYS-CB', 'CYS-CA',
+                                'MET-SD', 'MET-CE', 'MET-CG']
+                    tag = '-'.join(atom.getAtomID().split('-')[2:])
+                    if tag not in atmTypes:
+                        continue
 
-        self.vxlsPerAtom = vxlDic
+                xyzAnalysis = perAtomXYZAnalysis(
+                    atomObj=atom, vxlRefPoint=np.mean(xyz_list, 0),
+                    densPerVxl=np.round(np.array(vxlDic[atom.atomnum]), 3),
+                    xyzsPerAtom=xyzDic[atom.atomnum], densMapObj=self.densmap)
+                xyzAnalysis.getxyzPerAtom()
+                atom.vxlMidPt = xyzAnalysis.findVoxelMidPt()
+                xyzDic2[atom.getAtomID()] = xyzAnalysis.keptPts
+                self.xyzsPerAtom = xyzDic2
 
         if self.calcFCmap:
             vxlDic2 = {atm: [] for atm in self.atmmap.vxls_val}
@@ -299,9 +330,9 @@ class maps2DensMetrics():
         # densmap attributes to save memory, if
         # they are no longer needed during a run
 
-        del self.atmmap
-        if self.calcFCmap:
-            del self.FCmap
+        # del self.atmmap
+        # if self.calcFCmap:
+        #     del self.FCmap
         del self.densmap.vxls_val
 
     def plotDensHistPlots(self,
@@ -329,7 +360,7 @@ class maps2DensMetrics():
         self.stopTimer()
 
     def calcDensMetricsForAtom(self,
-                               atom=[], plotDistn=False, clustAnalys=False):
+                               atom=[], plotDistn=False):
 
         # calculate density metrics for a particular atom.
         # This method includes the option to perform
@@ -440,7 +471,7 @@ class maps2DensMetrics():
                         atomFCvals=atomFCvals, FCatMin=atomFCvals[minIndex],
                         atomFCvalsMaxNorm=atomFCvalsMaxNormed)
 
-            if clustAnalys:
+            if self.doXYZanalysis:
                 # provides the user with the option to also run
                 # per-atom cluster analysis on the spatial
                 # distribution of voxels assigned to a single atom.
@@ -453,23 +484,24 @@ class maps2DensMetrics():
                 # in a standard run of the code
 
                 self.clustDoneOnAtm.append(atom.getAtomID())
-                clustAnalysis = perAtomClusterAnalysis(
-                    atmNum=atom.atomnum, atmId=atom.getAtomID(),
-                    vxlsPerAtom=self.vxlsPerAtom, xyzsPerAtom=self.xyzsPerAtom,
-                    densMapObj=self.densmap, prevAtmMidPt=self.atomMidPts[-1],
-                    vxlRefPoint=self.meanXYZ)
 
-                self.atomMidPts.append(clustAnalysis.midPt)
+                clustAnalysis = perAtomXYZAnalysis(
+                    atomObj=atom, vxlMidPt=atom.vxlMidPt,
+                    knownRefPoint=self.knownRefPt1,
+                    knownRefPoint2=self.knownRefPt2)
 
-                atom.negClusterVal = clustAnalysis.output[0]
-                atom.totDensShift = clustAnalysis.output[-1]
+                clustAnalysis.keptPts = self.xyzsPerAtom[atom.getAtomID()]
+                clustAnalysis.partitionPtsByVec()
+
+                # atom.negClusterVal = clustAnalysis.topNegClustMean
+                # atom.totDensShift = clustAnalysis.netDensShift
 
                 self.densByRegion.append(clustAnalysis.densByRegion)
 
     def calcDensMetrics(self,
-                        plotDistn=False, clustAnalys=False,
-                        showProgress=True, parallel=False,
-                        makeTrainSet=False, inclOnlyGluAsp=False):
+                        plotDistn=False, showProgress=True, parallel=False,
+                        makeTrainSet=False, inclOnlyGluAsp=False,
+                        doRandomSubset=False):
 
         # determine density summary metrics per atom. 'includeOnlyGluAsp'
         # allows calculations to be performed only for Glu/asp carboxylates
@@ -480,7 +512,7 @@ class maps2DensMetrics():
         # input to True
 
         if makeTrainSet:
-            clustAnalys = True
+            self.doXYZanalysis = True
             inclOnlyGluAsp = True
 
         self.startTimer()
@@ -497,18 +529,72 @@ class maps2DensMetrics():
 
             self.densByRegion = []
             self.clustDoneOnAtm = []
-            self.atomMidPts = [[np.nan]*3]
 
             for i, atom in enumerate(self.PDBarray):
 
+                # this is more of testing reasons that any clear use
                 if inclOnlyGluAsp:
 
                     atmTypes = ['GLU-CD', 'GLU-OE1', 'GLU-OE2',
-                                'ASP-OD1', 'ASP-OD2', 'ASP-CG']
+                                'ASP-OD1', 'ASP-OD2', 'ASP-CG',
+                                'CYS-SG', 'MET-SD']
 
                     tag = '-'.join(atom.getAtomID().split('-')[2:])
                     if tag not in atmTypes:
                         continue
+
+                    if self.doXYZanalysis:
+
+                        num = '-'.join(atom.getAtomID().split('-')[:2])
+
+                        if tag == 'GLU-CD':
+                            lookFor1 = num+'-GLU-OE1'
+                            lookFor2 = num+'-GLU-OE2'
+                        elif tag == 'GLU-OE1':
+                            lookFor1 = num+'-GLU-CD'
+                            lookFor2 = num+'-GLU-OE2'
+                        elif tag == 'GLU-OE2':
+                            lookFor1 = num+'-GLU-CD'
+                            lookFor2 = num+'-GLU-OE1'
+                        elif tag == 'ASP-CG':
+                            lookFor1 = num+'-ASP-OD1'
+                            lookFor2 = num+'-ASP-OD2'
+                        elif tag == 'ASP-OD1':
+                            lookFor1 = num+'-ASP-CG'
+                            lookFor2 = num+'-ASP-OD2'
+                        elif tag == 'ASP-OD2':
+                            lookFor1 = num+'-ASP-CG'
+                            lookFor2 = num+'-ASP-OD1'
+                        elif tag == 'CYS-SG':
+                            lookFor1 = num+'-CYS-CB'
+                            lookFor2 = num+'-CYS-CA'
+                        elif tag == 'MET-SD':
+                            lookFor1 = num+'-MET-CE'
+                            lookFor2 = num+'-MET-CG'
+
+                        if i < 10:
+                            srt = 0
+                        else:
+                            srt = i-10
+                        if i < len(self.PDBarray)-10:
+                            stp = i + 10
+                        else:
+                            stp = len(self.PDBarray)
+
+                        for atm2 in self.PDBarray[srt:stp]:
+                            if atm2.getAtomID() == lookFor1:
+                                self.knownRefPt1 = atm2.vxlMidPt
+                            elif atm2.getAtomID() == lookFor2:
+                                self.knownRefPt2 = atm2.vxlMidPt
+
+                # only calculate metrics for a random subset of atoms
+                # - for testing purposes
+                if doRandomSubset:
+                    import random
+                    if random.uniform(0, 1) > 0.01:
+                        continue
+                    else:
+                        print 'Random atom used: ' + atom.getAtomID()
 
                 if showProgress:
                     sys.stdout.write('\r')
@@ -516,8 +602,8 @@ class maps2DensMetrics():
                         '{}%'.format(round(100*float(i)/total, 3)))
                     sys.stdout.flush()
 
-                self.calcDensMetricsForAtom(atom=atom, plotDistn=plotDistn,
-                                            clustAnalys=clustAnalys)
+                self.calcDensMetricsForAtom(atom=atom, plotDistn=plotDistn)
+                atom.getAdditionalMetrics()
 
             if makeTrainSet:
                 self.makeTrainingSet()
@@ -528,8 +614,71 @@ class maps2DensMetrics():
         # delete vxlsPerAtom since no longer needed
         del self.vxlsPerAtom
 
-        for atom in self.PDBarray:
-            atom.getAdditionalMetrics()
+        # ############################################################################
+        # # TEST: cluster the density values per atom based off xyz.
+        # # KEEP THIS COMMENTED WHEN USING THE CODE
+        # from sklearn.cluster import KMeans
+        # from sklearn.decomposition import PCA
+
+        # d = self.densByRegion
+
+        # numClusts = 5
+        # reduced_data = PCA(n_components=2).fit_transform(d)
+        # kmeans = KMeans(init='k-means++', n_clusters=numClusts)
+        # kmeans.fit(reduced_data)
+
+        # # Step size of the mesh. Decrease to increase the quality of the VQ.
+        # h = .02     # point in the mesh [x_min, x_max]x[y_min, y_max].
+
+        # # Plot decision boundary. For that, we will assign a color to each
+        # x_min = reduced_data[:, 0].min()-0.5*np.abs(reduced_data[:, 0].min())
+        # x_max = reduced_data[:, 0].max()+0.5*np.abs(reduced_data[:, 0].max())
+        # y_min = reduced_data[:, 1].min()-0.5*np.abs(reduced_data[:, 1].min())
+        # y_max = reduced_data[:, 1].max()+0.5*np.abs(reduced_data[:, 1].max())
+
+        # xx, yy = np.meshgrid(
+        #     np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+        # # Obtain labels for each point in mesh. Use last trained model.
+        # Z = kmeans.predict(np.c_[xx.ravel(), yy.ravel()])
+
+        # Zatoms = kmeans.predict(reduced_data)
+        # atmNames = [x for _, x in sorted(zip(Zatoms, self.clustDoneOnAtm))]
+        # Zatoms.sort()
+        # for Za, atom in zip(Zatoms, atmNames):
+        #     print '{} --> {}'.format(atom, Za)
+
+        # # Put the result into a color plot
+        # Z = Z.reshape(xx.shape)
+        # plt.figure(1)
+        # plt.clf()
+        # plt.imshow(Z, interpolation='nearest',
+        #            extent=(xx.min(), xx.max(), yy.min(), yy.max()),
+        #            cmap=plt.cm.Paired,
+        #            aspect='auto', origin='lower')
+
+        # plt.plot(reduced_data[:, 0], reduced_data[:, 1], 'k.', markersize=2)
+        # # Plot the centroids as a white X
+        # centroids = kmeans.cluster_centers_
+        # plt.scatter(centroids[:, 0], centroids[:, 1],
+        #             marker='x', s=169, linewidths=3,
+        #             color='w', zorder=10)
+
+        # import pylab as pl
+        # for i in range(numClusts):
+        #     pl.text(centroids[i, 0], centroids[i, 1],
+        #             str(i), color="white", fontsize=20)
+
+        # plt.title('K-means clustering on per-atom density (PCA-reduced data)\n'
+        #           'Centroids are marked with white cross')
+        # plt.xlim(x_min, x_max)
+        # plt.ylim(y_min, y_max)
+        # plt.xticks(())
+        # plt.yticks(())
+        # plt.show()
+        # import sys
+        # sys.exit()
+        # ############################################################################
 
     def makeTrainingSet(self,
                         killNow=True, standardise=False):

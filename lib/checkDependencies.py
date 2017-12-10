@@ -1,4 +1,3 @@
-
 import imp
 import os
 
@@ -13,38 +12,41 @@ class checkDependencies():
                              'shutil', 'numpy', 'imp', 'matplotlib',
                              'math', 'scipy', 'string',
                              'pandas', 'operator', 'warnings',
-                             'struct', 'mmap', 'random']
+                             'struct', 'mmap', 'random', 'seaborn']
 
         if optionals:
             pythonPackageList += ['numexpr']
 
         allFound = True
         if checkAll:
-            found = self.checkSeaborn()
-            allFound *= found
             found = self.checkCCP4()
             allFound *= found
+            self.printOrWriteToLog(txt='Checking required python packages...')
+            pyPkgsFound = True
             for pkg in pythonPackageList:
-                found = self.checkPythonPackage(packageName=pkg)
+                found = self.checkPyPackage(packageName=pkg)
                 allFound *= found
+                pyPkgsFound *= found
+            if pyPkgsFound == 1:
+                self.printOrWriteToLog(txt='---> success!\n')
 
             if allFound == 1:
-                print 'All dependencies have been successfully located'
+                self.printOrWriteToLog(
+                  txt='All dependencies have been successfully located')
             else:
-                print 'Warning:\nOne or more required dependencies' +\
-                      ' not successfully located\nSee above for details.'
+                self.printOrWriteToLog(
+                  txt='Warning:\nOne or more required dependencies' +
+                      ' not successfully located.\nSee above for details.')
 
     def checkCCP4(self,
-                  printText=True,
                   logFile=''):
 
         # check whether ccp4 program suite
         # is present and flag if not.
 
-        if printText:
-            self.printOrWriteToLog(logFile=logFile,
-                                   txt='Checking whether CCP4 ' +
-                                       'program suite accessible...')
+        self.printOrWriteToLog(logFile=logFile,
+                               txt='Checking whether CCP4 ' +
+                                   'program suite accessible...')
 
         if 'ccp4' not in os.environ["PATH"].lower():
             self.printOrWriteToLog(logFile=logFile,
@@ -52,68 +54,66 @@ class checkDependencies():
                                    'found in PATH..\n')
             return False
         else:
-            if printText:
-                self.printOrWriteToLog(logFile=logFile,
-                                       txt='---> success!\n')
+            self.printOrWriteToLog(logFile=logFile,
+                                   txt='---> success!\n')
 
         return True
 
-    def checkPythonPackage(self,
-                           printText=True, logFile='',
-                           packageName='seaborn'):
+    def checkPyPackage(self,
+                       logFile='', packageName='seaborn'):
 
         # check whether a python package is present and
         # flag if not. logFile is '' (do not write to log
         # file) or a logFile.py class object
-
-        if printText:
-            self.printOrWriteToLog(logFile=logFile,
-                                   txt='Checking if "{}"'.format(packageName) +
-                                       ' python package present...')
 
         try:
             imp.find_module(packageName)
         except ImportError:
             self.printOrWriteToLog(logFile=logFile,
                                    txt='"{}" package'.format(packageName) +
-                                       ' not found..\nTry \n' +
+                                       ' not found..\nTry ' +
                                        '"pip install {}"'.format(packageName) +
                                        ' to install?\n')
-            return False
 
-        if printText:
-            self.printOrWriteToLog(logFile=logFile,
-                                   txt='---> success!\n')
+            if packageName == 'seaborn':
+                self.printOrWriteToLog(
+                  logFile=logFile,
+                  txt='Warning:\nPlotting library seaborn not found.. Will ' +
+                      'not create any plots for current run.\nNote that the ' +
+                      'HTML-format summary file will not be available if ' +
+                      'seaborn is not present.\nNote that the metrics can ' +
+                      'still be generated using "python runRIDL.py -i ' +
+                      'input.txt -pc"\n')
+
+            return False
 
         return True
 
     def checkSeaborn(self,
-                     printText=True, logFile=''):
+                     logFile=''):
 
         # check whether seaborn is present and flag if not.
         # logFile is '' (do not write to log file file) or
         # a logFile.py class object
 
-        if printText:
-
-            self.printOrWriteToLog(logFile=logFile,
-                                   txt='Checking whether seaborn ' +
-                                       'plotting library present...')
+        self.printOrWriteToLog(logFile=logFile,
+                               txt='\nChecking whether seaborn ' +
+                                   'plotting library present...')
 
         try:
-            imp.find_module('seaborn')
+            imp.find_module('seaborna')
         except ImportError:
             self.printOrWriteToLog(logFile=logFile,
-                                   txt='Plotting library seaborn not\n' +
-                                       'found.. Will not create any plots' +
-                                       ' for current run.\nUse "pip ' +
+                                   txt='Warning:\nPlotting library seaborn ' +
+                                       'not found.. Will not create any ' +
+                                       'plots for current run.\nUse "pip ' +
                                        'install seaborn" to install for ' +
-                                       'future use.\n')
+                                       'future use.\nNote that the HTML-' +
+                                       'format summary file will not be ' +
+                                       'available if seaborn is not present\n')
             return False
 
-        if printText:
-            self.printOrWriteToLog(logFile=logFile,
-                                   txt='---> success!\n')
+        self.printOrWriteToLog(logFile=logFile, txt='---> success!\n')
 
         return True
 
