@@ -313,7 +313,7 @@ class combinedAtomList(object):
                     name = r"\(D_\text{mean}^{-,\,\rho}\text{(atom)}\)"
                 else:
                     name = metric
-            elif norm == 'X-normalised':
+            elif norm in ('X-normalised', 'Calpha normalised'):
                 if normSet == [['', 'CA']]:
                     if metric == 'loss':
                         name = r"\(C_\alpha\text{-normalised}\ D_\text{loss}\text{(atom)}\)"
@@ -345,7 +345,7 @@ class combinedAtomList(object):
                     name = r"$D_\mathrm{mean}^{-,\,\rho}\mathrm{(atom)}$"
                 else:
                     name = metric
-            elif norm == 'X-normalised':
+            elif norm in ('X-normalised', 'Calpha normalised'):
                 if normSet == [['', 'CA']]:
                     if metric == 'loss':
                         name = r"$C_\alpha\mathrm{-normalised}\ D_\mathrm{loss}\mathrm{(atom)}$"
@@ -402,6 +402,10 @@ class combinedAtomList(object):
                    'vector subtracted',
                    'Standardised']
 
+        # Calpha normalised is a special case of X-normalised
+        if normalisationSet == [['', 'CA']] and newMetric == 'X-normalised':
+            newMetric = 'Calpha normalised'
+
         if newMetric not in options:
             sys.exit('new metric type not recognised.. choose from: {}'.format(
                 options))
@@ -417,31 +421,17 @@ class combinedAtomList(object):
         except (NameError, KeyError):
             pass
 
-        if newMetric == 'Calpha normalised':
-            if printText:
-                print 'Calculating Calpha weights at each dataset ' +\
-                      'for metric: {}, normalisation: {}'.format(
-                        metric, normType)
-            try:
-                self.CAweights
-            except AttributeError:
-                self.CAweights = metricNormalisation(
-                    self.atomList, normaliseTo=normalisationSet)
-            self.CAweights.calculateWeights(metric)
-
-        if newMetric == 'X-normalised':
+        if newMetric in ('X-normalised', 'Calpha normalised'):
             if printText:
                 print 'Calculating normalisation weights at each dataset ' +\
                       'for metric: {}, normalisation: {}'.format(
                         metric, normType)
-
             try:
                 self.metricNormWeights
             except AttributeError:
                 # if not defined already, make it
                 self.metricNormWeights = metricNormalisation(
                     self.atomList, normaliseTo=normalisationSet)
-
             self.metricNormWeights.calculateWeights(metric)
 
         if newMetric == 'standardised':
@@ -455,10 +445,10 @@ class combinedAtomList(object):
 
             if newMetric == 'Calpha normalised':
                 atom.calcNormalisedMetric(
-                    normWeights=self.CAweights, metric=metric,
+                    normWeights=self.metricNormWeights, metric=metric,
                     normSet='Calpha')
 
-            if newMetric == 'X-normalised':
+            if newMetric in 'X-normalised':
                 atom.calcNormalisedMetric(
                     normWeights=self.metricNormWeights, metric=metric,
                     normSet='Custom')
