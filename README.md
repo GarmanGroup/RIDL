@@ -3,10 +3,6 @@
 [![python2](https://img.shields.io/badge/python-2.7-blue.svg)](https://badge.fury.io/py/scikit-learn)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1043864.svg)](https://doi.org/10.5281/zenodo.1043864)
 
-
-
-**Note: This program is currently under reconstruction and the latest version is not guaranteed to work. Please email the author for a working version if in doubt**
-
 A program to calculate per-atom metrics to describe electron density change between **complete diffraction datasets** collected at **successive doses**. 
 It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data.
 
@@ -15,6 +11,8 @@ It has been primarily developed as a high-throughput tool for site-specific radi
 - Please email *charles.bury@dtc.ox.ac.uk*
 
 - Let me know your thoughts so that I can improve the program: https://goo.gl/forms/9aRrEwT1TUUqLroB2 (this is an anonymous form)
+
+- If you see a bug and it is not reported in the "*Issues and errors*" section below, please let me know!
 
 ## Contents
 - [How to run in brief](#how-to-run-in-brief)
@@ -54,7 +52,7 @@ It has been primarily developed as a high-throughput tool for site-specific radi
 
 ## A brief background
 
-During MX data collection, when a protein or nucleic acid crystal is exposed to X-ray radiation, localised radiation-induced chemical changes are known to occur at specific sites within the macromolecules at doses of the order of several MGy (at 100 K). In not accounted for, these *site-specific damage* manifestations can ultimately lead to incorrect biological interpretations of the structure during subsequent model building. Localised chemical changes in a macromolecule can be detected by observing shifts in the electron density attributed to particular atoms with increasing dose. *F<sub>obs,n</sub> - F<sub>obs,1</sub>* Fourier difference maps between different accumulated dose states *1* and *n* provide a tool to pinpoint such changes. Unfortunately, visual manual inspection of maps is inherently subjective and time-intensive, and becomes increasingly intractable for larger macromolecules. These problems are compounded by the fact that with increasing dose, Fourier difference maps become increasingly noisy, due to the overall degradation of the diffraction data quality (global radiation damage) and unmodelled chemistry within crystal bulk solvent regions. 
+During MX data collection, when a protein or nucleic acid crystal is exposed to X-ray radiation, localised radiation-induced chemical changes are known to occur at specific sites within the macromolecules at doses of the order of several MGy (at 100 K). If not accounted for, these *site-specific damage* manifestations can ultimately lead to incorrect biological interpretations of the structure during subsequent model building. Localised chemical changes in a macromolecule can be detected by observing shifts in the electron density attributed to particular atoms with increasing dose. *F<sub>obs,n</sub> - F<sub>obs,1</sub>* Fourier difference maps between different accumulated dose states *1* and *n* provide a tool to pinpoint such changes. Unfortunately, visual manual inspection of maps is inherently subjective and time-intensive, and becomes increasingly intractable for larger macromolecules. These problems are compounded by the fact that with increasing dose, Fourier difference maps become increasingly noisy, due to the overall degradation of the diffraction data quality (global radiation damage) and unmodelled chemistry within crystal bulk solvent regions. 
 
 To mitigate such subjective bias and permit systematic categorisation of radiation-induced structure changes over a series of increasing doses for individual refined atoms within a structure, the set of scripts **RIDL** has been written to provide a high-throughput pipeline to calculate per-atom metrics to quantify the damage susceptibility of each refined atom in a macromolecular structure.
 
@@ -93,13 +91,16 @@ In order to check whether the RIDL dependencies are accessible to RIDL, use:
     - a series of MTZ-format structure factor files (e.g. *dataset1.mtz*, *dataset2.mtz*, ...) containing merged & scaled data
 
 #### (B) Non-standard mode (the old method)
+- **Note:** This mode is not currently recommended
  - Alternatively, a **separate** PDB-format coordinate file can be supplied per dataset. In this mode, RIDL will calculate each *F<sub>obs,n</sub> - F<sub>obs,1</sub>* difference map over the asymmetric unit dimensions for the dataset *n* file, and will sample the density in the local region around each atom as defined in the higher dose dataset.
 
- - **Note:** it is **highly recommended** that the coordinate models supplied for the higher dose datasets (*n* > 1) contain the identical atom/residue labelling schemes and no significant conformational changes relative to the first dataset (n = 1). Otherwise, large atomic displacements between different datasets may result in incomparable regions of density space being sampled. In practice this can be achieved by running a rigid body refinement job (through either *phenix.refine* or *refmac*) using the refined coordiate model for the first dataset with *F<sub>obs</sub>* for each higher dose dataset (n > 1) in turn.
+ - It is **highly recommended** that the coordinate models supplied for the higher dose datasets (*n* > 1) contain the identical atom/residue labelling schemes and no significant conformational changes relative to the first dataset (n = 1). Otherwise, large atomic displacements between different datasets may result in incomparable regions of density space being sampled. In practice this can be achieved by running a rigid body refinement job (through either *phenix.refine* or *refmac*) using the refined coordiate model for the first dataset with *F<sub>obs</sub>* for each higher dose dataset (n > 1) in turn.
 
     - This preprocessing can be run externally by the user prior to using RIDL, in which case these higher dose coordinate models must be specified in the RIDL input file - see the section "*Writing the RIDL input file*" for details on how to write this input file.
 
     - Alternatively RIDL can perform this step itself with the command: ```python runRIDL.py -i inputFile.txt --rigid```. Here RIDL will retrieve the first dataset coordinate file and later dataset structure factor information from the RIDL input file *inputFile.txt*, and perform 10 cycles of rigid body refinement through REFMAC. Upon completion, the above command will generate an updated RIDL input file containing additional information for the newly generated higher dose coordinate models, in order to then run RIDL. Use this new RIDL input file for the following sections.
+    
+    - If running ```python runRIDL.py -i inputFile.txt --rigid``` to generate separate higher dose dataset coordinate models through RIDL, the `pdb2` input file information (see section below) can be omitted, since this will be generated by RIDL itself and will be present in the new input file generated by RIDL in this step.
 
 ## Writing the RIDL input file
 
@@ -163,9 +164,6 @@ Property | Description
 `phaseLabel` | The phase column label in file specified by `mtz3`
 `FcalcLabel` | The calculated structure amplitude column label in file specified by `mtz3`
 
-**Note:**
-If running ```python runRIDL.py -i inputFile.txt --rigid``` to generate separate higher dose dataset coordinate models through RIDL (see section above), the `pdb2` input file information can be omitted, since this will be generated by RIDL itself and will be present in the new input file generated by RIDL in this step.
-
 ## Running RIDL from command line
 
 The simplest way to run the RIDL pipeline is to run it directly from the command line. For a default run of RIDL (including generation of HTML-format summary file with accompanying SVG-format graphs), run:
@@ -221,6 +219,8 @@ SyntaxError: Missing parentheses in call to 'print'
 ```
 
 - If the ```summaryFile.html``` file displays unformatted in the web browser, check you have internet access in order for the necessary bootstrap dependency
+
+- The ```summaryFile.html``` file  is currently only optimised to be compatible with Chrome and Safari web browsers. Support for Firefox is coming soon!
 
 
 ## Citing when using the scripts
