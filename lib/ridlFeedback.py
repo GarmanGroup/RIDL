@@ -291,9 +291,13 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
                 metToDisplay += [['density_weighted_loss', self.normMetName],
                                  ['density_weighted_mean_negOnly', self.normMetName]]
         for m in metToDisplay:
+            if m[1] == self.normMetName:
+                subDir = 'Normalised'
+            else:
+                subDir = 'Standard'
             t = self.atmsObjs.getFormattedmetricName(m[0], m[1])
             bodyString += '<li><a href = "{}csvFiles/{}/{}-'.format(
-                self.outputDir, m[1].replace(' ', '-'), m[0]) +\
+                self.outputDir, subDir, m[0]) +\
                 '{}.csv">{}</a></li>\n'.format(m[1].replace(' ', ''), t)
 
         # provide links to top 25 damage site information
