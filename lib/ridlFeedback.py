@@ -93,7 +93,7 @@ class provideFeedback(object):
             if not self.inclNormSet:
                 n = 'Standard'
             else:
-                n = 'X-normalised'
+                n = self.normMetName
 
             self.summaryHTML(
                 primaryMetric='density_weighted_mean_negOnly', primaryNorm=n)
@@ -102,11 +102,7 @@ class provideFeedback(object):
         if self.plotHeatMaps:
             subdir = 'metric_heatmap/'
             outDir = self.makeNewPlotSubdir(subdir=subdir)
-
-            for norm in ('Standard', 'X-normalised'):
-                if norm == 'X-normalised':
-                    if not self.calphaPresent:
-                        continue
+            for norm in ('Standard', self.normMetName):
                 self.atmsObjs.densityMetricHeatMap(
                     saveFig=True, metric='loss', normType=norm,
                     outputDir=outDir)
@@ -155,7 +151,7 @@ class provideFeedback(object):
                     metrics += [['density_weighted_mean', n]]
 
             if self.inclNormSet:
-                n = 'X-normalised'
+                n = self.normMetName
                 metrics += [['loss', n]]
 
                 if inclMeanMet:
@@ -192,7 +188,7 @@ class provideFeedback(object):
                     if self.inclNormSet:
                         self.atmsObjs.writeMetric2File(
                             where=csvDir+'Normalised/', groupBy=groupBy,
-                            metric=m, normType='X-normalised')
+                            metric=m, normType=self.normMetName)
 
     def summaryHTML(self,
                     primaryMetric='loss', primaryNorm='X-normalised'):
@@ -201,7 +197,7 @@ class provideFeedback(object):
         # and write in a HTML summary format
 
         # perform some initial checks to ensure metric info is present
-        if primaryNorm == 'X-normalised' and not self.inclNormSet:
+        if primaryNorm == self.normMetName and not self.inclNormSet:
             error(
                 text='Error! Tried to write summary file including ' +
                      'normalised metric but no such metric exists',
@@ -217,8 +213,8 @@ class provideFeedback(object):
             primaryMetric, primaryNorm, form='TEX')
 
         # decide which metrics to feature in the HTML summary file
-        if primaryNorm == 'X-normalised':
-            norms = ['Standard', 'X-normalised']
+        if primaryNorm == self.normMetName:
+            norms = ['Standard', self.normMetName]
         else:
             norms = [primaryNorm]
         plotNorm = primaryNorm
@@ -287,17 +283,21 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
 
         metToDisplay = [['loss', 'Standard']]
         if self.inclNormSet:
-            metToDisplay += [['loss', 'X-normalised']]
+            metToDisplay += [['loss', self.normMetName]]
         if self.inclFCmetrics:
             metToDisplay += [['density_weighted_loss', 'Standard'],
                              ['density_weighted_mean_negOnly', 'Standard']]
             if self.inclNormSet:
-                metToDisplay += [['density_weighted_loss', 'X-normalised'],
-                                 ['density_weighted_mean_negOnly', 'X-normalised']]
+                metToDisplay += [['density_weighted_loss', self.normMetName],
+                                 ['density_weighted_mean_negOnly', self.normMetName]]
         for m in metToDisplay:
+            if m[1] == self.normMetName:
+                subDir = 'Normalised'
+            else:
+                subDir = 'Standard'
             t = self.atmsObjs.getFormattedmetricName(m[0], m[1])
             bodyString += '<li><a href = "{}csvFiles/{}/{}-'.format(
-                self.outputDir, m[1].replace(' ', '-'), m[0]) +\
+                self.outputDir, subDir, m[0]) +\
                 '{}.csv">{}</a></li>\n'.format(m[1].replace(' ', ''), t)
 
         # provide links to top 25 damage site information
@@ -792,7 +792,7 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
         # the structure and only this is output to resulting PDB file,
         # otherwise use ''
 
-        if normType == 'X-normalised':
+        if normType == self.normMetName:
             self.atmsObjs.calcAdditionalMetrics(metric=metric,
                                                 normType=normType)
 
@@ -958,6 +958,8 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
         # check whether structure contains the atom
         # set against which metric normalisation will be done
 
+        self.normMetName = 'Calpha normalised'
+
         if self.normSet == [[]]:
             # don't include norm set if not calculated
             self.inclNormSet = False
@@ -966,6 +968,8 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
             # check atoms were found, if not ignore the set
             self.inclNormSet = self.atmsObjs.checkSpecificAtomsExist(
                 self.normSet)
+            if self.normSet != [['', 'CA']]:
+                self.normMetName = 'X-normalised'
 
     def get1stDsetPDB(self):
 
