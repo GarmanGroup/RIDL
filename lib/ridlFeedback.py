@@ -109,7 +109,7 @@ class provideFeedback(object):
 
     def writeCsvFiles(self,
                       inclGroupby=False, inclGainMet=False,
-                      inclMeanMet=True, inclBfactor=False, numDP=4):
+                      inclMeanMet=False, inclBfactor=False, numDP=4):
 
         # write atom numbers and density metrics to simple
         # csv files,one for each density metric separately.
