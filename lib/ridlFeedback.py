@@ -844,9 +844,9 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
         # sites as spheres of vdw = size*{density metric} within pymol
 
         if software not in ('coot', 'pymol'):
-            print 'Damage sites can be visualised in either "coot" or "pymol"'
-            print 'Please make sure the paths to these programs are ' +\
-                  'correctly set up before proceeding'
+            print('Damage sites can be visualised in either "coot" or "pymol"')
+            print('Please make sure the paths to these programs are ' +
+                  'correctly set up before proceeding')
             return
         try:
             self.damSitesPDB

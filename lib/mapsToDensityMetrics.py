@@ -1,7 +1,6 @@
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm, plotDensForAtm
 from perAtomClusterAnalysis import perAtomXYZAnalysis
 from densityAnalysisPlots import edens_scatter
-from itertools import izip as zip
 from PDBFileManipulation import PDBtoList
 from readMap import readMap
 import matplotlib.pyplot as plt
@@ -15,6 +14,9 @@ try:
     import seaborn as sns
 except ImportError:
     pass
+
+if sys.version_info[0] < 3:
+    from itertools import izip as zip
 
 
 class maps2DensMetrics():
@@ -350,7 +352,7 @@ class maps2DensMetrics():
                                returnStats=getVoxelStats)
 
         if stats != '':
-            print 'mean: {}\nstd: {}\nmax: {}\nmin: {}'.format(*stats)
+            print('mean: {}\nstd: {}\nmax: {}\nmin: {}'.format(*stats))
 
         if perAtmDensHist:
             plotDensForAtm(pdbName=self.pdbName, where=self.filesOut,
@@ -523,7 +525,7 @@ class maps2DensMetrics():
 
         if parallel:
             # TODO: this would be great to implement at some point
-            print 'Parallel processing not currently implemented!'
+            print('Parallel processing not currently implemented!')
             pass
         else:
 
@@ -594,7 +596,7 @@ class maps2DensMetrics():
                     if random.uniform(0, 1) > 0.01:
                         continue
                     else:
-                        print 'Random atom used: ' + atom.getAtomID()
+                        print('Random atom used: ' + atom.getAtomID())
 
                 if showProgress:
                     sys.stdout.write('\r')
@@ -646,7 +648,7 @@ class maps2DensMetrics():
         # atmNames = [x for _, x in sorted(zip(Zatoms, self.clustDoneOnAtm))]
         # Zatoms.sort()
         # for Za, atom in zip(Zatoms, atmNames):
-        #     print '{} --> {}'.format(atom, Za)
+        #     print('{} --> {}'.format(atom, Za))
 
         # # Put the result into a color plot
         # Z = Z.reshape(xx.shape)
@@ -687,7 +689,7 @@ class maps2DensMetrics():
         # which a supervised-learning classifier could be trained.
         # NOTE: This should NOT be included in a standard run
 
-        print 'Preparing classifier training dataset'
+        print('Preparing classifier training dataset')
 
         if standardise:
             from sklearn.preprocessing import StandardScaler
@@ -708,7 +710,7 @@ class maps2DensMetrics():
         i = 1
         while os.path.isfile(f(i)):
             i += 1
-        print 'Writing calculated features to file: "{}"'.format(f(i))
+        print('Writing calculated features to file: "{}"'.format(f(i)))
         csvIn = open(f(i), 'w')
         for i, (atmID, dens) in enumerate(zip(self.clustDoneOnAtm, X)):
             csvIn.write(atmID+',' +

@@ -4,6 +4,7 @@ from checkDependencies import checkDependencies
 import argparse
 import sys
 
+
 # an outer layer for the pipeline scripts. This allows
 # the pipeline to be run from the command line by simply
 # calling:
@@ -111,8 +112,9 @@ if args.template != 0:
     p = process(run=False,
                 inputFile='templateInputFile.txt')
     p.writeTemplateInputFile(numHigherDoseDatasets=args.template)
-    print 'Can use -j command for help on how to ' +\
-          'complete the generated input file'
+    print('Can use -j command for help on how to ' +
+          'complete the generated input file')
+
 
 # call the help information
 if args.inputFileHelp:
@@ -125,18 +127,18 @@ inputFileToUse = args.inputFile
 # first to generate higher dose coordinate models
 if args.performRigidBodyRefine:
     if inputFileToUse is None:
-        print '\nRIDL run error:\nMust specify input file with ' +\
-              '-i tag to perform rigid body refinement job'
+        print('\nRIDL run error:\nMust specify input file with ' +
+              '-i tag to perform rigid body refinement job')
         sys.exit()
     else:
         r = reRefine(inputFile=inputFileToUse)
         inputFileToUse = r.newInputFile
         if args.makeMaps or args.calcMetrics or args.output:
-            print '\nUsing newly generated RIDL input file ' +\
-                  'for remainder of pipeline'
+            print('\nUsing newly generated RIDL input file ' +
+                  'for remainder of pipeline')
         else:
-            print '\nUse this newly generated RIDL input ' +\
-                  'file on next RIDL run'
+            print('\nUse this newly generated RIDL input ' +
+                  'file on next RIDL run')
 
 if args.makeMaps or args.calcMetrics or args.output:
     # run the pipeline, including generating density and atom-tagged
@@ -144,8 +146,8 @@ if args.makeMaps or args.calcMetrics or args.output:
     # specified within an input file
 
     if inputFileToUse is None:
-        print '\nRIDL run error:\nMust specify input file with ' +\
-              '-i tag to when using either -p or -c flags'
+        print('\nRIDL run error:\nMust specify input file with ' +
+              '-i tag to when using either -p or -c flags')
         sys.exit()
 
     p = process(inputFile=inputFileToUse,

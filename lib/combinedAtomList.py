@@ -209,7 +209,7 @@ class combinedAtomList(object):
         # print to command line or write to log file
 
         if logFile == '':
-            print txt
+            print(txt)
         else:
             logFile.writeToLog(str=txt)
 
@@ -279,11 +279,11 @@ class combinedAtomList(object):
                             foundAtoms.append(atom)
         if len(foundAtoms) != 0:
             if printOutput:
-                print 'Found {} atom(s) matching description'.format(
-                    len(foundAtoms))
+                print('Found {} atom(s) matching description'.format(
+                      len(foundAtoms)))
             return foundAtoms
         if printOutput:
-            print 'Atom matching description not found'
+            print('Atom matching description not found')
         return []
 
     def getDensMetrics(self):
@@ -423,9 +423,9 @@ class combinedAtomList(object):
 
         if newMetric in ('X-normalised', 'Calpha normalised'):
             if printText:
-                print 'Calculating normalisation weights at each dataset ' +\
+                print('Calculating normalisation weights at each dataset ' +\
                       'for metric: {}, normalisation: {}'.format(
-                        metric, normType)
+                        metric, normType))
             try:
                 self.metricNormWeights
             except AttributeError:
@@ -585,7 +585,7 @@ class combinedAtomList(object):
 
             prob = float(count)/self.getNumAtoms()
 
-            print 'Dataset {}: damage probability: {}'.format(d, round(prob, 2))
+            print('Dataset {}: damage probability: {}'.format(d, round(prob, 2)))
 
     def findMetricRatio(self,
                         metric    = 'loss',
@@ -600,7 +600,7 @@ class combinedAtomList(object):
         title = '\n{} D{} comparison between {}-{} and {}-{} atoms'.format(normType,metric,
                                                                            resiType,atomType1,
                                                                            resiType,atomType2)
-        print '\n'+'-'*len(title)+title
+        print('\n'+'-'*len(title)+title)
         dic,ratioDic = {},{'distance':[],'ratio':[]}
 
         atms1 = self.getAtom(restype  = resiType,
@@ -622,13 +622,13 @@ class combinedAtomList(object):
                 ratioDic['distance'].append(a-b)
         summary = {}
         for key in ratioDic:
-            print np.mean(ratioDic[key],0)
+            print(np.mean(ratioDic[key],0))
             outputString  = '\nFor metric {} between two atoms'.format(key) 
             outputString += '\n# atom pairs: {}'.format(len(ratioDic[key]))
             outputString += '\nmean\t' + '\t'.join([str(round(val,3)) for val in list(np.mean(ratioDic[key],0))])
             outputString += '\nmedian\t' + '\t'.join([str(round(val,3)) for val in list(np.median(ratioDic[key],0))])
             outputString += '\nstd dev\t' + '\t'.join([str(round(val,3)) for val in list(np.std(ratioDic[key],0))])
-            print outputString
+            print(outputString)
             summary[key] = title+outputString
 
         return ratioDic,summary
@@ -772,9 +772,9 @@ class combinedAtomList(object):
                 if atom.densMetric[metric]['num stds']['values'][d] > threshold:
                     count += 1
             if printStr:
-                print 'For dataset {}:'.format(d)
-                print '# atoms with {} D{} metric above {}'.format(normType,metric,threshold)+\
-                      'std dev of structure-wide mean is {}'.format(count)
+                print('For dataset {}:'.format(d))
+                print('# atoms with {} D{} metric above {}'.format(normType,metric,threshold)+\
+                      'std dev of structure-wide mean is {}'.format(count))
             countList.append(count)
 
         if dataset != 'all':
@@ -928,7 +928,7 @@ class combinedAtomList(object):
 
         for d in dList:
             if printText:
-                print 'For dataset: {}'.format(d)
+                print('For dataset: {}'.format(d))
             orderedAtms = self.getTopNAtoms(metric   = metric,
                                             normType = normType,
                                             dataset  = d,
@@ -942,14 +942,12 @@ class combinedAtomList(object):
             try:
                 foundAtm
                 if printText:
-                    print 'Top {}-{} atom is "{}" at position {}'.format(resType,
-                                                                         atomType,
-                                                                         foundAtm.getAtomID(),
-                                                                         i)
+                    print('Top {}-{} atom is "{}" at position {}'.format(
+                          resType, atomType, foundAtm.getAtomID(), i))
 
             except NameError:
                 if printText:
-                    print 'No atom of type: "{}-{}"'.format(resType,atomType)
+                    print('No atom of type: "{}-{}"'.format(resType, atomType))
 
     def getTopNAtoms(self,
                      metric   = 'loss',
@@ -1141,8 +1139,8 @@ class combinedAtomList(object):
         # specified by the lists 'metrics' and 'normTypes'
 
         if len(metrics) != len(normTypes):
-            print 'getTopNAtomsDotPlot() requires "metrics" and ' +\
-                  '"normTypes" inputs to be lists of same length'
+            print('getTopNAtomsDotPlot() requires "metrics" and ' +
+                  '"normTypes" inputs to be lists of same length')
             return
 
         primaryMetric = self.getFormattedmetricName(metrics[0], normTypes[0], form='TEX')
@@ -1700,7 +1698,7 @@ class combinedAtomList(object):
         for s in stat:
 
             if printTxt:
-                print 'Plotting stat "{}" versus dataset'.format(s)
+                print('Plotting stat "{}" versus dataset'.format(s))
 
             args = [metric,
                     normType,
@@ -1767,7 +1765,7 @@ class combinedAtomList(object):
         for (s1,s2) in zip(stat1,stat2):
 
             if printTxt:
-                print 'plotting stat "{}" vs "{}" for each dataset'.format(s1,s2)
+                print('plotting stat "{}" vs "{}" for each dataset'.format(s1, s2))
 
             sns.set_style("whitegrid")
             sns.set_context(rc = {"figure.figsize": (14, 12)})
@@ -1984,13 +1982,13 @@ class combinedAtomList(object):
 
         if len(metricList) < 8:
             if not suppressText:
-                print 'Skew-test not valid when less ' +\
-                      'than 8 values provided - skipping'
+                print('Skew-test not valid when less ' +
+                      'than 8 values provided - skipping')
             return 'n/a'
         elif len(metricList) < 20:
             if not suppressText:
-                print 'kurtosis-test not valid when less ' +\
-                      'than 20 values provided - skipping'
+                print('kurtosis-test not valid when less ' +
+                      'than 20 values provided - skipping')
             return 'n/a'
         try:
             (k2, pvalue) = mstats.normaltest(
@@ -2076,7 +2074,7 @@ class combinedAtomList(object):
                 count += 1
         if count == len(self.aminoAcids):
             if printText:
-                print 'Warning: no Calpha backbone atoms found in structure!'
+                print('Warning: no Calpha backbone atoms found in structure!')
                 return False
         else:
             return True
@@ -2285,20 +2283,21 @@ class combinedAtomList(object):
                     suspAtoms.append(atm.getAtomID())
                     if val < meanVal:
                         if not suppressText:
-                            print 'Unusually low compared to mean '+\
-                                  'value ({} < {})'.format(round(val,3),
-                                                           round(meanVal,3))
+                            print('Unusually low compared to mean ' +
+                                  'value ({} < {})'.format(
+                                      round(val, 3), round(meanVal, 3)))
                         highOrLow.append('low')
                     else:
                         if not suppressText:
-                            print 'Unusually high compared to mean '+\
-                                  'value ({} > {})'.format(round(val,3),
-                                                           round(meanVal,3))
+                            print('Unusually high compared to mean ' +
+                                  'value ({} > {})'.format(
+                                    round(val, 3), round(meanVal, 3)))
                         highOrLow.append('high')
         if not suppressText:
-            print '{} atoms found with suspiciously high/low damage '+\
-                  'relative to average of that atom type'
-        return suspAtoms,highOrLow
+            print('{} atoms found with suspiciously high/low damage ' +
+                  'relative to average of that atom type')
+
+        return suspAtoms, highOrLow
 
     def getNumDatasets(self):
 
@@ -2370,22 +2369,22 @@ class combinedAtomList(object):
                     count += 1
             if count > 0:
                 if printText:
-                    print 'Warning: not all selected residue/nucleotide types found!'
+                    print('Warning: not all selected residue/nucleotide types found!')
                 if requireAll:
                     return {},''
             if count == len(resiType):
                 if printText:
-                    print 'Warning: no residues/nucleotides found for current plot'
+                    print('Warning: no residues/nucleotides found for current plot')
                 return {},''
 
         if plotType not in ('hist','kde','both'): 
-            print 'Unknown plotting type selected.. cannot plot..'
+            print('Unknown plotting type selected.. cannot plot..')
             return {},''
 
         if normType == 'Calpha normalised':
             self.calcAdditionalMetrics(metric = metric)
         if not self.checkMetricPresent(metric = metric,normType = normType): 
-            print 'Specified metric to plot not present..'
+            print('Specified metric to plot not present..')
             return {},''
 
         if sideOnly:
@@ -2489,8 +2488,8 @@ class combinedAtomList(object):
                             # currently should only be performed if 1 single residue type plotted 
                             # (otherwise colour scheme will loop around...)
                             if len(resiType) != 1:
-                                print 'resSplit = True only supported here when 1 single '+\
-                                      'residue type is to be plotted..'
+                                print('resSplit = True only supported here when 1 single ' +
+                                      'residue type is to be plotted..')
                                 return {},''
 
                             for atm in presentAtms:
@@ -2686,8 +2685,8 @@ class combinedAtomList(object):
             reference = [reference]*len(resList)
 
         if len(reference) != len(resList):
-            print 'List of residues and list of reference '+\
-                  'residues must be of same length'
+            print('List of residues and list of reference ' +
+                  'residues must be of same length')
             return
 
         KSperDset = {}
@@ -2743,7 +2742,6 @@ class combinedAtomList(object):
                     pltDic['comparison'].append(k)
                     pltDic['dataset'].append(round(d,3))
         
-            print pltDic
             dFrame = DataFrame(pltDic)
             fileName = self.makeBarPlot(plotData  = dFrame,
                                         xName     = "comparison",
@@ -2929,7 +2927,7 @@ class combinedAtomList(object):
                         'ATOMTYPE')
 
         if errorBars not in errorOptions: 
-            print 'invalid error parameter..\n choose from: {}'.format(errorOptions)
+            print('invalid error parameter..\n choose from: {}'.format(errorOptions))
             return
 
         # find atoms of interest. Can now also handle special case
@@ -2947,9 +2945,9 @@ class combinedAtomList(object):
                 isinstance(chainType,list) is False or
                 isinstance(resiNum,list) is False):
 
-                print 'Non-compatible input format. All of "chainType", '+\
-                      '"resiNum", "resType" and "atomType" inputs must be '+\
-                      'lists if one of them is specified to be a list here.'
+                print('Non-compatible input format. All of "chainType", ' +
+                      '"resiNum", "resType" and "atomType" inputs must be ' +
+                      'lists if one of them is specified to be a list here.')
                 return
 
             l = len(atomType)
@@ -2957,7 +2955,7 @@ class combinedAtomList(object):
                 len(chainType) != l or
                 len(resiNum)   != l):
 
-                print 'Lengths of input lists must be identical..'
+                print('Lengths of input lists must be identical..')
                 return
 
             foundAtoms = []
@@ -2970,7 +2968,7 @@ class combinedAtomList(object):
                 foundAtoms.append(foundAtom[0])
 
         if len(foundAtoms) == 0:
-            print 'No atoms found..'
+            print('No atoms found..')
             return
         
         if yLabel == '':
@@ -3250,7 +3248,7 @@ class combinedAtomList(object):
         try:
             atom.densMetric[metric][normType]['values']
         except NameError:
-            print 'Unexpected density metric name.."{} {}"'.format(normType,metric)
+            print('Unexpected density metric name.."{} {}"'.format(normType, metric))
             return False
         return True
 
@@ -3319,30 +3317,31 @@ class combinedAtomList(object):
                               shift    = shift,
                               offset   = offset)
 
-        print '--------------------'
-        print 'Summary here of run:'
+        print('--------------------')
+        print('Summary here of run:')
 
         residuals = [atom.densMetric[densMet][normType]['Half-dose']['Residuals'] for atom in atoms]
         certainties = [atom.densMetric[densMet][normType]['Half-dose']['Certainty'] for atom in atoms]
         residualThreshold = np.mean(residuals) + n*np.std(residuals)
         certaintyThreshold = np.mean(certainties) - n*np.std(certainties)
-        print 'Will remove atoms with residual score > {} or certainty score < {}'.format(residualThreshold,certaintyThreshold)
+        print('Will remove atoms with residual score > {} or certainty score < {}'.format(
+              residualThreshold,certaintyThreshold))
 
         xData,yData = [],[]
         count = 0
         for atom in atoms:
             halfDoseStatDic = atom.densMetric[densMet][normType]['Half-dose']
-            print '{} --> {}'.format(halfDoseStatDic['Initial density'],halfDoseStatDic['Half-dose'])
+            print('{} --> {}'.format(halfDoseStatDic['Initial density'], halfDoseStatDic['Half-dose']))
 
             if (halfDoseStatDic['Residuals'] <= residualThreshold and 
                 halfDoseStatDic['Certainty'] >= certaintyThreshold):
                 xData.append(halfDoseStatDic['Initial density'])
                 yData.append(halfDoseStatDic['Half-dose'])
-            else: 
+            else:
                 count += 1
-                print 'atom {} not included in final plot:'.format(atom.getAtomID())
-                print '\tResidual: {}, Certainty: {}'.format(halfDoseStatDic['Residuals'],halfDoseStatDic['Certainty'])
-        print '{}/{} atoms not included in final scatter plot'.format(count,len(atoms))
+                print('atom {} not included in final plot:'.format(atom.getAtomID()))
+                print('\tResidual: {}, Certainty: {}'.format(halfDoseStatDic['Residuals'],halfDoseStatDic['Certainty']))
+        print('{}/{} atoms not included in final scatter plot'.format(count,len(atoms)))
 
         # plot the relationship between intitial density and half-dose
         self.plotScatterPlot(xData     = xData,
@@ -3391,7 +3390,7 @@ class combinedAtomList(object):
                     else:
                         count += 1
                     break
-        print '{}/{} atoms not included in final scatter plot'.format(count,len(atoms1))
+        print('{}/{} atoms not included in final scatter plot'.format(count,len(atoms1)))
         
         # plot this data as scatter plot
         self.plotScatterPlot(xData     = xData,
@@ -3528,7 +3527,7 @@ class combinedAtomList(object):
                         pltDic['comparison'].append(k)
                         pltDic['dataset'].append(round(d,3))
             
-                print pltDic
+                print(pltDic)
                 dFrame   = DataFrame(pltDic)
                 fileName = self.makeBarPlot(plotData  = dFrame,
                                             xName     = "comparison",
@@ -3842,7 +3841,7 @@ class combinedAtomList(object):
                                             saveTitle   = 'metric-{}_normalisation-{}_scatter_{}-{}_minDistTo_{}-{}_Dset-{}'.format(metric,normType,resType1,atomType1,resType2,atomType2,d),
                                             outputDir   = outputDir)
             
-            print 'Dataset {} --> R^2 = {}'.format(d+1,round(Rsquared,4))
+            print('Dataset {} --> R^2 = {}'.format(d+1,round(Rsquared,4)))
 
     def getAtomsWithinDist(self,
                            atom       = '',
@@ -3872,10 +3871,9 @@ class combinedAtomList(object):
                     nearAtmDic['atoms'].append(otheratom)
                     nearAtmDic['distances'].append(dist)
         if printText:
-            print '{} in total within {}-{} Angstrom of {}'.format(len(nearAtmDic['atoms']),
-                                                                   round(distLimMin,2),
-                                                                   round(distLimMax,2),
-                                                                   atom.getAtomID())
+            print('{} in total within {}-{} Angstrom of {}'.format(
+                len(nearAtmDic['atoms']), round(distLimMin, 2),
+                round(distLimMax, 2), atom.getAtomID()))
         return nearAtmDic
 
     def groupAtomsByDist(self,
@@ -3893,7 +3891,7 @@ class combinedAtomList(object):
                            atomtype = atomType)
 
         if atm == []:
-            print 'Error: no atom found matching description'
+            print('Error: no atom found matching description')
             return
 
         # find max distance away from atom
@@ -3921,7 +3919,7 @@ class combinedAtomList(object):
                 atmsAtDist = [foundAtms['atoms'][i] for i in inds[0]]
             except TypeError:
                 atmsAtDist = []
-            print '{} atoms {}-{} Angstroms away'.format(len(atmsAtDist),d-1,d)
+            print('{} atoms {}-{} Angstroms away'.format(len(atmsAtDist), d-1, d))
             dicID = '{}-{}'.format(d-1,d)
             groupedDic[dicID] = atmsAtDist
             order.append(dicID)
@@ -4011,8 +4009,8 @@ class combinedAtomList(object):
         # any new atoms found by method
 
         if printText:
-            print '-------------------------\n'+\
-                  'Hotelling T-squared Test:'
+            print('-------------------------\n' +
+                  'Hotelling T-squared Test:')
         atmDens1 = []
         atmDens2 = []
 
@@ -4025,7 +4023,7 @@ class combinedAtomList(object):
                         resType2,
                         atmType2,
                         resNum2]
-                print 'Comparing atoms {}-{}-{} and {}-{}-{}'.format(*args)
+                print('Comparing atoms {}-{}-{} and {}-{}-{}'.format(*args))
 
             # get atoms to be compared
             atoms1 = self.getAtom(restype  = resType1,
@@ -4045,7 +4043,7 @@ class combinedAtomList(object):
                     atmDens.append(col)
         else:
             if printText:
-                print 'Comparing pre-determined values'
+                print('Comparing pre-determined values')
             for atmsVals,atmDens in zip([atmVals1,atmVals2],[atmDens1,atmDens2]):
                 for val in atmsVals:
                     vals = [[v] for v in val]
@@ -4070,34 +4068,33 @@ class combinedAtomList(object):
             W = np.around(W,roundMVals)
 
         # now calculate the Hotelling's two-sample T-squared statistic
-        print W
         tSquared = (float(nx*ny)/(nx+ny))*np.dot(np.transpose(mean1-mean2),np.dot(np.linalg.inv(W),(mean1-mean2)))
         if printText:
-            print 'tSquared is as follows: {}'.format(round(tSquared[0][0],roundTo))
+            print('tSquared is as follows: {}'.format(round(tSquared[0][0],roundTo)))
 
         # now calculate the related F test statistic from F distribution
         p = self.getNumDatasets()
         F = (float(nx+ny-p-1)/((nx+ny-2)*p))*tSquared
         if printText:
-            print 'F-value is as follows: {}'.format(round(F[0][0],roundTo))
+            print('F-value is as follows: {}'.format(round(F[0][0],roundTo)))
 
         # generate a p-value for the given F test statistic
         df1 = p
         df2 = nx+ny-1-p
         p_value = 1-f.cdf(F, df1, df2)
         if printText:
-            print 'p-value is as follows: {}'.format(round(p_value[0][0],roundTo))
+            print('p-value is as follows: {}'.format(round(p_value[0][0],roundTo)))
 
         reject = 'notsureyet'
         if p_value < alpha:
             if printText:
-                print 'p_value < {}'.format(alpha)
-                print '---> reject null hypothesis that means are equal'
+                print('p_value < {}'.format(alpha))
+                print('---> reject null hypothesis that means are equal')
             reject = 'YES'
         else:
             if printText:
-                print 'p_value > {}'.format(alpha)
-                print '---> cannot reject null hypothesis that means are equal'
+                print('p_value > {}'.format(alpha))
+                print('---> cannot reject null hypothesis that means are equal')
             reject = 'NO'
 
         return F,p_value,reject
@@ -4244,7 +4241,7 @@ class combinedAtomList(object):
                         atom.atomtype == l[19:21]):
                         atomFound = True
                         if printText:
-                            print 'found atom: {}'.format(atom.getAtomID())
+                            print('found atom: {}'.format(atom.getAtomID()))
 
                     if atomFound:
                         if (l[39:42] in ('GLU','ASP') and
@@ -4253,7 +4250,7 @@ class combinedAtomList(object):
                             resNum = l[35:38].strip()
                             chain = l[32]
                             if printText:
-                                print 'contact found! - {}-{}-{}-{}'.format(chain,resNum,l[39:42],l[47:50])
+                                print('contact found! - {}-{}-{}-{}'.format(chain,resNum,l[39:42],l[47:50]))
                             contactAtom = self.getAtom(chain    = chain,
                                                        restype  = l[39:42],
                                                        resnum   = resNum,
@@ -4287,7 +4284,7 @@ class combinedAtomList(object):
             densValsB         = [atom.densMetric[densMet][normType]['average'] for atom in groupB]
         else: 
             if printText:
-                print '\nFor Dataset {}:'.format(dataset)
+                print('\nFor Dataset {}:'.format(dataset))
             densValsA         = [atom.densMetric[densMet][normType]['values'][dataset] for atom in groupA]
             densValsAContacts = [atom.densMetric[densMet][normType]['values'][dataset] for atom in groupAContacts]
             densValsB         = [atom.densMetric[densMet][normType]['values'][dataset] for atom in groupB]
@@ -4295,7 +4292,7 @@ class combinedAtomList(object):
         strB = 'For the {} atoms not near carboxyl groups, mean avDloss: {}, std: {}'.format(len(densValsB),round(np.mean(densValsB),3),round(np.std(densValsB),2))
         
         if printText:
-            print strA+'\n'+strB
+            print(strA+'\n'+strB)
 
         # determine how solvent accessibility changes for each of these atoms upon Glu/Asp decarboxylation.
         # this will dictate the colour scheme for the resulting scatter plot
@@ -4311,7 +4308,7 @@ class combinedAtomList(object):
                                                                            plotScatter   = plotScatter,
                                                                            printText     = printText,
                                                                            outputDir     = outputDir)
-        print 'Dataset {} --> R^2 = {}'.format(dataset,round(rSqd,4))
+        print('Dataset {} --> R^2 = {}'.format(dataset,round(rSqd,4)))
         count = 0
         for atm in groupA: 
             atmID = atm.getAtomID()
@@ -4322,14 +4319,14 @@ class combinedAtomList(object):
 
             if diff == 0:
                 if printText:
-                    print '{}: No change in solvent accessibility'.format(atmID)
+                    print('{}: No change in solvent accessibility'.format(atmID))
             else:
                 if printText:
-                    print '{}: Solvent accessibility increased by {} upon nearby decarboxylation'.format(atmID,round(diff,2))
+                    print('{}: Solvent accessibility increased by {} upon nearby decarboxylation'.format(atmID,round(diff,2)))
                 count += 1
         if count < len(groupA):
             if printText:
-                print 'Not all {}-{} atoms experience change in solvent accessibility upon nearby decarboxylation'.format(restype,atomtype)
+                print('Not all {}-{} atoms experience change in solvent accessibility upon nearby decarboxylation'.format(restype,atomtype))
 
         if plotScatter:
             # plot the relationship between TYR-OH density and nearby carboxyl atom density
@@ -4420,7 +4417,7 @@ class combinedAtomList(object):
                              outputDir = outputDir)
 
         else:
-            print 'Unknown graph type - specify "Box" or "Bar"'
+            print('Unknown graph type - specify "Box" or "Bar"')
             return
 
     def makeBarPlot(self,
@@ -4461,7 +4458,7 @@ class combinedAtomList(object):
                              color      = color,
                              saturation = .5)
         else:
-            print 'Unknown plot type "{}"'.format(plotType)
+            print('Unknown plot type "{}"'.format(plotType))
             return
 
         if xLabel == '':
@@ -4587,7 +4584,7 @@ class combinedAtomList(object):
                     round(plotData['y'][-1],2)]
 
             if printText:
-                print '{}: {} --> {} ... Dloss: {}'.format(*args)
+                print('{}: {} --> {} ... Dloss: {}'.format(*args))
 
         rSquared = np.nan
         if plotScatter:
@@ -4649,7 +4646,7 @@ class combinedAtomList(object):
             try: 
                 thres = float(criteria)
             except ValueError:
-                print 'Unexpected assignment of "criteria" parameter'
+                print('Unexpected assignment of "criteria" parameter')
 
         numHighAtoms     = 0
         numHighNearAtoms = 0
@@ -4662,7 +4659,7 @@ class combinedAtomList(object):
                 if atmMetric >= thres:
                     continue
             else:
-                print '"sign" parameter must take either "above" or "below"'
+                print('"sign" parameter must take either "above" or "below"')
                 return
             numHighAtoms += 1
             nearAtms = self.getAtomsWithinDist(atom       = atm,
@@ -4681,7 +4678,7 @@ class combinedAtomList(object):
         probHighNeighbourAndHighAtom = float(numHighNearAtoms)/self.getNumAtoms()
         probHighNeighGivenHighAtom = probHighNeighbourAndHighAtom/probHighAtom
 
-        print 'Probability of high ({} {}) neighbour atom GIVEN high atom: {}'.format(sign,thres,probHighNeighGivenHighAtom)
+        print('Probability of high ({} {}) neighbour atom GIVEN high atom: {}'.format(sign,thres,probHighNeighGivenHighAtom))
         
         return probHighNeighGivenHighAtom
 
@@ -4740,7 +4737,7 @@ class combinedAtomList(object):
                     meanDens]
 
             if printText:
-                print '{}: D{}: {} --> local D{}: {}'.format(*args)
+                print('{}: D{}: {} --> local D{}: {}'.format(*args))
             plotData['x'].append(dens)
             plotData['y'].append(meanDens)
 
@@ -4779,7 +4776,7 @@ class combinedAtomList(object):
         for k in atmDic.keys():
             mean = np.mean(atmDic[k])
             if printText:
-                print '{} --> {}'.format(k,mean)
+                print('{} --> {}'.format(k,mean))
             meanDic[k] = mean
         return meanDic
 
@@ -4827,7 +4824,7 @@ class combinedAtomList(object):
                             BdamDic[atomID] = Bdam
                         elif Bmetric == 'Bfactor':
                             BdamDic[atomID] = Bfac
-                        print '{} --> {}'.format(atomID,BdamDic[atomID] )
+                        print('{} --> {}'.format(atomID,BdamDic[atomID] ))
         return BdamDic
 
     def getBdamageStats(self,

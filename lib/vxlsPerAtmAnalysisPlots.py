@@ -36,7 +36,7 @@ def plotHist(datax=[],  plotType='histogram', xlabel='', title='',
         yTitle = 'Normed-frequency'
 
     else:
-        print 'Unknown plotting type selected.. cannot plot..'
+        print('Unknown plotting type selected.. cannot plot..')
         return
 
     if seabornFound:
@@ -62,7 +62,7 @@ def plotVxlsPerAtm(pdbName='untitled', where='', vxlsPerAtom={},
     # plotType in ('histogram','kde','both')
 
     if printText:
-        print 'Plotting {} number of voxels per atom...'.format(plotType)
+        print('Plotting {} number of voxels per atom...'.format(plotType))
 
     datax = [len(vxlsPerAtom[key]) for key in vxlsPerAtom.keys()]
 
@@ -89,7 +89,7 @@ def plotDensForAtm(pdbName='untitled', where='', vxlsPerAtom={},
     # plotType in ('histogram','kde','both')
 
     if printText:
-        print 'Plotting {} density values per-atom...'.format(plotType)
+        print('Plotting {} density values per-atom...'.format(plotType))
 
     for atm in PDBarray:
         datax = vxlsPerAtom[atm.atomnum]

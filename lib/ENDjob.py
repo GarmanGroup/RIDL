@@ -65,7 +65,7 @@ class ENDjob():
         # job success checked, based on whether output files exist
 
         if os.path.isfile(self.outputMapFile) is False:
-            print 'END map generation did not proceed to completion'
+            print('END map generation did not proceed to completion')
             return False
         else:
             return True
@@ -74,14 +74,14 @@ class ENDjob():
 
         # provide some feedback
 
-        print '--------------------------'
-        print 'END map Summary:'
-        print 'Input pdb file: {}'.format(self.pdbFile)
-        print 'Input mtz file: {}'.format(self.mtzFile)
-        print 'Output map file: {}'.format(self.outputMapFile)
+        print('--------------------------')
+        print('END map Summary:')
+        print('Input pdb file: {}'.format(self.pdbFile))
+        print('Input mtz file: {}'.format(self.mtzFile))
+        print('Output map file: {}'.format(self.outputMapFile))
         Map = mapTools(self.outputMapFile)
         Map.printMapInfo()
-        print '--------------------------'
+        print('--------------------------')
 
     def filesForDir(self):
         filesForDir = ['2FoFc_scaled.map', '2FoFc.map', 'cadded.mtz',

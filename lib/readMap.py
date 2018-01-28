@@ -61,7 +61,7 @@ def readMap(dirIn='./', dirOut='./', mapName='untitled.map',
             for l in s.split('\n'):
                 log.writeToLog(l, priority='minor')
     else:
-        print s
+        print(s)
 
     # calculate the last nx*ny*nz bytes of file (corresponding to
     # the position of the 3D electron density array). Note factor

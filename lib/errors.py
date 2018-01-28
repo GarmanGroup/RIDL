@@ -52,7 +52,7 @@ class error():
         if self.log != '':
             self.log.writeToLog(str=message, strip=False)
         else:
-            print message
+            print(message)
 
         if killRun:
             sys.exit()

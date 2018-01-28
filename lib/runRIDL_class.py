@@ -38,7 +38,7 @@ class process():
         # specify input file name as required for the run
 
         self.inputFile = name
-        print 'Input file name set as "{}"'.format(self.inputFile)
+        print('Input file name set as "{}"'.format(self.inputFile))
 
     def checkInputFileExists(self):
 
@@ -78,7 +78,7 @@ class process():
         fileIn = open(self.inputFile, 'r')
         for line in fileIn.readlines():
             if len(line.strip()) != 0:
-                print line.strip()
+                print(line.strip())
         fileIn.close()
 
     def writeTemplateInputFile(self,
@@ -95,7 +95,7 @@ class process():
                  '???\nFcalcLabel ???'
         f.write(string)
         f.close()
-        print 'Template input file "{}" written'.format(self.inputFile)
+        print('Template input file "{}" written'.format(self.inputFile))
 
     def howToWriteInputFile(self,
                             printStr=True):
@@ -136,7 +136,7 @@ MAPINFO
     information before varying these
     """
         if printStr:
-            print infoString
+            print(infoString)
 
         return infoString
 
@@ -215,12 +215,12 @@ MAPINFO
 
         if not self.outputDir.endswith('/'):
             if printToScreen:
-                print 'Working directory specified in input ' +\
-                      'file must end in "/" - appending.'
+                print('Working directory specified in input ' +
+                      'file must end in "/" - appending.')
             self.outputDir += '/'
 
         if not os.path.exists(self.outputDir):
             if printToScreen:
-                print 'Output directory "{}" '.format(self.outputDir) +\
-                      'not found, making directory'
+                print('Output directory "{}" '.format(self.outputDir) +
+                      'not found, making directory')
             os.makedirs(self.outputDir)

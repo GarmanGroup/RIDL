@@ -1,6 +1,10 @@
 from progbar import progress
-import cPickle as pickle
+
 import sys
+if sys.version_info[0] < 3:
+    import cPickle as pickle
+else:
+    import _pickle as pickle
 
 # small functions to save PDB list of atom objects containing info on
 # each dose level to save running time consuming scripts calculating
@@ -26,7 +30,7 @@ def retrieve_objectlist(fileName='untitled.pkl', loadBar=False, logFile=''):
     if logFile != '':
         logFile.writeToLog(str=ln)
     else:
-        print ln
+        print(ln)
 
     checkFileFormat(fileName)
 
@@ -37,7 +41,7 @@ def retrieve_objectlist(fileName='untitled.pkl', loadBar=False, logFile=''):
     if logFile != '':
         logFile.writeToLog(str=ln)
     else:
-        print ln
+        print(ln)
 
     # to retrieve list from file to new list:
     PDBretrieved = []

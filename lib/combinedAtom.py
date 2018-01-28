@@ -111,10 +111,10 @@ class combinedAtom(StructurePDB):
         try:
             normWeights.meanweight[metric]
         except AttributeError:
-            print 'Normalisation weights not yet calculated for metric' +\
-                  ' "{}"\n'.format(metric) +\
-                  'Need to calculate first this weight first ' +\
-                  '--> see metricNormalisation class'
+            print('Normalisation weights not yet calculated for metric' +
+                  ' "{}"\n'.format(metric) +
+                  'Need to calculate first this weight first ' +
+                  '--> see metricNormalisation class')
             return
 
         metVals = self.densMetric[metric]['Standard']['values']
@@ -217,7 +217,7 @@ class combinedAtom(StructurePDB):
 
         metricVals = self.densMetric[metric][normType]['values']
         if len(vector) != len(metricVals):
-            print 'Incompatible metric and per-dataset scale vector lengths'
+            print('Incompatible metric and per-dataset scale vector lengths')
             return
         self.getDensMetricInfo(metric=metric, normType='vector-weighted',
                                values=metricVals/np.array(vector))
@@ -232,7 +232,7 @@ class combinedAtom(StructurePDB):
 
         metricVals = self.densMetric[metric][normType]['values']
         if len(vector) != len(metricVals):
-            print 'Incompatible metric and per-dataset scale vector lengths'
+            print('Incompatible metric and per-dataset scale vector lengths')
             return
         self.getDensMetricInfo(metric=metric, normType='vector-subtracted',
                                values=metricVals - np.array(vector))
@@ -264,7 +264,7 @@ class combinedAtom(StructurePDB):
                 self.solventAccess = str(line[60:66].strip())
                 break
 
-        if printText is True:
-            print 'Solvent Accessibility: {}'.format(self.solventAccess)
+        if printText:
+            print('Solvent Accessibility: {}'.format(self.solventAccess))
         openFile.close()
         return self.solventAccess
