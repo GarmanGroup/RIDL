@@ -14,7 +14,8 @@ class CADjob():
                  Mtz3phaseLabel='', Mtz3FcalcLabel='',
                  Mtz1LabelRename='', Mtz2LabelRename='',
                  Mtz3LabelRename='', outputMtz='',
-                 outputDir='./', runLog='', FOMWeight='False'):
+                 outputDir='./', runLog='', FOMWeight='False',
+                 ignoreSIGFs=False, ignoreDset1=False):
 
         # mtz containing initial dataset Fs
         self.inputMtz1 = inputMtz1
@@ -32,10 +33,13 @@ class CADjob():
         self.Mtz2SIGFPlabel = Mtz2SIGFPlabel
         self.Mtz3phaseLabel = Mtz3phaseLabel
         self.Mtz3FcalcLabel = Mtz3FcalcLabel
+        self.Mtz1LabelRename = Mtz1LabelRename
+        self.Mtz2LabelRename = Mtz2LabelRename
+        self.Mtz3LabelRename = Mtz3LabelRename
 
-        # a new labelling convention for output files
-        self.renameLabels = [Mtz1LabelRename, Mtz2LabelRename,
-                             Mtz3LabelRename]
+        # provide option to ignore initial dataset in merge
+        # to allow case where only later dataset is specified
+        self.ignoreDset1 = ignoreDset1
 
         # the output mtz name
         self.outputMtz = outputMtz
@@ -46,23 +50,34 @@ class CADjob():
         # the run log file (this is the same log as the overall RIDL one)
         self.runLog = runLog
 
+        # provide option to not include SIGF labels
+        self.ignoreSIGFs = ignoreSIGFs
+
         # the figure of merit column naming if specified
+        self.FOMWeight = FOMWeight
         self.FOMtag = {'in': '', 'out': '', 'type': ''}
-
-        if FOMWeight != 'False':
-            self.FOMtag['out'] = '- \nE3 = FOM_{}'.format(self.renameLabels[0])
-            self.FOMtag['type'] = '- \nE3 = W'
-
-        if FOMWeight == 'recalculate':
-            self.FOMtag['in'] = '- \nE3 = FOM{}'.format(self.labels[0])
-
-        elif 'preset' in FOMWeight:
-            lbl = FOMWeight.split(',')[-1]
-            self.FOMtag['in'] = '- \nE3 = FOM{}'.format(lbl)
 
     def run(self):
 
-        inputFiles = [self.inputMtz1, self.inputMtz2, self.inputMtz3]
+        # a new labelling convention for output files
+
+        self.renameLabels = [self.Mtz1LabelRename, self.Mtz2LabelRename,
+                             self.Mtz3LabelRename]
+
+        inputFiles = [self.inputMtz2, self.inputMtz3]
+        if not self.ignoreDset1:
+            inputFiles += [self.inputMtz1]
+
+        if self.FOMWeight != 'False':
+            self.FOMtag['out'] = '- \nE3 = FOM_{}'.format(self.renameLabels[0])
+            self.FOMtag['type'] = '- \nE3 = W'
+
+        if self.FOMWeight == 'recalculate':
+            self.FOMtag['in'] = '- \nE3 = FOM{}'.format(self.labels[0])
+
+        elif 'preset' in self.FOMWeight:
+            lbl = self.FOMWeight.split(',')[-1]
+            self.FOMtag['in'] = '- \nE3 = FOM{}'.format(lbl)
 
         if not checkInputsExist(inputFiles, self.runLog):
             return False
@@ -81,44 +96,120 @@ class CADjob():
 
         self.printPurpose()
 
-        cmd1 = 'cad ' +\
-               'HKLIN1 {} '.format(self.inputMtz1) +\
-               'HKLIN2 {} '.format(self.inputMtz2) +\
-               'HKLIN3 {} '.format(self.inputMtz3) +\
-               'HKLOUT {}'.format(self.outputMtz)
+        if not self.ignoreDset1:
 
-        cmd2 = 'title CAD JOB\n' +\
-               'monitor BRIEF\n' +\
-               'labin file 1 - \n' +\
-               'E1 = {} - \n'.format(self.Mtz1FPlabel) +\
-               'E2 = {} '.format(self.Mtz1SIGFPlabel) +\
-               '{} \n'.format(self.FOMtag['in']) +\
-               'labout file 1 - \n' +\
-               'E1 = FP_{} - \n'.format(self.renameLabels[0]) +\
-               'E2 = SIGFP_{} '.format(self.renameLabels[0]) +\
-               '{} \n'.format(self.FOMtag['out']) +\
-               'ctypin file 1 - \n' +\
-               'E1 = F - \n' +\
-               'E2 = Q ' +\
-               '{} \n'.format(self.FOMtag['type']) +\
-               'labin file 2 - \n' +\
-               'E1 = {} - \n'.format(self.Mtz2FPlabel) +\
-               'E2 = {} \n'.format(self.Mtz2SIGFPlabel) +\
-               'labout file 2 - \n' +\
-               'E1 = FP_{} - \n'.format(self.renameLabels[1]) +\
-               'E2 = SIGFP_{} \n'.format(self.renameLabels[1]) +\
-               'ctypin file 2 - \n' +\
-               'E1 = F - \n' +\
-               'E2 = Q \n' +\
-               'labin file 3 - \n' +\
-               'E1 = {} -\n'.format(self.Mtz3phaseLabel) +\
-               'E2 = {} \n'.format(self.Mtz3FcalcLabel) +\
-               'labout file 3 - \n' +\
-               'E1 = PHIC_{} - \n'.format(self.renameLabels[2]) +\
-               'E2 = FC_{} \n'.format(self.renameLabels[2]) +\
-               'ctypin file 3 - \n' +\
-               'E1 = P -\n' +\
-               'E2 = F \n'
+            cmd1 = 'cad ' +\
+                   'HKLIN1 {} '.format(self.inputMtz1) +\
+                   'HKLIN2 {} '.format(self.inputMtz2) +\
+                   'HKLIN3 {} '.format(self.inputMtz3) +\
+                   'HKLOUT {}'.format(self.outputMtz)
+
+            if not self.ignoreSIGFs:
+                cmd2 = 'title CAD JOB\n' +\
+                       'monitor BRIEF\n' +\
+                       'labin file 1 - \n' +\
+                       'E1 = {} - \n'.format(self.Mtz1FPlabel) +\
+                       'E2 = {} '.format(self.Mtz1SIGFPlabel) +\
+                       '{} \n'.format(self.FOMtag['in']) +\
+                       'labout file 1 - \n' +\
+                       'E1 = FP_{} - \n'.format(self.renameLabels[0]) +\
+                       'E2 = SIGFP_{} '.format(self.renameLabels[0]) +\
+                       '{} \n'.format(self.FOMtag['out']) +\
+                       'ctypin file 1 - \n' +\
+                       'E1 = F - \n' +\
+                       'E2 = Q ' +\
+                       '{} \n'.format(self.FOMtag['type']) +\
+                       'labin file 2 - \n' +\
+                       'E1 = {} - \n'.format(self.Mtz2FPlabel) +\
+                       'E2 = {} \n'.format(self.Mtz2SIGFPlabel) +\
+                       'labout file 2 - \n' +\
+                       'E1 = FP_{} - \n'.format(self.renameLabels[1]) +\
+                       'E2 = SIGFP_{} \n'.format(self.renameLabels[1]) +\
+                       'ctypin file 2 - \n' +\
+                       'E1 = F - \n' +\
+                       'E2 = Q \n' +\
+                       'labin file 3 - \n' +\
+                       'E1 = {} -\n'.format(self.Mtz3phaseLabel) +\
+                       'E2 = {} \n'.format(self.Mtz3FcalcLabel) +\
+                       'labout file 3 - \n' +\
+                       'E1 = PHIC_{} - \n'.format(self.renameLabels[2]) +\
+                       'E2 = FC_{} \n'.format(self.renameLabels[2]) +\
+                       'ctypin file 3 - \n' +\
+                       'E1 = P -\n' +\
+                       'E2 = F \n'
+            else:
+                cmd2 = 'title CAD JOB\n' +\
+                       'monitor BRIEF\n' +\
+                       'labin file 1 - \n' +\
+                       'E1 = {} \n'.format(self.Mtz1FPlabel) +\
+                       '{} \n'.format(self.FOMtag['in']) +\
+                       'labout file 1 - \n' +\
+                       'E1 = FP_{} \n'.format(self.renameLabels[0]) +\
+                       '{} \n'.format(self.FOMtag['out']) +\
+                       'ctypin file 1 - \n' +\
+                       'E1 = F \n' +\
+                       '{} \n'.format(self.FOMtag['type']) +\
+                       'labin file 2 - \n' +\
+                       'E1 = {} \n'.format(self.Mtz2FPlabel) +\
+                       'labout file 2 - \n' +\
+                       'E1 = FP_{} \n'.format(self.renameLabels[1]) +\
+                       'ctypin file 2 - \n' +\
+                       'E1 = F \n' +\
+                       'labin file 3 - \n' +\
+                       'E1 = {} -\n'.format(self.Mtz3phaseLabel) +\
+                       'E2 = {} \n'.format(self.Mtz3FcalcLabel) +\
+                       'labout file 3 - \n' +\
+                       'E1 = PHIC_{} - \n'.format(self.renameLabels[2]) +\
+                       'E2 = FC_{} \n'.format(self.renameLabels[2]) +\
+                       'ctypin file 3 - \n' +\
+                       'E1 = P -\n' +\
+                       'E2 = F \n'
+
+        else:
+            cmd1 = 'cad ' +\
+                 'HKLIN1 {} '.format(self.inputMtz2) +\
+                 'HKLIN2 {} '.format(self.inputMtz3) +\
+                 'HKLOUT {}'.format(self.outputMtz)
+
+            if not self.ignoreSIGFs:
+                cmd2 = 'title CAD JOB\n' +\
+                       'monitor BRIEF\n' +\
+                       'labin file 1 - \n' +\
+                       'E1 = {} - \n'.format(self.Mtz2FPlabel) +\
+                       'E2 = {} \n'.format(self.Mtz2SIGFPlabel) +\
+                       'labout file 1 - \n' +\
+                       'E1 = FP_{} - \n'.format(self.renameLabels[1]) +\
+                       'E2 = SIGFP_{} \n'.format(self.renameLabels[1]) +\
+                       'ctypin file 1 - \n' +\
+                       'E1 = F - \n' +\
+                       'E2 = Q \n' +\
+                       'labin file 2 - \n' +\
+                       'E1 = {} -\n'.format(self.Mtz3phaseLabel) +\
+                       'E2 = {} \n'.format(self.Mtz3FcalcLabel) +\
+                       'labout file 2 - \n' +\
+                       'E1 = PHIC_{} - \n'.format(self.renameLabels[2]) +\
+                       'E2 = FC_{} \n'.format(self.renameLabels[2]) +\
+                       'ctypin file 2 - \n' +\
+                       'E1 = P -\n' +\
+                       'E2 = F \n'
+            else:
+                cmd2 = 'title CAD JOB\n' +\
+                       'monitor BRIEF\n' +\
+                       'labin file 1 - \n' +\
+                       'E1 = {} \n'.format(self.Mtz2FPlabel) +\
+                       'labout file 1 - \n' +\
+                       'E1 = FP_{} \n'.format(self.renameLabels[1]) +\
+                       'ctypin file 1 - \n' +\
+                       'E1 = F \n' +\
+                       'labin file 2 - \n' +\
+                       'E1 = {} -\n'.format(self.Mtz3phaseLabel) +\
+                       'E2 = {} \n'.format(self.Mtz3FcalcLabel) +\
+                       'labout file 2 - \n' +\
+                       'E1 = PHIC_{} - \n'.format(self.renameLabels[2]) +\
+                       'E2 = FC_{} \n'.format(self.renameLabels[2]) +\
+                       'ctypin file 2 - \n' +\
+                       'E1 = P -\n' +\
+                       'E2 = F \n'
 
         self.outputLogfile = 'CADlogfile.txt'
 

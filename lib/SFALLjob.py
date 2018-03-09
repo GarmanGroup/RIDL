@@ -7,28 +7,30 @@ class SFALLjob():
 
     def __init__(self,
                  inputPDBfile='', outputDir='./', VDWR=1, symmetrygroup='P1',
-                 gridDimensions=[], task='atom map', mapoutType='ATMMOD',
-                 outputMapFile='', outputMtzFile='', runLog=''):
+                 inputMapfile='', gridDimensions=[], task='atom map',
+                 mapoutType='ATMMOD', outputMapFile='', outputMtzFile='',
+                 runLog=''):
 
         self.inputPDBfile = inputPDBfile
+        self.inputMapfile = inputMapfile
         self.outputDir = outputDir
         self.symGroup = symmetrygroup
         self.VDWR = VDWR
         self.gridDims = gridDimensions
+        self.task = task
         # atom-map 'ATMMOD' or solvent-map 'SOLVMAP' if task is 'atom map'
         self.mapoutType = mapoutType
         self.runLog = runLog
 
         if task == 'atom map':
-            self.makeAtomMap = True
             if outputMapFile == '':
                 self.outputMapFile = '{}_SFALL.map'.format(
                     inputPDBfile.split('.pdb')[0])
             else:
                 self.outputMapFile = outputMapFile
             self.outputFile = self.outputMapFile
-        elif task == 'fcalc mtz':
-            self.makeAtomMap = False
+        elif task in ('mtz from pdb', 'mtz from map'):
+            # specify whether to generate mtz from pdb or map
             if outputMtzFile == '':
                 self.outputMtzFile = '{}_SFALL.mtz'.format(
                     inputPDBfile.split('.pdb')[0])
@@ -58,7 +60,7 @@ class SFALLjob():
         self.printPurpose()
         title = 'run of sfall'
 
-        if self.makeAtomMap:
+        if self.task == 'atom map':
             # use to make an atom-tagged map from a coordinate model
             self.commandInput1 = 'sfall ' +\
                      'XYZIN {} '.format(self.inputPDBfile) +\
@@ -79,8 +81,8 @@ class SFALLjob():
                                  '{}'.format(gridDims) +\
                                  'END'
 
-        else:
-            # otherwise make a new Fcalc column in a new mtz file
+        elif self.task == 'mtz from pdb':
+            # make a new Fcalc column in a new mtz file
             self.commandInput1 = 'sfall ' +\
                      'XYZIN {} '.format(self.inputPDBfile) +\
                      'ATOMSF atomsf.lib ' +\
@@ -91,6 +93,21 @@ class SFALLjob():
                                  'labout  FC=FCalc PHIC=PHICalc\n' +\
                                  'NAME -\nPROJECT RIDL -\nCRYSTAL RIDL -\n' +\
                                  'DATASET RIDL\nMODE SFCALC -\nXYZIN\n' +\
+                                 'SYMMETRY {}\n'.format(self.symGroup) +\
+                                 'BADD 0.0\nVDWR 2.5\nEND'
+
+        elif self.task == 'mtz from map':
+            # otherwise make a new Fcalc column in an input map file
+            self.commandInput1 = 'sfall ' +\
+                     'MAPIN {} '.format(self.inputMapfile) +\
+                     'ATOMSF atomsf.lib ' +\
+                     'HKLOUT {} '.format(self.outputMtzFile) +\
+                     'SYMINFO syminfo.lib '
+
+            self.commandInput2 = 'title {}\n'.format(title) +\
+                                 'labout  FC=FCalc PHIC=PHICalc\n' +\
+                                 'NAME -\nPROJECT RIDL -\nCRYSTAL RIDL -\n' +\
+                                 'DATASET RIDL\nMODE SFCALC -\MAPIN\n' +\
                                  'SYMMETRY {}\n'.format(self.symGroup) +\
                                  'BADD 0.0\nVDWR 2.5\nEND'
 
@@ -122,7 +139,7 @@ class SFALLjob():
             'SFALL Summary:\nInput pdb file: {}\nOutput file: {}'.format(
                 fileIn, fileOut))
 
-        if self.makeAtomMap:
+        if self.task == 'atom map':
             Map = mapTools(mapName=self.outputMapFile, logFile=self.runLog)
             Map.printMapInfo()
 
@@ -132,11 +149,14 @@ class SFALLjob():
         # provide a summary of what this does
         # (within RIDL) to the command line
 
-        if self.makeAtomMap:
+        if self.task == 'atom map':
             self.runLog.writeToLog(
                 'Creating atom-tagged .map file over unit cell for model ' +
                 '"{}"'.format(self.inputPDBfile.split('/')[-1]))
-        else:
+        elif self.task == 'mtz from pdb':
             self.runLog.writeToLog(
                 'generating new mtz with Fcalc column derived from model ' +
                 '"{}"'.format(self.inputPDBfile.split('/')[-1]))
+        elif self.task == 'mtz from map':
+            self.runLog.writeToLog(
+                'generating new mtz from an input map ')
