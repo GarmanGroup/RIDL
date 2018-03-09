@@ -1,3 +1,4 @@
+from __future__ import division
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm, plotDensForAtm
 from perAtomClusterAnalysis import perAtomXYZAnalysis
 from densityAnalysisPlots import edens_scatter
@@ -15,11 +16,8 @@ try:
 except ImportError:
     pass
 
-if sys.version_info[0] < 3:
-    from itertools import izip as zip
 
-
-class maps2DensMetrics():
+class maps2DensMetrics(object):
 
     # assign values within a density map to specific atoms, using
     # the an atom-tagged map to determine which regions of space
@@ -184,7 +182,7 @@ class maps2DensMetrics():
         elif mapType == 'calc':
             mp = self.FCmap
 
-        totalNumVxls = np.product(self.atmmap.nxyz.values())
+        totalNumVxls = np.product(list(self.atmmap.nxyz.values()))
         structureNumVxls = len(mp.vxls_val)
         totalMean = mp.density['mean']
         structureMean = np.mean(mp.vxls_val)
@@ -238,9 +236,9 @@ class maps2DensMetrics():
             # now check if grid dims same to a
             # specific dp and consider continuing
             stop = True
-            for i in list(reversed(range(7))):
+            for i in list(reversed(list(range(7)))):
                 count = 0
-                for key in self.atmmap.celldims.keys():
+                for key in list(self.atmmap.celldims.keys()):
                     roundedAtmmapDim = np.round(self.atmmap.celldims[key], i)
                     roundedDensmapDim = np.round(self.densmap.celldims[key], i)
                     if roundedAtmmapDim == roundedDensmapDim:
@@ -367,14 +365,14 @@ class maps2DensMetrics():
         # calculate density metrics for a particular atom.
         # This method includes the option to perform
         # cluster analysis on the voxel values assigned
-        # to this atom, however this should not be selected
+        # to this atom, howeverm this should not be selected
         # for a standard run of the code
 
         try:
             atomVxls = self.vxlsPerAtom[atom.atomnum]
         except KeyError:
             error(
-                text='Warning!: No voxels assigned to an atom. Consider ' +
+                text='No voxels assigned to an atom. Consider ' +
                      'increasing per-atom search radius parameter in RIDL ' +
                      'input .txt file.',
                 log=self.log, type='warning')

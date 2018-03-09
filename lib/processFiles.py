@@ -281,7 +281,8 @@ class processFiles():
             provideFeedback(csvOnly=csvOnly, atmsObjs=combinedAtoms,
                             logFile=self.logFile, outputDir=outputDir,
                             doses=self.getDoses(), pklSeries=self.pklDataFile,
-                            inputDir=self.mapProcessDir, densMaps=self.name2,
+                            inputDir=self.mapProcessDir,
+                            densMaps=self.name2.split(','),
                             initialPDB=self.name1, normSet=self.normSet,
                             inclFCmetrics=self.includeFCmaps())
         else:

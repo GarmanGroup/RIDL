@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
+from __future__ import division
 from struct import unpack, calcsize
 from classHolder import MapInfo
 from errors import error
 import os
-import sys
 import mmap
 import numpy as np
+from functools import reduce
 
 
 def readMap(dirIn='./', dirOut='./', mapName='untitled.map',
@@ -67,7 +67,14 @@ def readMap(dirIn='./', dirOut='./', mapName='untitled.map',
     # the position of the 3D electron density array). Note factor
     # of 4 is included since 4-byte floats used for electron
     # density array values.
-    densitystart = filesize - 4*(reduce(lambda x, y: x*y, rho.nxyz.values()))
+
+    densitystart = filesize - 4*(reduce(lambda x, y: x*y, list(rho.nxyz.values())))
+
+    # if sys.version_info[0] >= 3:
+    #     import functools
+    #     densitystart = filesize - 4*(functools.reduce(lambda x, y: x*y, list(rho.nxyz.values())))
+    # else:
+    #     densitystart = filesize - 4*(reduce(lambda x, y: x*y, list(rho.nxyz.values())))
 
     # get symmetry operations from map header
     for j in range(23, 58):
@@ -92,10 +99,11 @@ def readMap(dirIn='./', dirOut='./', mapName='untitled.map',
                 for k in range(80):
                     char = unpack('c', bmf.read(1))[0]
     symOps = []
-    for j in range(numSymBytes/80):
+
+    for j in range(numSymBytes // 80):
         line = ''
         for k in range(80):
-            char = unpack('c', bmf.read(1))[0]
+            char = unpack('=c', bmf.read(1))[0].decode("utf-8")
             line += char
         symOps.append(line)
     rho.curateSymOps(symOps)
@@ -104,28 +112,24 @@ def readMap(dirIn='./', dirOut='./', mapName='untitled.map',
     bmf.seek(densitystart, 0)
 
     # if electron density written in shorts this is not
-    # currently expected, but program will read anyway
-    if rho.type is 1:
-        error(text='Warning! Untested .map type --> 1 (type 2 expected). ' +
+    # currently expected, so program will halt
+    if rho.type == 1:
+        error(text='Untested .map type --> 1 (type 2 expected). ' +
                    'Values read as int16 ("i2?") - consult .map header in ' +
-                   'MAPDUMP(CCP4) to check', log=log, type='warning')
-
-        struct_fmt = '=i2'
-        struct_len = calcsize(struct_fmt)
-        density = []
-
-        while True:
-            data = bmf.read(struct_len)
-            if not data:
-                break
-            s = unpack(struct_fmt, data)[0]
-            density.append(s)
+                   'MAPDUMP(CCP4) to check', log=log, type='error')
 
     # if electron density written in floats (which is to be expected
     # from FFT-CCP4 outputted .map file of electron density)
-    if rho.type is 2:
-        struct_fmt = '=f4'
+    if rho.type == 2:
+
+        # the length of the each data chunk to read map voxels below
+        struct_fmt = '=f'
         struct_len = calcsize(struct_fmt)
+        # should get struct_len = 4
+        if struct_len != 4:
+            error(text='Bad data chunk length assigned when reading map',
+                  log=log, type='error')
+
         density = []
         appenddens = density.append
 
@@ -164,7 +168,6 @@ def readMap(dirIn='./', dirOut='./', mapName='untitled.map',
             if len(density) != len(atomInds):
                 error(text='Failure to process the density map ' +
                            'using atom-tagged map', log=log, type='error')
-                sys.exit()
 
             # UNCOMMENT TO INSTEAD READ IN ALL VOXELS
             # while True:
@@ -201,7 +204,7 @@ def readMap(dirIn='./', dirOut='./', mapName='untitled.map',
 
     # if each voxel value is an atom number, then want to convert to integer
     if mapType in ('atom_map'):
-        density_final = [int(dens)/100 for dens in density]
+        density_final = [int(dens // 100) for dens in density]
     elif mapType in ('density_map'):
         density_final = density
     else:

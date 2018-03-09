@@ -1,10 +1,12 @@
+from future import standard_library
+standard_library.install_aliases()
 from progbar import progress
 
 import sys
 if sys.version_info[0] < 3:
     import cPickle as pickle
 else:
-    import _pickle as pickle
+    import pickle
 
 # small functions to save PDB list of atom objects containing info on
 # each dose level to save running time consuming scripts calculating

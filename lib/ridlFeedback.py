@@ -38,7 +38,7 @@ class provideFeedback(object):
         self.plotHeatMaps = False
 
         # list of doses for higher dose datasets
-        self.doses = map(float, doses.split(','))
+        self.doses = list(map(float, doses.split(',')))
 
         # list of density map names (for reference only)
         self.densMaps = [d + '_density.map' for d in densMaps]
@@ -266,15 +266,15 @@ $$D_\text{loss}^{\rho}\text{(atom)} = \frac{\max_{v \in V_\text{atom}} - \rho_\D
 where \(\rho_\text{calc}(v)\) is the value of the calculated electron density at voxel \(v\), as derived from the input coordinate model. It provides a weighted-version of the \(D_\text{loss}\text{(atom)}\) metric, where voxels contributing more to the electron density of the atom are up-weighted, and noisy background in the vicinity of each atom should be suppressed.
 <p><p>
 <h3>Quantifying the magnitude of electron density loss:</h3>
-Whereas the \(D_\text{loss}\text{(atom)}\) and \(D_\text{loss}^{\rho}\text{(atom)}\) metrics provide useful indicators for potential damage sites, they does not provide a suitable description of the overall magnitude of electron density lost at an atomic site. It is non-trivial to define such metrics, since metrics that require any averaging or integration of voxel values inside a specified search radius are particularly sensitive to the search radius used, due to the inclusion/exclusion of voxels as the search radius is varied. A possible solution is to apply a voxel-weighting scheme, in which the each voxel is weighted by how much of an atom's electron density contributed to that voxel. The \(D_\text{mean}^{-,\,\rho}\text{(atom)}\) is defined as:
-$$D_\text{mean}^{-,\, \rho}\text{(atom)} = \frac{\sum_{v \in V_\text{atom}^{-}} - \rho_\Delta (v)\cdot \rho_\text{calc} (v) }{\sum_{v \in V_\text{atom}^{-}} \rho_\text{calc}(v) }$$
+Whereas the \(D_\text{loss}\text{(atom)}\) and \(D_\text{loss}^{\rho}\text{(atom)}\) metrics provide useful indicators for potential damage sites, they does not provide a suitable description of the overall magnitude of electron density lost at an atomic site. It is non-trivial to define such metrics, since metrics that require any averaging or integration of voxel values inside a specified search radius are particularly sensitive to the search radius used, due to the inclusion/exclusion of voxels as the search radius is varied. A possible solution is to apply a voxel-weighting scheme, in which the each voxel is weighted by how much of an atom's electron density contributed to that voxel. The \(D_\text{neg}\text{(atom)}\) is defined as:
+$$D_\text{neg}\text{(atom)} = \frac{\sum_{v \in V_\text{atom}^{-}} - \rho_\Delta (v)\cdot \rho_\text{calc} (v) }{\sum_{v \in V_\text{atom}^{-}} \rho_\text{calc}(v) }$$
 as a weighted average over all voxels \(V_\text{atom}^{-}\) in the vicinity of the atom that attain \(\rho_\Delta(v) < 0\). 
 <p><p>
 <h3>The \(C_\alpha\)-normalisation scheme:</h3>
 It is anticipated that even for non-radiation sensitive atoms, the above metrics will increase with dose, due mainly to the inevitable increase in density map noise as a result of diminishing diffraction data quality with increasing dose. As such the metric values are insufficient alone to distinguish whether an atom has experienced significant electron density loss, without reference to the rest of the structure. This is particularly relevant if comparing damage between independent crystals. 
 A normalisation scheme can be constructed in which metric values are compared relative to the reference set of \(C_\alpha\) atoms of the protein backbone. The normalised version of the \(D_\text{mean}^{-,\,\rho}\text{(atom)}\) metric is:
-$$C_\alpha\text{-normalised}\ D^{-,\, \rho}_\text{mean}\text{(atom)} = \frac{D^{-,\, \rho}_\text{mean}\text{(atom)}-\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha} }{\sigma_{a\in C_\alpha} [D^{-,\, \rho}_\text{mean}\text{(a)}]}$$
-where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and \(\sigma_{a\in C_\alpha} [D^{-,\, \rho}_\text{mean}\text{(a)}]\) represent the average and standard deviation of \(D_\text{mean}^{-,\,\rho}\text{(atom)}\) values attained by the set of \(C_\alpha\) atoms. The \(C_\alpha\)-normalised versions of the other metrics are defined similarly.
+$$C_\alpha\text{-normalised}\ D_\text{neg}\text{(atom)} = \frac{D_\text{neg}\text{(atom)}-\langle D_\text{neg}\text{(a)}\rangle_{a\in C_\alpha} }{\sigma_{a\in C_\alpha} [D_\text{neg}\text{(a)}]}$$
+where \(\langle D_\text{neg}\text{(a)}\rangle_{a\in C_\alpha}\) and \(\sigma_{a\in C_\alpha} [D_\text{neg}\text{(a)}]\) represent the average and standard deviation of \(D_\text{neg}\text{(atom)}\) values attained by the set of \(C_\alpha\) atoms. The \(C_\alpha\)-normalised versions of the other metrics are defined similarly.
 </div>
 """
 
@@ -448,7 +448,6 @@ where \(\langle D^{-,\, \rho}_\text{mean}\text{(a)}\rangle_{a\in C_\alpha}\) and
 
             ###################################################################
             # General information regarding current dataset provided here
-
             t = 'Dataset info'
             c = 'Number in series : {}<br>\n'.format(i+1) +\
                 'Dose (MGy)       : {}<br>\n'.format(self.doses[i]) +\
