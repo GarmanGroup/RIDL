@@ -21,3 +21,4 @@ seaborn==0.8.1
 six==1.11.0
 sklearn==0.0
 virtualenv==15.1.0
+future
