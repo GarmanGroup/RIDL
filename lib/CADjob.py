@@ -14,7 +14,7 @@ class CADjob():
                  Mtz3phaseLabel='', Mtz3FcalcLabel='',
                  Mtz1LabelRename='', Mtz2LabelRename='',
                  Mtz3LabelRename='', outputMtz='',
-                 outputDir='./', runLog='', FOMWeight='False',
+                 outputDir='./', runLog='', FOMWeight='false',
                  ignoreSIGFs=False, ignoreDset1=False):
 
         # mtz containing initial dataset Fs
@@ -68,14 +68,14 @@ class CADjob():
         if not self.ignoreDset1:
             inputFiles += [self.inputMtz1]
 
-        if self.FOMWeight != 'False':
+        if self.FOMWeight.lower() != 'false':
             self.FOMtag['out'] = '- \nE3 = FOM_{}'.format(self.renameLabels[0])
             self.FOMtag['type'] = '- \nE3 = W'
 
-        if self.FOMWeight == 'recalculate':
+        if self.FOMWeight.lower() == 'recalculate':
             self.FOMtag['in'] = '- \nE3 = FOM{}'.format(self.labels[0])
 
-        elif 'preset' in self.FOMWeight:
+        elif 'preset' in self.FOMWeight.lower():
             lbl = self.FOMWeight.split(',')[-1]
             self.FOMtag['in'] = '- \nE3 = FOM{}'.format(lbl)
 

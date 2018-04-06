@@ -5,7 +5,7 @@ from mapTools import mapTools
 class FFTjob():
 
     def __init__(self,
-                 mapType='DIFF-NO-SIGMA',  mapTag='', FOMweight=False,
+                 mapType='DIFF-NO-SIGMA',  mapTag='', FOMweight='false',
                  pdbFile='', mtzFile='', outputDir='./', axes=[1, 2, 3],
                  gridSamps=[0, 0, 0], labels1=['', '', '', ''],
                  labels2=['', '', '', ''], F1Scale=1.0, F2Scale=1.0,
@@ -78,7 +78,7 @@ class FFTjob():
                'SYMINFO syminfo.lib '
 
         # if FOM is specified the weighting is applied to the map
-        if self.FOMweight == 'recalculate' or 'preset,' in self.FOMweight:
+        if self.FOMweight.lower() == 'recalculate' or 'preset,' in self.FOMweight.lower():
             FOMstring = 'W={}'.format(FOM2)
             FOMstring2 = 'W2={}'.format(FOM2)
         else:
