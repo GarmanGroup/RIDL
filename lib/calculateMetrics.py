@@ -26,7 +26,7 @@ class calculateMetrics(object):
                  initialPDB="", seriesName="untitled-series", pklDataFile="",
                  doses=[], plot='no', output='simple', logFile='',
                  inclFCmets=True, densMapList=[], atomMapList=[],
-                 pdbFileList=[], FcMapList=[], autoRun=True,
+                 pdbFileList=[], FcMapList=[],
                  normSet=[['', 'CA']], RIDLinputFile='untitled.txt',
                  sepPDBperDataset=False):
 
@@ -102,9 +102,6 @@ class calculateMetrics(object):
             else:
                 l.append(pdb)
         self.initialPDB = l
-
-        if autoRun:
-            self.runPipeline()
 
     def runPipeline(self,
                     map_process=True, post_process=True):
@@ -207,8 +204,12 @@ class calculateMetrics(object):
         maps2DensMets = maps2DensMetrics(
             filesIn=self.mapDir, filesOut=self.outputDataDir,
             pdbName=self.pdbFileList[0], atomTagMap=self.atomMapList[0],
-            FCmap=self.FcMapList[0], logFile=self.logFile,
-            calcFCmap=self.inclFCmets)
+            logFile=self.logFile, calcFCmap=self.inclFCmets)
+
+        # only add Fcalc map if it exists. Note, will cause error if
+        # FcMapList = [] but inclFCmets = True
+        if self.inclFCmets:
+            maps2DensMets.FCmapIn = self.FcMapList[0]
 
         for i in range(len(self.densMapList)):
 
@@ -219,8 +220,9 @@ class calculateMetrics(object):
 
             if self.sepPDBperDataset:
                 maps2DensMets.atomMapIn = self.atomMapList[i]
-                maps2DensMets.FCmapIn = self.FcMapList[i]
                 maps2DensMets.pdbName = self.pdbFileList[i]
+                if self.inclFCmets:
+                    self.maps2DensMets.FCmapIn = self.FcMapList[i]
                 # if new maps per dataset, need to reread them
                 mapsAlreadyRead = False
 

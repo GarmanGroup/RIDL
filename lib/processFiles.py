@@ -144,7 +144,7 @@ class processFiles():
         else:
             # note that if self.highDsetOnly = True and this is
             # trigged, the program will crash, so ensure that
-            # useLaterCellDims is set to TRUE in input file
+            # useLaterCellDims is set to "true" in input file
             pdb = self.pdb1_current
             am = self.name1_current
             if not firstTimeRun:
@@ -178,7 +178,7 @@ class processFiles():
             p.Mtz1LabelRename = self.name1_current
 
             # only require an Rfree flag if SIGMAA will be used
-            if self.FFTmapWeight == 'recalculate':
+            if self.FFTmapWeight.lower() == 'recalculate':
                 p.RfreeFlag1 = self.RfreeFlag1_current
 
         success = p.runPipeline()
@@ -197,7 +197,6 @@ class processFiles():
             # the atom-map is only generated once. Use this information
             # to properly define and density maps generated for each dataset
             self.copySameRunInfo = {'atomMapName': p.atomTaggedMap,
-                                    'FcMapName': p.FcalcMap,
                                     'axes': p.axes,
                                     'gridsamp': p.gridSamps,
                                     'spaceGroup': p.spaceGroup}
@@ -254,21 +253,24 @@ class processFiles():
             atomMapList = ['{}_atoms.map'.format(d) for d in names1]
             pdbFileList = ['{}.pdb'.format(d) for d in names1]
 
-        if self.includeFCmaps():
-            if self.useSeparatePDBperDataset():
-                FcMapList = ['{}_FC.map'.format(d) for d in names2]
-            else:
-                FcMapList = ['{}_FC.map'.format(d) for d in names1]
-
         c = calculateMetrics(logFile=self.logFile, densMapList=densMapList,
-                             atomMapList=atomMapList, FcMapList=FcMapList,
-                             inclFCmets=self.includeFCmaps(), outDir=self.dir,
+                             atomMapList=atomMapList, outDir=self.dir,
                              mapDir=self.mapProcessDir, initialPDB=self.name1,
                              seriesName=seriesName, doses=self.getDoses(),
-                             pklDataFile=self.pklDataFile, autoRun=True,
+                             pklDataFile=self.pklDataFile,
                              pdbFileList=pdbFileList, normSet=self.normSet,
                              RIDLinputFile=self.inputFile,
                              sepPDBperDataset=self.useSeparatePDBperDataset())
+
+        # decide whether Fcalc data is present and should be used
+        c.inclFCmets = self.includeFCmaps()
+        if self.includeFCmaps():
+            if self.useSeparatePDBperDataset():
+                c.FcMapList = ['{}_FC.map'.format(d) for d in names2]
+            else:
+                c.FcMapList = ['{}_FC.map'.format(d) for d in names1]
+
+        c.runPipeline()
 
         self.pklDataFile = c.pklDataFile
 
@@ -355,7 +357,7 @@ class processFiles():
             self.props2.append('pdb2')
 
         # only need Rfree set if SIGMAA will be used
-        if self.FFTmapWeight == 'recalculate':
+        if self.FFTmapWeight.lower() == 'recalculate':
             self.props1 += ['RfreeFlag1']
 
         requiredProps = self.props2 + self.props3 + ['dir', 'dose2']
@@ -388,8 +390,8 @@ class processFiles():
                  'deleteIntermediateFiles', 'useLaterCellDims',
                  'pklDataFile', 'normSet', 'ignoreSIGFs']
 
-        defaults = [1, ',', 'ANISOTROPIC', 'DIFF',
-                    'False', 'TRUE', 'TRUE', 'FALSE', '', 'CALPHA', 'FALSE']
+        defaults = [1, ',', 'anisotropic', 'DIFF',
+                    'false', 'true', 'true', 'false', '', 'CALPHA', 'false']
 
         for i, prop in enumerate(props):
             try:
@@ -418,7 +420,7 @@ class processFiles():
             if self.useLaterCellDims.lower() != 'true':
                 self.writeError(
                     text='"useLaterCellDims" input parameter must take value' +
-                         '"FALSE" when "densMapType" is set to "HIGHONLY"')
+                         '"false" when "densMapType" is set to "HIGHONLY"')
                 return False
 
             for prop in self.props1:
@@ -659,17 +661,17 @@ class processFiles():
                      'is recommended - consider increasing this..',
                 type='warning')
 
-        if ('preset' not in self.FFTmapWeight and
-                self.FFTmapWeight not in ('recalculate', 'False')):
+        if ('preset' not in self.FFTmapWeight.lower() and
+                self.FFTmapWeight.lower() not in ('recalculate', 'false')):
             self.writeError(
                 text='"FFTmapWeight" input must take either "recalculate",' +
-                     '"False" or "preset,x" where "x" is the FOM weight ' +
+                     '"false" or "preset,x" where "x" is the FOM weight ' +
                      'label (of the form FOMx) of a preset FOM column ' +
                      'within the input .mtz file. Currently set as ' +
                      '"{}" in input file'.format(self.FFTmapWeight))
             return False
 
-        if self.FFTmapWeight.startswith('preset'):
+        if self.FFTmapWeight.lower().startswith('preset'):
             if self.FFTmapWeight.replace('preset', '')[0] != ',':
                 self.writeError(
                     text='If "FFTmapWeight" input is specified by "preset", ' +
@@ -702,10 +704,10 @@ class processFiles():
                      '"{}" in input file'.format(self.ignoreSIGFs))
             return False
 
-        if self.scaleType not in ('ANISOTROPIC', 'ISOTROPIC', 'SCALE', 'NONE', 'PHENIX'):
+        if self.scaleType.lower() not in ('anisotropic', 'isotropic', 'scale', 'none', 'phenix'):
             self.writeError(
                 text='"scaleType" input of incompatible format, ' +
-                     '(default is "ANISOTROPIC"). Currently set as ' +
+                     '(default is "anisotropic"). Currently set as ' +
                      '"{}" in input file.'.format(self.scaleType))
             return False
 
@@ -1101,7 +1103,7 @@ class processFiles():
 
         # interpret from input file whether to calculate FCALC maps
 
-        if self.calculateFCmaps.upper() == 'FALSE':
+        if self.calculateFCmaps.lower() == 'false':
             return False
         else:
             return True
@@ -1110,7 +1112,7 @@ class processFiles():
 
         # interpret from input file whether to use SIGF coefficients
 
-        if self.ignoreSIGFs.upper() == 'FALSE':
+        if self.ignoreSIGFs.lower() == 'false':
             return False
         else:
             return True
@@ -1147,7 +1149,7 @@ class processFiles():
 
         # interpret from input file whether to delete intermediate files
 
-        if self.deleteIntermediateFiles.upper() == 'TRUE':
+        if self.deleteIntermediateFiles.lower() == 'true':
             return True
         else:
             return False
@@ -1160,7 +1162,7 @@ class processFiles():
         # later unit cell dimensions if the pdb file changes with dataset
         # number
 
-        if self.useLaterCellDims.upper() == 'TRUE':
+        if self.useLaterCellDims.lower() == 'true':
             return True
         else:
             return False

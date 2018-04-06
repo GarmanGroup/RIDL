@@ -38,8 +38,8 @@ class makeMapsFromMTZs():
                  Mtz2LabelRename='D2', mtzIn3='./untitled3.mtz',
                  Mtz3phaseLabel='PHIC', Mtz3FcalcLabel='FC', ignoreSIGFs=False,
                  Mtz3LabelRename='DP', inputPDBfile='./untitled.pdb',
-                 densMapType='DIFF', scaleType='ANISOTROPIC',
-                 deleteIntermediateFiles=True, FOMweight='NONE',
+                 densMapType='DIFF', scaleType='anisotropic',
+                 deleteIntermediateFiles=True, FOMweight='none',
                  sfall_VDWR=1, mapResLimits=',', includeFCmaps=True,
                  useLaterCellDims=True, sfallGRIDdims=[], mapAxisOrder=[],
                  firstTimeRun=True, premadeAtomMap='', spaceGroup='',
@@ -71,13 +71,13 @@ class makeMapsFromMTZs():
         # Must ensure scaling set to NONE if this chosen
         self.ignoreSIGFs = ignoreSIGFs
         if ignoreSIGFs:
-            if scaleType != 'NONE':
+            if scaleType.lower() != 'none':
                 error(text='Cross-dataset scaling specified, but user has ' +
                       'specified to ignore all SIGF terms. Incompatible!',
                       log=self.runLog, type='error')
 
         if densMapType == 'HIGHONLY':
-            if scaleType != 'NONE':
+            if scaleType.lower() != 'none':
                 error(text='Cross-dataset scaling specified, but user has ' +
                       'specified densMapType as "HIGHONLY". Incompatible!',
                       log=self.runLog, type='error')
@@ -140,7 +140,7 @@ class makeMapsFromMTZs():
         self.moveInputMtzs()
 
         skipStep = False
-        if self.FOMweight == 'recalculate':
+        if self.FOMweight.lower() == 'recalculate':
             self.generateNewFOMcolumn()
 
             # if 2FO-FC map required, use FWT column from
@@ -159,10 +159,10 @@ class makeMapsFromMTZs():
         if not skipStep:
             self.combineMTZcolumns()
 
-            if self.scaleType != 'NONE':
+            if self.scaleType.lower() != 'none':
                 self.scaleFPcolumnsTogether()
 
-            if self.scaleType in ('NONE', 'PHENIX'):
+            if self.scaleType.lower() in ('none', 'phenix'):
                 self.mtzForMaps = self.CADoutputMtz
             else:
                 self.mtzForMaps = self.SCALEIToutputMtz
