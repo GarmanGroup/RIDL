@@ -78,11 +78,8 @@ class processFiles():
 
         self.checkCorrectInputFormats()
         self.extractInfoFromMtzs()
-
         self.checkMtzLabelsExist()
         self.compareMtzFiles()
-        import sys
-        sys.exit()
 
     def runMapGeneration(self):
 
