@@ -129,6 +129,32 @@ class MAPMASKjob():
         success = self.provideFeedback()
         return success
 
+    def extend2UnitCell(self,
+                        includeDir=False, symGroup=1):
+
+        # extend map 1 to the unit cell limits
+        self.printPurpose(mode='extend to unit cell')
+        self.defineCorrectOutputMap()
+        inputFiles = [self.inputMapFile]
+        if not checkInputsExist(inputFiles, self.runLog):
+            return False
+
+        self.defineCommandInput()
+        self.commandInput2 = 'SYMMETRY {}\nXYZLIM CELL\nEND'.format(symGroup)
+        self.outputLogfile = 'MAPMASKlogfile.txt'
+
+        # run MAPMASK job
+        job = ccp4Job(jobName='MAPMASK_extend2UnitCell',
+                      commandInput1=self.commandInput1,
+                      commandInput2=self.commandInput2,
+                      outputDir=self.outputDir,
+                      outputLog=self.outputLogfile,
+                      outputFile=self.outputMapFile)
+
+        self.jobSuccess = job.checkJobSuccess(self.runLog)
+        success = self.provideFeedback()
+        return success
+
     def cropMap2Map(self,
                     includeDir=False):
 

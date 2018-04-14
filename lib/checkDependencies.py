@@ -123,6 +123,6 @@ class checkDependencies():
         # print to command line or write to log file
 
         if logFile == '':
-            print txt
+            print(txt)
         else:
             logFile.writeToLog(str=txt)

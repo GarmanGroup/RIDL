@@ -11,7 +11,9 @@ class error():
         # errorStr is the message to be printed to the command line
         # type specifies whether the message is an 'error' or 'warning'.
         # If a log file object is specified (see logFile.py), then
-        # the error message is printed into the log file
+        # the error message is printed into the log file.
+        # An 'error' is considered fatal and the script will stop, whereas
+        # a 'warning' will not be considered fatal.
 
         self.log = log
 
@@ -52,7 +54,7 @@ class error():
         if self.log != '':
             self.log.writeToLog(str=message, strip=False)
         else:
-            print message
+            print(message)
 
         if killRun:
             sys.exit()

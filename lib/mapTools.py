@@ -19,7 +19,7 @@ class mapTools():
 
         binaryMapFile = open(self.mapName, 'rb')
         for i in range(0, 30):
-            print self.get4Bytes(binaryMapFile)
+            print(self.get4Bytes(binaryMapFile))
 
     def readHeader(self):
 
@@ -68,6 +68,6 @@ class mapTools():
             '\tNumber of map voxels ...................  {}'.format(numVoxels)
 
         if self.log == '':
-            print info
+            print(info)
         else:
             self.log.writeToLog(str=info, priority='minor')

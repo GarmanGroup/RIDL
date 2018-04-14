@@ -5,7 +5,7 @@ import numpy as np
 # try:
 #     import numexpr as ne
 # except ImportError:
-#     print 'numexpr not found - RIDL may fail to complete'
+#     print('numexpr not found - RIDL may fail to complete')
 
 
 class StructurePDB(object):
@@ -151,10 +151,10 @@ class StructurePDB(object):
             else:
                 pass
         if vdw == 'notyetdefined':
-            print 'Error finding vdw radius from reference file' +\
-                  'Check reference file...' +\
+            print('Error finding vdw radius from reference file' +
+                  'Check reference file...' +
                   'Atom identity given by: {} {}'.format(
-                    self.atomnum, self.getAtomID())
+                    self.atomnum, self.getAtomID()))
             sys.exit()
         VDWradfile.close()
         self.vdw_rad = vdw
@@ -193,9 +193,9 @@ class StructurePDB(object):
             protonNum = protonDic[self.atomID]
         except KeyError:
             if printText:
-                print 'Unable to find proton number for ' +\
-                      'atom {}, '.format(self.atomID) +\
-                      'must hard code in classHolder.py to continue'
+                print('Unable to find proton number for ' +
+                      'atom {}, '.format(self.atomID) +
+                      'must hard code in classHolder.py to continue')
             return
         return protonNum
 

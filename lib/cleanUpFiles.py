@@ -34,7 +34,7 @@ class cleanUpFinalFiles():
 
         # print purpose to command line
 
-        print 'Unnecessary files removed from output directories'
+        print('Unnecessary files removed from output directories')
 
     def checkSubdirExists(self,
                           subdir='./', printTxt=True):
@@ -43,7 +43,7 @@ class cleanUpFinalFiles():
 
         if not os.path.isdir(subdir):
             if printTxt:
-                print 'Error! Subdirectory {} not found.'.format(subdir)
+                print('Error! Subdirectory {} not found.'.format(subdir))
             return False
 
         return True
@@ -91,5 +91,5 @@ class cleanUpFinalFiles():
         # following a successful run of the pipeline
 
         if self.checkSubdirExists(self.mapDir, printTxt=False):
-            print 'Removing RIDL-maps/ directory'
+            print('Removing RIDL-maps/ directory')
             shutil.rmtree(self.mapDir)

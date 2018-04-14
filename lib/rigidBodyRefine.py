@@ -37,7 +37,7 @@ class reRefine():
 			 'higher dose pdb coordinate files specified in RIDL '+\
 			 'input file "{}".\nInitial dataset coordiate model and '.format(self.inputFile)+\
 			 'higher dose structure factor information have been used' 
-		print ln
+		print(ln)
 
 	def runREFMAC(self,
 				  refineType = 'RIGID',
@@ -51,8 +51,8 @@ class reRefine():
 		# run n = 'numCycles' cycles of 'refineType'
 		# refinement in refmac to get phases
 
-		print 'Running refmac ({} {} cycles)...'.format(refineType,numCycles)
-		print '---> mtz: "{}"'.format(mtzIn.split('/')[-1])
+		print('Running refmac ({} {} cycles)...'.format(refineType, numCycles))
+		print('---> mtz: "{}"'.format(mtzIn.split('/')[-1]))
 
 		self.jobName = 'refmac'
 		if refineType == 'RIGID':
@@ -62,7 +62,7 @@ class reRefine():
 			bref = 'ISOT'
 			numCycString = 'ncyc {}'.format(numCycles) 
 		else: 
-			print 'Unreadable refinement type.. selecting 0 cycles of rigid body refinement'
+			print('Unreadable refinement type.. selecting 0 cycles of rigid body refinement')
 			bref = 'over'
 			numCycString = 'rigid ncycle 0'
 			refineType = 'RIGID'
@@ -156,7 +156,7 @@ class reRefine():
 
 		if os.path.isfile(filename) is False:
 			ErrorString = 'File {} not found'.format(filename)
-			print ErrorString
+			print(ErrorString)
 			return False
 		else: 
 			return True
@@ -166,7 +166,7 @@ class reRefine():
 		# information of mtz list and columns 
 		# can be extracted from an input file
 
-		print 'Reading input file...'
+		print('Reading input file...')
 
 		fileIn = open(self.inputFile,'r')
 		for l in fileIn.readlines():
@@ -193,7 +193,7 @@ class reRefine():
 		# use the new coordinate models for the higher dose
 		# datasets in the damage series
 
-		print 'Writing updated RIDL input file...'
+		print('Writing updated RIDL input file...')
 
 		newFile = self.inputFile.replace('.txt','-RigidBodyRefine.txt')
 
@@ -216,7 +216,7 @@ class reRefine():
 		fileIn.close()
 		fileOut.close()
 
-		print '\nNew input file has been generated: "{}"'.format(newFile)
+		print('\nNew input file has been generated: "{}"'.format(newFile))
 
 		self.newInputFile = newFile
 

@@ -35,7 +35,7 @@ def edens_scatter(outputDir='./', metrics=['meandensity', 'mindensity'],
 
     # check two generated lists of same length:
     if len(plotData[0]) != len(plotData[1]):
-        print 'Error: lists not same length for scatter plot'
+        print('Error: lists not same length for scatter plot')
         sys.exit()
 
     scatter1 = plt.figure()
@@ -51,7 +51,7 @@ def edens_scatter(outputDir='./', metrics=['meandensity', 'mindensity'],
               'p-value: {}\n'.format(p_value)
 
     if printText:
-        print infoStr
+        print(infoStr)
 
     scatter1.suptitle('{} vs {} density'.format(*metrics), fontsize=titleFont)
     plt.xlabel('{} density'.format(metrics[0]), fontsize=axesFont)

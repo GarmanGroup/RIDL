@@ -154,7 +154,7 @@ class perAtomXYZAnalysis():
                 for sym in np.array(symOps) + t:
                     symOps.append(sym)
             if self.report:
-                print 'Must consider {} adjacent unit cell(s)'.format(l)
+                print('Must consider {} adjacent unit cell(s)'.format(l))
 
         return symOps
 
@@ -320,7 +320,7 @@ class perAtomXYZAnalysis():
                 dists = np.linalg.norm(
                     keptPoints2[:, :3]-keptPoint[:3], axis=-1)
                 if min(dists) < threshold:
-                    print 'Error! 2 density points included with identical xyz'
+                    print('Error! 2 density points included with identical xyz')
                     import sys
                     sys.exit()
 
@@ -336,14 +336,14 @@ class perAtomXYZAnalysis():
 
         # print to command line how the previous method did
 
-        print 'Atom Identity: {}'.format(self.atmId)
-        print 'Number points found: {}'.format(len(keptPoints))
-        print '\tNumber that are original: {}'.format(
-            len(symOrOrig) - np.sum(symOrOrig))
-        print '\tNumber that are sym copies: {}'.format(np.sum(symOrOrig))
-        print '\tNumber of duplicate positions: {}'.format(dupcount + samexyzs)
-        print '\t\tidentical: {}'.format(dupcount)
-        print '\t\tsame xyz: {}'.format(samexyzs)
+        print('Atom Identity: {}'.format(self.atmId))
+        print('Number points found: {}'.format(len(keptPoints)))
+        print('\tNumber that are original: {}'.format(
+            len(symOrOrig) - np.sum(symOrOrig)))
+        print('\tNumber that are sym copies: {}'.format(np.sum(symOrOrig)))
+        print('\tNumber of duplicate positions: {}'.format(dupcount + samexyzs))
+        print('\t\tidentical: {}'.format(dupcount))
+        print('\t\tsame xyz: {}'.format(samexyzs))
 
     def findPosNegClusters(self):
 
@@ -468,7 +468,7 @@ class perAtomXYZAnalysis():
                 for vecs in vecChange:
                     for vec in vecs:
                         if np.linalg.norm(vec) == 0.0:
-                            print 'Error! zero length density shift vector'
+                            print('Error! zero length density shift vector')
                             import sys
                             sys.exit()
 
@@ -486,7 +486,7 @@ class perAtomXYZAnalysis():
 
         if printText:
             for k in vectorDic.keys():
-                print '{}: {}'.format(k, np.around(vectorDic[k], decimals=2))
+                print('{}: {}'.format(k, np.around(vectorDic[k], decimals=2)))
 
         return vectorDic
 
@@ -624,17 +624,17 @@ class perAtomXYZAnalysis():
             shiftVec = self.findRefPointToAtomVector(self.knownRefPoint)
             # this may fail if the ref point is badly chosen
             if np.isnan(reduce(lambda x, y: x*y, shiftVec)):
-                print 'Error: failed to calculate vector to ref point. ' +\
-                      'Using a random coordinate system for atom instead.'
+                print('Error: failed to calculate vector to ref point. ' +
+                      'Using a random coordinate system for atom instead.')
                 shiftVec = np.random.randn(3)
             if self.knownRefPoint2 != []:
                 shiftVec2 = self.findRefPointToAtomVector(self.knownRefPoint2)
                 if np.isnan(reduce(lambda x, y: x*y, shiftVec2)):
-                    print 'Error: failed to calculate vector to ref point. ' +\
-                          'Using a random coordinate system for atom instead.'
+                    print('Error: failed to calculate vector to ref point. ' +
+                          'Using a random coordinate system for atom instead.')
                     shiftVec2 = np.random.randn(3)
         else:
-            print 'Error in "method" parameter assignment'
+            print('Error in "method" parameter assignment')
             return
 
         # get a (non-unique) orthonormal basis including shiftVec

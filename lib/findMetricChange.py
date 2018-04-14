@@ -11,12 +11,12 @@ def findBchange(initialPDB, multiDoseList, Bmetric, relative=True):
 
     # check that valid metric specified
     if Bmetric not in ('Bfactor', 'Bdamage'):
-        print 'Unrecognised metric (choose between Bfactor and Bdamage)'
-        print '---> terminating script...'
+        print('Unrecognised metric (choose between Bfactor and Bdamage)')
+        print('---> terminating script...')
         sys.exit()
 
-    print '------------------------------------------------------------'
-    print 'Finding {} change between first and later datasets'.format(Bmetric)
+    print('------------------------------------------------------------')
+    print('Finding {} change between first and later datasets'.format(Bmetric))
     num_atoms = len(multiDoseList)
 
     # ensure atom list ordered by number of atom in structure (atomnum)
@@ -35,7 +35,7 @@ def findBchange(initialPDB, multiDoseList, Bmetric, relative=True):
         try:
             initB = initBfacDic[atmID]
         except KeyError:
-            print 'Error!! Atom "{}" not present in dataset 1'.format(atmID)
+            print('Error!! Atom "{}" not present in dataset 1'.format(atmID))
             initB = np.nan
         laterBs = np.array(
             map(float, atom.densMetric[Bmetric]['Standard']['values']))
@@ -46,5 +46,5 @@ def findBchange(initialPDB, multiDoseList, Bmetric, relative=True):
             metric = list((laterBs - initB)/initB)
         BmetDic[atom.getAtomID()] = metric
 
-    print '\n---> success...'
+    print('\n---> success...')
     return BmetDic

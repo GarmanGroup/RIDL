@@ -36,10 +36,10 @@ class makeMapsFromMTZs():
                  Mtz1LabelRename='D1', mtzIn2='./untitled2.mtz',
                  Mtz2LabelName='FP',  Mtz2SIGFPlabel='SIGFP',
                  Mtz2LabelRename='D2', mtzIn3='./untitled3.mtz',
-                 Mtz3phaseLabel='PHIC', Mtz3FcalcLabel='FC',
+                 Mtz3phaseLabel='PHIC', Mtz3FcalcLabel='FC', ignoreSIGFs=False,
                  Mtz3LabelRename='DP', inputPDBfile='./untitled.pdb',
-                 densMapType='DIFF', scaleType='ANISOTROPIC',
-                 deleteIntermediateFiles=True, FOMweight='NONE',
+                 densMapType='DIFF', scaleType='anisotropic',
+                 deleteIntermediateFiles=True, FOMweight='none',
                  sfall_VDWR=1, mapResLimits=',', includeFCmaps=True,
                  useLaterCellDims=True, sfallGRIDdims=[], mapAxisOrder=[],
                  firstTimeRun=True, premadeAtomMap='', spaceGroup='',
@@ -54,22 +54,41 @@ class makeMapsFromMTZs():
         if atomMapNaming == '':
             atomMapNaming = densMapNaming
         self.atomMapNaming = atomMapNaming
+        self.scaleType = scaleType
+
         self.mtzIn1 = mtzIn1
         self.Mtz1LabelName = Mtz1LabelName
-        self.Mtz1SIGFPlabel = Mtz1SIGFPlabel
         self.RfreeFlag1 = RfreeFlag1
         self.Mtz1LabelRename = Mtz1LabelRename
+        self.Mtz1SIGFPlabel = Mtz1SIGFPlabel
+
         self.mtzIn2 = mtzIn2
         self.Mtz2LabelName = Mtz2LabelName
-        self.Mtz2SIGFPlabel = Mtz2SIGFPlabel
         self.Mtz2LabelRename = Mtz2LabelRename
+        self.Mtz2SIGFPlabel = Mtz2SIGFPlabel
+
+        # Provide option to ignore SIGFs during map calculations.
+        # Must ensure scaling set to NONE if this chosen
+        self.ignoreSIGFs = ignoreSIGFs
+        if ignoreSIGFs:
+            if scaleType.lower() != 'none':
+                error(text='Cross-dataset scaling specified, but user has ' +
+                      'specified to ignore all SIGF terms. Incompatible!',
+                      log=self.runLog, type='error')
+
+        if densMapType == 'HIGHONLY':
+            if scaleType.lower() != 'none':
+                error(text='Cross-dataset scaling specified, but user has ' +
+                      'specified densMapType as "HIGHONLY". Incompatible!',
+                      log=self.runLog, type='error')
+
         self.mtzIn3 = mtzIn3
         self.Mtz3phaseLabel = Mtz3phaseLabel
         self.Mtz3FcalcLabel = Mtz3FcalcLabel
         self.Mtz3LabelRename = Mtz3LabelRename
         self.inputPDBfile = inputPDBfile
+
         self.densMapType = densMapType
-        self.scaleType = scaleType
         self.deleteIntermediateFiles = deleteIntermediateFiles
         self.FOMweight = FOMweight
         self.sfall_VDWR = sfall_VDWR
@@ -121,7 +140,7 @@ class makeMapsFromMTZs():
         self.moveInputMtzs()
 
         skipStep = False
-        if self.FOMweight == 'recalculate':
+        if self.FOMweight.lower() == 'recalculate':
             self.generateNewFOMcolumn()
 
             # if 2FO-FC map required, use FWT column from
@@ -134,16 +153,16 @@ class makeMapsFromMTZs():
                 pass
 
         else:
-            self.CADinputMtz1 = self.SIGMAAinputMtz
+            if not self.densMapType == 'HIGHONLY':
+                self.CADinputMtz1 = self.SIGMAAinputMtz
 
         if not skipStep:
-
             self.combineMTZcolumns()
 
-            if self.scaleType != 'NONE':
+            if self.scaleType.lower() != 'none':
                 self.scaleFPcolumnsTogether()
 
-            if self.scaleType in ('NONE', 'PHENIX'):
+            if self.scaleType.lower() in ('none', 'phenix'):
                 self.mtzForMaps = self.CADoutputMtz
             else:
                 self.mtzForMaps = self.SCALEIToutputMtz
@@ -166,10 +185,7 @@ class makeMapsFromMTZs():
                 self.cropAtmTaggedMapToAsymUnit()
 
         # phenix maps are not currently a tested option
-        makeFoFoMapWithPhenix = False
         if self.scaleType == 'PHENIX':
-            makeFoFoMapWithPhenix = True
-        if makeFoFoMapWithPhenix:
             self.generatePhenixDensMap()
         else:
             self.mapTag = ''
@@ -223,13 +239,14 @@ class makeMapsFromMTZs():
             shutil.copy2(self.mtzIn2, self.SIGMAAinputMtz)
 
         else:
-            self.SIGMAAinputMtz = '{}{}.mtz'.format(
-                self.outputDir, self.Mtz1LabelRename.strip())
+            if self.densMapType != 'HIGHONLY':
+                self.SIGMAAinputMtz = '{}{}.mtz'.format(
+                    self.outputDir, self.Mtz1LabelRename.strip())
+                shutil.copy2(self.mtzIn1, self.SIGMAAinputMtz)
             self.CADinputMtz2 = '{}{}.mtz'.format(
                 self.outputDir, self.Mtz2LabelRename.strip())
             self.CADinputMtz3 = '{}{}.mtz'.format(
                 self.outputDir, self.Mtz3LabelRename.strip())
-            shutil.copy2(self.mtzIn1, self.SIGMAAinputMtz)
             shutil.copy2(self.mtzIn2, self.CADinputMtz2)
             shutil.copy2(self.mtzIn3, self.CADinputMtz3)
 
@@ -267,23 +284,29 @@ class makeMapsFromMTZs():
 
         self.printStepNumber()
 
-        cad = CADjob(inputMtz1=self.CADinputMtz1,
-                     inputMtz2=self.CADinputMtz2,
+        cad = CADjob(inputMtz2=self.CADinputMtz2,
                      inputMtz3=self.CADinputMtz3,
-                     Mtz1FPlabel=self.Mtz1LabelName,
-                     Mtz1SIGFPlabel=self.Mtz1SIGFPlabel,
                      Mtz2FPlabel=self.Mtz2LabelName,
                      Mtz2SIGFPlabel=self.Mtz2SIGFPlabel,
                      Mtz2LabelName=self.Mtz2LabelName,
                      Mtz3phaseLabel=self.Mtz3phaseLabel,
                      Mtz3FcalcLabel=self.Mtz3FcalcLabel,
-                     Mtz1LabelRename=self.Mtz1LabelRename,
                      Mtz2LabelRename=self.Mtz2LabelRename,
                      Mtz3LabelRename=self.Mtz3LabelRename,
                      outputMtz=self.CADoutputMtz,
                      outputDir=self.outputDir,
                      runLog=self.runLog,
-                     FOMWeight=self.FOMweight)
+                     FOMWeight=self.FOMweight,
+                     ignoreSIGFs=self.ignoreSIGFs)
+
+        if self.densMapType != 'HIGHONLY':
+            cad.inputMtz1 = self.CADinputMtz1
+            cad.Mtz1FPlabel = self.Mtz1LabelName
+            cad.Mtz1SIGFPlabel = self.Mtz1SIGFPlabel
+            cad.Mtz1LabelRename = self.Mtz1LabelRename
+        else:
+            cad.ignoreDset1 = True
+
         success = cad.run()
 
         if not success:
@@ -377,6 +400,16 @@ class makeMapsFromMTZs():
     def generatePhenixDensMap(self):
 
         # run phenix.fobs_minus_fobs to generate difference map
+        # NOTE: there may be an unfixed issue with how PHENIX
+        # generates this map, in particular it may take the same
+        # mtz label set for both f_obs_1_label and f_obs_2_label,
+        # despite being separate below. I think this is to do with
+        # f_obs_1_file_name = f_obs_2_file_name here.
+        # Not currently recommended to use unless carefully checked
+
+        error(text='The current map calculation using PHENIX may not ' +
+              'work. It is suggested that this option is not used',
+              log=self.runLog, type='warning')
 
         cmd = 'phenix.fobs_minus_fobs_map ' +\
               'f_obs_1_file_name={} '.format(self.mtzForMaps) +\
@@ -395,7 +428,10 @@ class makeMapsFromMTZs():
         labelsLater = ['FoFo', '', '', 'PHFc']
         labelsInit = ['', '', '', '']
         self.mapTag = 'DIFF'
-        success = self.generateCCP4DensMap(labelsInit, labelsLater)
+        if self.useLaterCellDims:
+            success = self.generateCCP4DensMap(labelsInit, labelsLater)
+        else:
+            success = self.generateCCP4DensMap(labelsLater, labelsInit)
 
         if not success:
             error(text='Failure to successfully generate map using PHENIX',
@@ -410,7 +446,11 @@ class makeMapsFromMTZs():
 
         densMap = '{}{}_FFT.map'.format(self.outputDir, self.densMapNaming)
 
-        if self.densMapType in ('DIFF', 'SIMPLE'):
+        if self.densMapType in ('DIFF', 'HIGHONLY'):
+            # note that the distinction in these options only comes
+            # apparent in FFTjob.py. Even though HIGHONLY'
+            # calculate maps using only the later dataset info, dummy
+            # information for labelsInit is provided anyway for simplicity
             tags = ['FP_', 'SIGFP_', 'FOM_']
             labelsInit = [i+self.Mtz1LabelRename for i in tags] +\
                          ['PHIC_'+self.Mtz3LabelRename]
@@ -428,26 +468,25 @@ class makeMapsFromMTZs():
                               '', '', 'PHIC']
 
         if self.densMapType != 'END':
+
+            fft = FFTjob(
+                mapType=self.densMapType, mapTag=self.mapTag,
+                FOMweight=self.FOMweight, runLog=self.runLog,
+                pdbFile=self.reorderedPDBFile, outputMapFile=densMap,
+                mtzFile=self.densMapMtz, useSigLabs=not self.ignoreSIGFs,
+                outputDir=self.outputDir, axes=self.axes,
+                gridSamps=self.gridSamps, labels1=labelsLater,
+                labels2=labelsInit,
+                lowResCutoff=self.mapResLimits.split(',')[1],
+                highResCutoff=self.mapResLimits.split(',')[0])
+
             if self.useLaterCellDims:
-                fft = FFTjob(mapType=self.densMapType, mapTag=self.mapTag,
-                             FOMweight=self.FOMweight, runLog=self.runLog,
-                             pdbFile=self.reorderedPDBFile,
-                             outputMapFile=densMap,
-                             mtzFile=self.densMapMtz, outputDir=self.outputDir,
-                             axes=self.axes, gridSamps=self.gridSamps,
-                             labels1=labelsLater, labels2=labelsInit,
-                             lowResCutoff=self.mapResLimits.split(',')[1],
-                             highResCutoff=self.mapResLimits.split(',')[0])
+                fft.labels1 = labelsLater
+                fft.labels2 = labelsInit
             else:
-                fft = FFTjob(mapType=self.densMapType, mapTag=self.mapTag,
-                             FOMweight=self.FOMweight, runLog=self.runLog,
-                             pdbFile=self.reorderedPDBFile,
-                             outputMapFile=densMap,
-                             mtzFile=self.densMapMtz, outputDir=self.outputDir,
-                             axes=self.axes, gridSamps=self.gridSamps,
-                             labels1=labelsInit, labels2=labelsLater,
-                             lowResCutoff=self.mapResLimits.split(',')[1],
-                             highResCutoff=self.mapResLimits.split(',')[0])
+                fft.labels1 = labelsInit
+                fft.labels2 = labelsLater
+
             success = fft.run()
             self.densityMap = fft.outputMapFile
 
@@ -491,15 +530,19 @@ class makeMapsFromMTZs():
 
         self.printStepNumber()
 
+        fft_FC = FFTjob(
+            FOMweight=self.FOMweight, pdbFile=self.reorderedPDBFile,
+            outputDir=self.outputDir, axes=self.axes,
+            gridSamps=self.gridSamps, runLog=self.runLog)
+
         if method == 1:
             fcLabels = ['FC_{}'.format(self.Mtz3LabelRename), '', '',
                         'PHIC_'+self.Mtz3LabelRename]
-            fft_FC = FFTjob(mapType='FC', FOMweight=self.FOMweight,
-                            pdbFile=self.reorderedPDBFile,
-                            mtzFile=self.fcalcMtz, outputDir=self.outputDir,
-                            axes=self.axes, gridSamps=self.gridSamps,
-                            labels1=fcLabels,
-                            runLog=self.runLog)
+
+            fft_FC.inputMtzFile = self.fcalcMtz
+            fft_FC.mapType = 'FC'
+            fft_FC.labels1 = fcLabels
+
             success = fft_FC.run()
             self.FcalcMap = fft_FC.outputMapFile
 
@@ -509,12 +552,14 @@ class makeMapsFromMTZs():
                       ['PHIC_'+self.Mtz3LabelRename]
             labels2 = ['FC_{}'.format(self.Mtz3LabelRename), '', '',
                        'PHIC_'+self.Mtz3LabelRename]
-            fft_FC = FFTjob(mapType='DIFF', mapTag='FC',
-                            FOMweight=self.FOMweight, runLog=self.runLog,
-                            pdbFile=self.reorderedPDBFile,
-                            mtzFile=self.fcalcMtz, outputDir=self.outputDir,
-                            axes=self.axes, gridSamps=self.gridSamps,
-                            F1Scale=0.0, labels1=labels1, labels2=labels2)
+
+            fft_FC.mapType = 'DIFF'
+            fft_FC.mapTag = 'FC'
+            fft_FC.inputMtzFile = self.fcalcMtz
+            fft_FC.F1Scale = 0.0
+            fft_FC.labels1 = labels1
+            fft_FC.labels2 = labels2
+
             success = fft_FC.run()
 
             tmpMap = fft_FC.outputMapFile
@@ -528,15 +573,13 @@ class makeMapsFromMTZs():
                              outputDir=self.outputDir, VDWR=self.sfall_VDWR,
                              symmetrygroup=self.spaceGroup, runLog=self.runLog,
                              gridDimensions=self.sfallGRIDdims,
-                             task='fcalc mtz')
+                             task='mtz from pdb')
             success = sfall.run()
             FcalcMtz = sfall.outputMtzFile
 
-            fft_FC = FFTjob(mapType='FC', FOMweight=self.FOMweight,
-                            pdbFile=self.reorderedPDBFile, mtzFile=FcalcMtz,
-                            outputDir=self.outputDir, axes=self.axes,
-                            gridSamps=self.gridSamps, runLog=self.runLog,
-                            labels1=['FCalc', '', '', 'PHICalc'])
+            fft_FC.inputMtzFile = FcalcMtz
+            fft_FC.mapType = 'FC'
+            fft_FC.labels1 = ['FCalc', '', '', 'PHICalc']
 
             success = fft_FC.run()
             self.FcalcMap = fft_FC.outputMapFile
@@ -613,7 +656,7 @@ class makeMapsFromMTZs():
 
         pdbin = open(self.reorderedPDBFile, 'r')
         for line in pdbin.readlines():
-            if line.split()[0] == 'CRYST1':
+            if line.startswith('CRYST1'):
                 self.spaceGroup = line[55:66].replace(' ', '')
                 self.runLog.writeToLog(
                     str='Retrieving space group from file:' +

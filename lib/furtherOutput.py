@@ -144,9 +144,9 @@ class furtherAnalysis(provideFeedback):
 
 		for n in [1,2,3]:
 			csvOut = open(self.outputDir+'CalphaDloss-probNeighbourHigh-{}.csv'.format(n),'w')
-			print '\nFor Calpha Dloss:'
+			print('\nFor Calpha Dloss:')
 			for dist in [4,5,6,7,8,9,10]:
-				print '>>> Distance: {} Angstroms'.format(dist)
+				print('>>> Distance: {} Angstroms'.format(dist))
 				prbList = []
 				for d in range(self.getNumDatasets()):
 					prb = atmsObjs.findProbHighNeighbourGivenHighAtom(densMet = self.metric,
@@ -160,9 +160,9 @@ class furtherAnalysis(provideFeedback):
 			csvOut.close()
 		for n in [1,2,3]:
 			csvOut = open(self.outputDir+'Bfactor-probNeighbourHigh-{}.csv'.format(n),'w')
-			print '\nFor Bfactor:'
+			print('\nFor Bfactor:')
 			for dist in [4,5,6,7,8,9,10]:
-				print '>>> Distance: {} Angstroms'.format(dist)
+				print('>>> Distance: {} Angstroms'.format(dist))
 				prbList = []
 				for d in range(self.getNumDatasets()):
 					prb = atmsObjs.findProbHighNeighbourGivenHighAtom(densMet = 'Bfactor',
@@ -233,7 +233,7 @@ class furtherAnalysis(provideFeedback):
 
 	def distToDiSulp(self):
 
-		print 'Finding distances to nearest disulphide bridges'
+		print('Finding distances to nearest disulphide bridges')
 
 		self.atmsObjs.scatterAtmsByDistToOtherAtms(outputDir = self.outputPlotDir)
 
@@ -253,7 +253,7 @@ class furtherAnalysis(provideFeedback):
 				  res = 'TYR',
 				  atm = 'OH'):
 
-		print 'Finding top atom of type: {}'.format('-'.join([res,atm]))
+		print('Finding top atom of type: {}'.format('-'.join([res,atm])))
 
 		self.atmsObjs.findTopAtomOfType(normType  = self.normType,
 								  		atomType  = res,
@@ -261,25 +261,25 @@ class furtherAnalysis(provideFeedback):
 
 	def tTests(self):
 
-		print 'Performing t-test to compare metric correlation between atom types'
+		print('Performing t-test to compare metric correlation between atom types')
 
 		for d in range(self.getNumDatasets()):
 			stats = self.atmsObjs.twoAtomTypeTtest(dataset   = d,
 												   atomType2 = ['OE1','OE2','OD1','OD2'],
 												   resType2  = ['GLU','GLU','ASP','ASP'])
-			print 'Glu/Asp) Dataset: {}, stats: {}'.format(d,stats)
+			print('Glu/Asp Dataset: {}, stats: {}'.format(d,stats))
 
 			stats = self.atmsObjs.twoAtomTypeTtest(dataset   = d,
 												   atomType2 = ['OE1','OD1'],
 												   resType2  = ['GLN','ASN'])
-			print 'Gln/Asn) Dataset: {}, stats: {}'.format(d,stats)
+			print('Gln/Asn Dataset: {}, stats: {}'.format(d,stats))
 
 	def rankings(self):
 
 		res = ['CYS','TYR','TYR','GLU','GLU','GLU','GLU','ASP','ASP','ASP','ASP','GLN','GLN','ASN','ASN','SER','THR']
 		atm = ['SG','OH','CZ','CD','OE1','OE2','CG','CG','CB','OD1','OD2','OE1','NE2','OD1','ND2','OG','OG1']
 
-		print 'Determining per atom-type rankings for selected atoms in structure'
+		print('Determining per atom-type rankings for selected atoms in structure')
 
 		rank = self.atmsObjs.getAtomtypeRanking(metric    = self.metric,
 											    normType  = self.normType,
@@ -288,7 +288,7 @@ class furtherAnalysis(provideFeedback):
 											    atomtype  = atm,
 											    printText = True)
 		for key in rank.keys():
-			print '{}: {}'.format(key,rank[key])
+			print('{}: {}'.format(key,rank[key]))
 
 		for r,a in zip(res,atm):
 			num = self.atmsObjs.numAtmsWithMetricAboveLevel(dataset   = 'all',
@@ -298,7 +298,7 @@ class furtherAnalysis(provideFeedback):
 															firstTime = True,
 															atomType  = a,
 															resType   = r)
-			print '{}-{}: {}'.format(r,a,num)
+			print('{}-{}: {}'.format(r,a,num))
 
 		if self.getNumDatasets() == 1:
 			return
@@ -318,8 +318,8 @@ class furtherAnalysis(provideFeedback):
 
 	def sigKSstats(self):
 
-		print 'Calculating Kolmogorov-Smirnov statistics to compare damage '+\
-			  'signatures between atom types in current structure'
+		print('Calculating Kolmogorov-Smirnov statistics to compare damage ' +
+			  'signatures between atom types in current structure')
 
 		outDir = self.makeNewPlotSubdir(subdir = 'MetricSignature-statistics/')
 		self.atmsObjs.plotStatVsDataset(normType  = self.normType,
@@ -360,7 +360,7 @@ class furtherAnalysis(provideFeedback):
 
 	def atmCorels(self):
 
-		print 'Determining correlation between atom types in same residues'
+		print('Determining correlation between atom types in same residues')
 
 		outDir = self.makeNewPlotSubdir(subdir = 'atomtype-correlationPlots/')
 		self.atmsObjs.compareSensAtoms_RsquaredLinePlotWithDataset(normType  = self.normType,
@@ -371,8 +371,8 @@ class furtherAnalysis(provideFeedback):
 				  res = 'TYR',
 				  atm = 'OH'):
 
-		print 'Determining whether a correlation exists between {} and '.format('-'.join([res,atm]))+\
-			  'the presence of carboxylate salt bridge interactions'
+		print('Determining whether a correlation exists between {} and '.format('-'.join([res,atm])) +
+			  'the presence of carboxylate salt bridge interactions')
 
 		outDir = self.makeNewPlotSubdir(subdir = 'carboxylate-TyrOH-correlation/')
 		self.atmsObjs.plot_densMetSurroundAtmsCorrel(pdbName       = self.get1stDsetPDB(),

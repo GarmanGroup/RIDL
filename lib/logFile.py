@@ -60,9 +60,9 @@ class logFile():
                 (priority == 'minor' and self.printToScreenMinor) or
                     forcePrint):
                 if logstring.startswith('Running'):
-                    print '\n'+logstring
+                    print('\n'+logstring)
                 else:
-                    print logstring
+                    print(logstring)
 
     def getTime(self):
 

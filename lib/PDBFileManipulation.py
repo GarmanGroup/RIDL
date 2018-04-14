@@ -11,7 +11,7 @@ def PDBtoList(pdbFileName='', printText=False):
     pdbin = open(pdbFileName, "r")
     lines = pdbin.readlines()
     if printText:
-        print 'Reading PDB file and converting to list of objects'
+        print('Reading PDB file and converting to list of objects')
     for line in lines:
         if ('ATOM' in str(line[0:6])) or ('HETATM' in str(line[0:6])):
             y = singlePDB(StructurePDB)

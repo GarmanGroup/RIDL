@@ -42,7 +42,7 @@ class metricNormalisation(object):
 
         # don't run function if no list of atoms included
         if len(self.atomList) == 0:
-            print 'Need to add list of atoms first'
+            print('Need to add list of atoms first')
             return
 
         # collect the atoms to normalise to for each dataset
@@ -77,9 +77,9 @@ class metricNormalisation(object):
                   '"{}" first (use calculateWeights method)'.format(metric),
                   log=self.logFile)
 
-        print '-------------------------------------------------------'
-        print 'Normalisation weights as follows:'
-        print '\tDataset\tD{}'.format(metric)
+        print('-------------------------------------------------------')
+        print('Normalisation weights as follows:')
+        print('\tDataset\tD{}'.format(metric))
         vals = self.atomList[0].densMetric[metric]['Standard']['values']
         for i in range(0, len(vals)):
-            print '\t{}:\t{}'.format(i+1, str(self.weight[metric][i])[:5])
+            print('\t{}:\t{}'.format(i+1, str(self.weight[metric][i])[:5]))
