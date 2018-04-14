@@ -939,7 +939,7 @@ class combinedAtomList(object):
         pdbOut.write(headerInfo)
 
         for l in pdbIn.readlines():
-            if l.split()[0] in ('CRYST1', 'SCALE1', 'SCALE2', 'SCALE3'):
+            if l.startswith(('CRYST1', 'SCALE1', 'SCALE2', 'SCALE3')):
                 pdbOut.write(l)
 
         if dataset == 'all':
