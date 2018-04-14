@@ -32,62 +32,57 @@ class processFiles():
         self.logFile = logFileObj
         self.includeSIGF = includeSIGF
 
-        success = self.runFileProcessing()
+        self.runFileProcessing()
 
         if makeMaps:
             self.runMapGeneration()
 
         if makeMetrics:
-            success = self.runMetricCalcStep()
+            self.runMetricCalcStep()
             if not makeSummaryFile:
                 self.writeSummaryFiles(csvOnly=True)
 
         if makeSummaryFile:
             self.writeSummaryFiles(csvOnly=False)
-
-            if success and cleanFinalFiles:
+            if cleanFinalFiles:
                 cleanUpFinalFiles(outputDir=self.dir,
                                   keepMapDir=keepMapDir)
-
-        self.jobSuccess = success
 
     def runFileProcessing(self):
 
         self.logFile.writeToLog(str='\n**** INPUT FILE PROCESSING ****\n')
 
-        success = self.readMainInputFile()
-        if not success:
-            return False
-
+        self.readMainInputFile()
+        self.checkNonNecessaryInputs()
+        self.checkAllRequiredInputsFound()
+        self.checkWhetherParamsConsistent()
         self.checkOutputDirsExists()
         self.findFilesInDir()
         self.checkForMultipleDatasets()
         self.defineMetricNormSet()
 
-        print(self.multiDatasets)
-
-        # don't proceed if error in input file
+        # for safety, at this point check for internal breakdown
         try:
             self.multiDatasets
         except AttributeError:
-            return False
+            print 'Unexpected error'
+            return
         if self.multiDatasets:
             try:
                 if not self.highDsetOnly:
                     self.repeatedFile1InputsUsed
                 self.repeatedPhaseInputsUsed
             except AttributeError:
-                return False
+                print 'Unexpected error'
+                return
 
-        success = self.checkCorrectInputFormats()
-        if not success:
-            return False
+        self.checkCorrectInputFormats()
+        self.extractInfoFromMtzs()
 
-        success = self.checkMtzLabelsExist()
-        if not success:
-            return False
-
-        return True
+        self.checkMtzLabelsExist()
+        self.compareMtzFiles()
+        import sys
+        sys.exit()
 
     def runMapGeneration(self):
 
@@ -97,7 +92,7 @@ class processFiles():
             self.logFile.writeToLog(
                 str='Generating suitable electron density maps for run.')
             self.getCurrentInputParams()
-            success = self.runMapGenerationPipeline()
+            self.runMapGenerationPipeline()
 
         else:
             self.logFile.writeToLog(
@@ -114,11 +109,8 @@ class processFiles():
                     str='\n{}\nHigher dose '.format('-'*33) +
                         'dataset {} starts here'.format(i+1))
                 self.getCurrentInputParams(jobNumber=i)
-                success = self.runMapGenerationPipeline(firstTimeRun)
-                if not success:
-                    return success
+                self.runMapGenerationPipeline(firstTimeRun)
 
-        return success
 
     def runMapGenerationPipeline(self,
                                  firstTimeRun=True):
@@ -201,8 +193,6 @@ class processFiles():
                                     'gridsamp': p.gridSamps,
                                     'spaceGroup': p.spaceGroup}
 
-        return success
-
     def runMetricCalcStep(self):
 
         # writes an input file for the run of the metric calculation part of
@@ -274,8 +264,6 @@ class processFiles():
 
         self.pklDataFile = c.pklDataFile
 
-        return True
-
     def writeSummaryFiles(self,
                           csvOnly=False, includeTests=False):
 
@@ -320,7 +308,6 @@ class processFiles():
         if not os.path.isfile(self.inputFile):
             self.writeError(
                 text='Input file "{}"" not found..'.format(self.inputFile))
-            return False
         else:
             self.logFile.writeToLog(
                 str='Reading input file "{}"'.format(self.inputFile))
@@ -338,12 +325,6 @@ class processFiles():
             inputPart = ''.join(line.split()[1:])
             setattr(self, line.split()[0], inputPart)
         fileIn.close()
-
-        self.checkNonNecessaryInputs()
-        success = self.checkAllRequiredInputsFound()
-        if success:
-            success = self.checkWhetherParamsConsistent()
-        return success
 
     def checkAllRequiredInputsFound(self):
 
@@ -373,12 +354,9 @@ class processFiles():
             except AttributeError:
                 self.writeError(
                     text='Necessary input not found: {}'.format(prop))
-                return False
 
         self.logFile.writeToLog(
             str='--> All necessary inputs found in input file.')
-
-        return True
 
     def checkNonNecessaryInputs(self):
 
@@ -416,12 +394,10 @@ class processFiles():
                 self.writeError(
                     text='"scaleType" input parameter must take value "NONE"' +
                          ' when "densMapType" is set to "HIGHONLY"')
-                return False
             if self.useLaterCellDims.lower() != 'true':
                 self.writeError(
                     text='"useLaterCellDims" input parameter must take value' +
                          '"false" when "densMapType" is set to "HIGHONLY"')
-                return False
 
             for prop in self.props1:
                 foundProp = False
@@ -437,7 +413,6 @@ class processFiles():
                              '"HIGHONLY", it will not be used.. check this ' +
                              'is intentional!',
                         type='warning')
-        return True
 
     def checkCorrectInputFormats(self):
 
@@ -456,27 +431,16 @@ class processFiles():
 
         for p, t in zip(props, fType):
             if not self.multiDatasets:
-
                 name = getattr(self, p)
-                success = self.checkCorrectFileExtension(
+                self.checkCorrectFileExtension(
                     fileName=name, fileType=t, property=p)
-                if not success:
-                    return False
+                self.checkFileExists(fileName=name)
 
-                success = self.checkFileExists(fileName=name)
-                if not success:
-                    return False
             else:
                 for f in getattr(self, p).split(','):
-
-                    success = self.checkCorrectFileExtension(
+                    self.checkCorrectFileExtension(
                         fileName=f, fileType=t, property=p)
-                    if not success:
-                        return False
-
-                    success = self.checkFileExists(fileName=f)
-                    if not success:
-                        return False
+                    self.checkFileExists(fileName=f)
 
         if not self.highDsetOnly:
             # ensure that initial and later dataset names don't clash
@@ -486,7 +450,6 @@ class processFiles():
                         text='"name1" and "name2" inputs must be different, ' +
                              'otherwise CAD will fail. Both currently set ' +
                              'as "{}".'.format(self.name1))
-                    return False
             else:
                 isError = False
                 if self.repeatedFile1InputsUsed:
@@ -510,20 +473,15 @@ class processFiles():
                              'for each job in batch, otherwise CAD will fail. ' +
                              'Currently for one batch, the "initial" and "later"' +
                              ' datasets are both called "{}".'.format(sameName))
-                    return False
 
         # ensure that initial dataset names of suitable lengths
         if not self.highDsetOnly:
             for n in self.name1.split(','):
-                success = self.checkNameLength(name=n, property='name1')
-                if not success:
-                    return False
+                self.checkNameLength(name=n, property='name1')
 
         # ensure that later dataset names of suitable lengths
         for n in self.name2.split(','):
-            success = self.checkNameLength(name=n, property='name2')
-            if not success:
-                return False
+            self.checkNameLength(name=n, property='name2')
 
         # ensure that multiple later dataset names don't clash
         if self.multiDatasets:
@@ -531,14 +489,11 @@ class processFiles():
             if len(list(set(names))) != len(names):
                 self.writeError(
                     text='Comma-separated entries in "name2" must be unique')
-                return False
 
         # ensure that phase dataset names of suitable lengths
         for n in self.name3.split(','):
-            success = self.checkNameLength(
+            self.checkNameLength(
                 name=n, property='name3', maxLength=22)
-            if not success:
-                return False
 
         # add '-ph' to name3 to identify it from other datasets
         if not self.multiDatasets:
@@ -565,10 +520,8 @@ class processFiles():
                         float(dose)
                     except ValueError:
                         self.writeError(text=err)
-                        return False
                     if float(dose) < 0:
                         self.writeError(text=err)
-                        return False
 
         if self.dose2 != 'NOTCALCULATED':
             if not self.multiDatasets:
@@ -579,10 +532,8 @@ class processFiles():
                     float(self.dose2)
                 except ValueError:
                     self.writeError(text=err)
-                    return False
                 if float(self.dose2) < 0:
                     self.writeError(text=err)
-                    return False
 
             else:
                 for dose in self.dose2.split(','):
@@ -593,10 +544,8 @@ class processFiles():
                         float(dose)
                     except ValueError:
                         self.writeError(text=err)
-                        return False
                     if float(dose) < 0:
                         self.writeError(text=err)
-                        return False
 
         # if a separate input exists for the SIGFP columns, check consistency
         self.checkForSeparateSIGFlabel()
@@ -625,14 +574,12 @@ class processFiles():
                 text='"densMapType" input of incompatible format, ' +
                      '(default is "DIFF"). Currently set as ' +
                      '"{}" in input file.'.format(self.densMapType))
-            return False
 
         if self.deleteIntermediateFiles.lower() not in ('true', 'false'):
             self.writeError(
                 text='"deleteIntermediateFiles" input of incompatible format' +
                      ' ("true","false"), case insensitive. Currently set as ' +
                      '"{}" in input file'.format(self.deleteIntermediateFiles))
-            return False
 
         try:
             float(self.sfall_VDWR)
@@ -640,13 +587,11 @@ class processFiles():
             self.writeError(
                 text='"sfall_VDWR" input must be a float. Currently set as ' +
                      '"{}" in input file.'.format(self.sfall_VDWR))
-            return False
 
         if float(self.sfall_VDWR) <= 0:
             self.writeError(
                 text='"sfall_VDWR" input must be a positive float. Currently' +
                      ' set as "{}" in input file.'.format(self.sfall_VDWR))
-            return False
 
         if float(self.sfall_VDWR) > 3:
             self.writeError(
@@ -669,7 +614,6 @@ class processFiles():
                      'label (of the form FOMx) of a preset FOM column ' +
                      'within the input .mtz file. Currently set as ' +
                      '"{}" in input file'.format(self.FFTmapWeight))
-            return False
 
         if self.FFTmapWeight.lower().startswith('preset'):
             if self.FFTmapWeight.replace('preset', '')[0] != ',':
@@ -681,35 +625,30 @@ class processFiles():
                          'label is simply  "FOM" then use "preset,". ' +
                          'Currently set as "{}" in input file'.format(
                             self.FFTmapWeight))
-                return False
 
         if self.useLaterCellDims.lower() not in ('true', 'false'):
             self.writeError(
                 text='"useLaterCellDims" input of incompatible format' +
                      ' ("true","false"), case insensitive. Currently set as ' +
                      '"{}" in input file'.format(self.useLaterCellDims))
-            return False
 
         if self.calculateFCmaps.lower() not in ('true', 'false'):
             self.writeError(
                 text='"calculateFCmaps" input of incompatible format' +
                      ' ("true","false"), case insensitive. Currently set as ' +
                      '"{}" in input file'.format(self.calculateFCmaps))
-            return False
 
         if self.ignoreSIGFs.lower() not in ('true', 'false'):
             self.writeError(
                 text='"ignoreSIGFs" input of incompatible format' +
                      ' ("true","false"), case insensitive. Currently set as ' +
                      '"{}" in input file'.format(self.ignoreSIGFs))
-            return False
 
         if self.scaleType.lower() not in ('anisotropic', 'isotropic', 'scale', 'none', 'phenix'):
             self.writeError(
                 text='"scaleType" input of incompatible format, ' +
                      '(default is "anisotropic"). Currently set as ' +
                      '"{}" in input file.'.format(self.scaleType))
-            return False
 
         if self.mapResLimits != ',':
             resLims = self.mapResLimits.split(',')
@@ -719,7 +658,6 @@ class processFiles():
                          ' must be of form "x,y" for upper resolution ' +
                          'cutoff "x" and lower cutoff "y". Currently set as ' +
                          '"{}" in input file.'.format(self.mapResLimits))
-                return False
             else:
                 try:
                     float(resLims[0])
@@ -731,7 +669,6 @@ class processFiles():
                              'for upper resolution cutoff "x" and lower ' +
                              'cutoff "y". Currently set as ' +
                              '"{}" in input file.'.format(self.mapResLimits))
-                    return False
                 if float(resLims[0]) == float(resLims[1]):
                     self.writeError(
                         text='"mapResLimits" input of incompatible format, ' +
@@ -739,12 +676,9 @@ class processFiles():
                              'for upper resolution cutoff "x" and lower ' +
                              'cutoff "y", BUT DIFFERENT. Currently set as ' +
                              '"{}" in input file.'.format(self.mapResLimits))
-                    return False
 
         self.logFile.writeToLog(
             str='--> All input file parameters of suitable format.')
-
-        return True
 
     def checkNameLength(self,
                         maxLength=24, name='', property='name1'):
@@ -756,9 +690,6 @@ class processFiles():
                 text='Each "{}" input must be less than '.format(property) +
                      '{} characters long. '.format(maxLength) +
                      'Currently {} characters long..'.format(len(name)))
-            return False
-
-        return True
 
     def checkForSeparateSIGFlabel(self):
 
@@ -812,7 +743,6 @@ class processFiles():
                     mtzLabels = [self.mtzlabels1]
 
             for (f, lab) in zip(mtzFiles, mtzLabels):
-                foundLabels = self.getLabelsFromMtz(fileName=f)
 
                 if self.includeSIGF:
                     if self.sepSIGFPlabel1:
@@ -823,10 +753,8 @@ class processFiles():
                     labels = [lab]
 
                 for lab in labels:
-                    if lab not in foundLabels:
-                        self.mtzLabelNotFound(
-                            mtzFile=f, label=lab, labelList=foundLabels)
-                        return False
+                    if lab not in self.mtzContents[f]['labels']:
+                        self.mtzLabelNotFound(mtzFile=f, label=lab)
 
         # later dataset mtz files checked here
         if not self.multiDatasets:
@@ -845,7 +773,6 @@ class processFiles():
                 mtzLabels = self.mtzlabels2.split(',')
 
         for (f, lab) in zip(mtzFiles, mtzLabels):
-            foundLabels = self.getLabelsFromMtz(fileName=f)
 
             if self.includeSIGF:
                 if self.sepSIGFPlabel2:
@@ -856,10 +783,8 @@ class processFiles():
                 labels = [lab]
 
             for lab in labels:
-                if lab not in foundLabels:
-                    self.mtzLabelNotFound(mtzFile=f, label=lab,
-                                          labelList=foundLabels)
-                    return False
+                if lab not in self.mtzContents[f]['labels']:
+                    self.mtzLabelNotFound(mtzFile=f, label=lab)
 
         # phase information dataset mtz file checked here
         if self.multiDatasets:
@@ -877,18 +802,14 @@ class processFiles():
             FcalcLabels = [self.FcalcLabel]
 
         for (f, phaseLab, FcalcLab) in zip(mtzFiles, phaseLabels, FcalcLabels):
-            foundLabels = self.getLabelsFromMtz(fileName=f)
             for lab in (phaseLab, FcalcLab):
-                if lab not in foundLabels:
-                    self.mtzLabelNotFound(mtzFile=f, label=lab,
-                                          labelList=foundLabels)
-                    return False
-
-        return True
+                if lab not in self.mtzContents[f]['labels']:
+                    self.mtzLabelNotFound(mtzFile=f, label=lab)
 
     def mtzLabelNotFound(self,
-                         mtzFile='untitled.mtz', label='unspecified',
-                         labelList=[]):
+                         mtzFile='untitled.mtz', label='unspecified'):
+
+        labelList = self.mtzContents[mtzFile]['labels']
 
         # if an mtz label has not been found, print an error message
         err = 'Column "{}" not found in file '.format(label) +\
@@ -910,48 +831,78 @@ class processFiles():
 
         self.writeError(text=err)
 
-    def getLabelsFromMtz(self,
-                         fileName='untitled.mtz'):
+    def extractInfoFromMtzs(self):
 
         # get list of column names from an mtz file
 
-        # write commands for mtzdump to run
-        inFile = open('mtzdumpInput.txt', 'w')
-        inFile.write('header\nend')
-        inFile.close()
+        files = self.mtz1.split(',') + self.mtz2.split(',') + self.mtz3.split(',')
 
-        # run mtzdump and parse output to find column labels
-        os.system('mtzdump hklin {} < mtzdumpInput.txt > mtzdump.tmp'.format(
-            fileName))
-        output = open('mtzdump.tmp', 'r')
-        labelsFound = False
-        labels = ''
-        for l in output.readlines():
-            if l.replace('\n', '') == '':
-                continue
-            if '* Column Types :' in l:
-                break
-            if labelsFound:
-                labels = l.split()
-            if '* Column Labels :' in l:
-                labelsFound = True
-                continue
-        output.close()
-        os.remove('mtzdump.tmp')
+        self.mtzContents = {}
 
-        return labels
+        for f in files:
+            # write commands for mtzdump to run
+            inFile = open('mtzdumpInput.txt', 'w')
+            inFile.write('stats nbin 1\nend')
+            inFile.close()
+
+            # run mtzdump and parse output to find column labels
+            os.system('mtzdump hklin {} < mtzdumpInput.txt > mtzdump.tmp'.format(f))
+            output = open('mtzdump.tmp', 'r')
+            labelsFound, overallStatsFound = False, False
+            labels, overallStats = '', ''
+            for l in output.readlines():
+                if l.replace('\n', '') == '':
+                    continue
+
+                if '* Column Types :' in l:
+                    labelsFound = False
+                if labelsFound:
+                    labels = l.split()
+                if '* Column Labels :' in l:
+                    labelsFound = True
+                    continue
+
+                if 'OVERALL FILE STATISTICS' in l:
+                    overallStatsFound = True
+                if 'LIST OF REFLECTIONS' in l:
+                    break
+                if overallStatsFound:
+                    overallStats += l
+
+            output.close()
+            os.remove('mtzdump.tmp')
+
+            self.mtzContents[f] = {'labels': labels, 'stats': overallStats}
+
+    def compareMtzFiles(self):
+
+        # compare the initial dataset with later datasets to check that
+        # all mtz files are unique. If a low and high dose mtz are identical
+        # this will cause FFT to crash later when calculating a Fo-Fo map
+
+        # currently the check is only made for difference maps
+        if self.densMapType != 'DIFF':
+            return
+
+        for f in self.mtz1.split(','):
+            for f2 in self.mtz2.split(','):
+                if self.mtzContents[f]['stats'] == self.mtzContents[f2]['stats']:
+                    self.writeError(
+                        text='Initial mtz "{}" and later mtz "{}" '.format(f, f2) +
+                        'appear to contain identical sets of reflections. ' +
+                        'This not allowed since it will cause FFT to fail ' +
+                        'when calculating a difference map. '
+                        'This decision was made by inspecting the overall ' +
+                        'statistics output of MTZDUMP.')
 
     def checkFileExists(self,
                         fileName=''):
 
-        # check that file exists and return bool
+        # check that file exists and write a fatal error if not
 
-        if os.path.isfile(fileName) and os.access(fileName, os.R_OK):
-            return True
-        else:
+        if not os.path.isfile(fileName) or not os.access(fileName, os.R_OK):
             self.writeError(
                 text='File "{}" could not be located..'.format(fileName))
-            return False
 
     def checkCorrectFileExtension(self,
                                   fileName='', fileType='.pdb',
@@ -964,8 +915,6 @@ class processFiles():
                 text='"{}" input file input must end '.format(property) +
                      'with extension  "{}". '.format(fileType) +
                      'Currently file is set as "{}".'.format(fileName))
-            return False
-        return True
 
     def checkForMultipleDatasets(self):
 

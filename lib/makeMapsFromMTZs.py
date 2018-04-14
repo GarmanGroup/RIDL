@@ -656,7 +656,7 @@ class makeMapsFromMTZs():
 
         pdbin = open(self.reorderedPDBFile, 'r')
         for line in pdbin.readlines():
-            if line.split()[0] == 'CRYST1':
+            if line.startswith('CRYST1'):
                 self.spaceGroup = line[55:66].replace(' ', '')
                 self.runLog.writeToLog(
                     str='Retrieving space group from file:' +

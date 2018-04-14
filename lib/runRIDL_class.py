@@ -63,13 +63,11 @@ class process():
         self.titleCaption()
         self.info()
 
-        pro = processFiles(
+        processFiles(
             inputFile=self.inputFile, makeMaps=self.makeMaps,
             makeMetrics=self.makeMetrics, makeSummaryFile=self.makeSummaryFile,
             cleanFinalFiles=self.cleanUpFinalFiles, logFileObj=self.logFile,
             keepMapDir=self.keepMapDir)
-
-        return pro.jobSuccess
 
     def printInputFile(self):
 
