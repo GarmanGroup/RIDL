@@ -109,8 +109,7 @@ from runRIDL_class import process
 
 # create a template input file to be filled in manually by the user
 if args.template != 0:
-    p = process(run=False,
-                inputFile='templateInputFile.txt')
+    p = process(inputFile='templateInputFile.txt')
     p.writeTemplateInputFile(numHigherDoseDatasets=args.template)
     print('Can use -j command for help on how to ' +
           'complete the generated input file')
@@ -118,7 +117,7 @@ if args.template != 0:
 
 # call the help information
 if args.inputFileHelp:
-    p = process(run=False)
+    p = process()
     p.howToWriteInputFile()
 
 inputFileToUse = args.inputFile
@@ -158,3 +157,4 @@ if args.makeMaps or args.calcMetrics or args.output:
                 printOutput=args.suppressOutput,
                 makeSummaryFile=args.output,
                 keepMapDir=not args.removeMaps)
+    p.run()

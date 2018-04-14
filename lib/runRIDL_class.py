@@ -15,8 +15,7 @@ class process():
     # per-atom damage metrics) can be performed
 
     def __init__(self,
-                 inputFile='fullInput.txt',
-                 run=True, makeMaps=True,
+                 inputFile='fullInput.txt', makeMaps=True,
                  makeMetrics=False, cleanUpFinalFiles=False,
                  printverboseOutput=False, printOutput=True,
                  makeSummaryFile=False, keepMapDir=True):
@@ -29,9 +28,6 @@ class process():
         self.printverboseOutput = printverboseOutput
         self.printOutput = printOutput
         self.keepMapDir = keepMapDir
-
-        if run:
-            self.run()
 
     def setInputFile(self, name):
 
@@ -161,7 +157,7 @@ MAPINFO
         # command line (date and email)
 
         txt = 'date: {}\n'.format(time.strftime("%c")) +\
-              'email queries to charles.bury@dtc.ox.ac.uk\n'
+              'email queries to csbury@me.com\n'
         self.logFile.writeToLog(str=txt)
 
     def quickParseInputFile(self):
