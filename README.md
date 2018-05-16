@@ -4,7 +4,11 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1043864.svg)](https://doi.org/10.5281/zenodo.1043864)
 
 A program to calculate per-atom metrics to describe electron density change between **complete diffraction datasets** collected at **successive doses**. 
-It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data.
+It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data. It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data.
+
+### New!:
+There is a full wiki available for RIDL: https://github.com/charliebury/RIDL/wiki
+
 
 ## Queries and feedback
 
