@@ -6,6 +6,11 @@
 A program to calculate per-atom metrics to describe electron density change between **complete diffraction datasets** collected at **successive doses**. 
 It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data.
 
+**New publication online now:**
+- Bury CS and Garman EF. (2018) *RIDL*: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3):952-962.
+
+Paper available here: https://onlinelibrary.wiley.com/doi/abs/10.1107/S1600576718005241.
+
 ## Queries and feedback
 
 - Please email *csbury@me.com*
@@ -229,7 +234,7 @@ SyntaxError: Missing parentheses in call to 'print'
 
 A **new** methods paper for the program is available:
 
-- Bury CS and Garman EF. (2018) `RIDL`: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3):952-962.
+- Bury CS and Garman EF. (2018) *RIDL*: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3):952-962.
 
 Paper available here: https://onlinelibrary.wiley.com/doi/abs/10.1107/S1600576718005241.
 
@@ -239,19 +244,19 @@ Please cite this paper as the primary reference for RIDL
 
 The formulation of the *D<sub>loss</sub>* metric can be found at:
 
-- Bury CS, et al. (2016) RNA protects a nucleoprotein complex against radiation damage. Acta Crystallogr Sect D Struct Biol 72(5):648–657.
+- Bury CS, et al. (2016) RNA protects a nucleoprotein complex against radiation damage. Acta Crystallogr Sect D Struct Biol 72(5): 648–657.
 
 An accompanying scientific commentary is presented in the same journal issue:
 
-- Dauter Z (2016) Objective evaluation of radiation damage in a nucleoprotein complex. Acta Crystallogr Sect D Struct Biol 72(5):601–602.
+- Dauter Z (2016) Objective evaluation of radiation damage in a nucleoprotein complex. Acta Crystallogr Sect D Struct Biol 72(5): 601–602.
 
 The application of *D<sub>loss</sub>* to investigate MX damage series previously deposited in the PDB can be found at:
 
-- Bury CS, Carmichael I, Garman EF (2017) OH cleavage from tyrosine: debunking a myth. J Synchrotron Radiat 24(1):1–12.
+- Bury CS, Carmichael I, Garman EF (2017) OH cleavage from tyrosine: debunking a myth. J Synchrotron Radiat 24(1): 1–12.
 
 The RIDL pipeline has a strong dependence on the CCP4 suite of programs to achieve its task (including use of CAD, SCALEIT, FFT, SFALL, PDBCUR, MAPMASK):
 
-- Winn MD, et al. (2011) Overview of the CCP4 suite and current developments. Acta Crystallogr D Biol Crystallogr 67(Pt 4):235–42.
+- Winn MD, et al. (2011) Overview of the CCP4 suite and current developments. Acta Crystallogr D Biol Crystallogr 67(Pt 4): 235–42.
 
 
 
