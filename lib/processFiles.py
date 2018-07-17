@@ -8,6 +8,7 @@ from errors import error
 import difflib
 import shutil
 import os
+import sys
 
 
 class processFiles():
@@ -53,6 +54,7 @@ class processFiles():
         self.logFile.writeToLog(str='\n**** INPUT FILE PROCESSING ****\n')
 
         self.readMainInputFile()
+        self.checkForRelFilePaths()
         self.checkNonNecessaryInputs()
         self.checkAllRequiredInputsFound()
         self.checkWhetherParamsConsistent()
@@ -322,6 +324,23 @@ class processFiles():
             inputPart = ''.join(line.split()[1:])
             setattr(self, line.split()[0], inputPart)
         fileIn.close()
+
+
+    def checkForRelFilePaths(self):
+
+        #  convert any relative file paths (with ./) to
+        # absolute file paths
+
+        file_params = ['mtz1', 'pdb1', 'pdb1', 'mtz2', 'mtz3']
+        for file_param in file_params:
+            current_val = getattr(self, file_param)
+
+            for c in current_val.split(','):
+                if not os.path.isabs(c):
+                    self.writeError(
+                        text='Relative file paths have been found in input ' +
+                        'file. Please convert to absolute paths to continue')
+
 
     def checkAllRequiredInputsFound(self):
 

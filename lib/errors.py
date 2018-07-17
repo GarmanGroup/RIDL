@@ -1,5 +1,6 @@
 import sys
 
+CONTACT_EMAIL = 'csbury@me.com'
 
 class error():
 
@@ -34,7 +35,7 @@ class error():
 
         self.printError(
             message='\n****ERROR!****\n{}\n\nPlease contact '.format(message) +
-                    'charles.bury@dtc.ox.ac.uk for queries regarding this ' +
+                    '{} for queries regarding this '.format(CONTACT_EMAIL) +
                     'failure\n--->Terminating script...\n**************\n',
             killRun=True)
 
