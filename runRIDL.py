@@ -1,5 +1,7 @@
 import sys
-sys.path.insert(0, './lib')
+import os
+FULL_PATH = os.path.abspath(os.path.dirname(sys.argv[0]))
+sys.path.insert(0, FULL_PATH+'/lib')
 from checkDependencies import checkDependencies
 import argparse
 import sys
