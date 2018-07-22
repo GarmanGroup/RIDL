@@ -67,7 +67,7 @@ class processFiles():
         try:
             self.multiDatasets
         except AttributeError:
-            print 'Unexpected error'
+            print('Unexpected error')
             return
         if self.multiDatasets:
             try:
@@ -75,7 +75,7 @@ class processFiles():
                     self.repeatedFile1InputsUsed
                 self.repeatedPhaseInputsUsed
             except AttributeError:
-                print 'Unexpected error'
+                print('Unexpected error')
                 return
 
         self.checkCorrectInputFormats()
@@ -325,7 +325,6 @@ class processFiles():
             setattr(self, line.split()[0], inputPart)
         fileIn.close()
 
-
     def checkForRelFilePaths(self):
 
         #  convert any relative file paths (with ./) to
@@ -340,7 +339,6 @@ class processFiles():
                     self.writeError(
                         text='Relative file paths have been found in input ' +
                         'file. Please convert to absolute paths to continue')
-
 
     def checkAllRequiredInputsFound(self):
 

@@ -2,6 +2,8 @@ import sys
 
 CONTACT_EMAIL = 'csbury@me.com'
 
+CONTACT_EMAIL = 'csbury@me.com'
+
 class error():
 
     # a class used to print error information to command line

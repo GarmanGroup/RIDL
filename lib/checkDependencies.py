@@ -12,7 +12,7 @@ class checkDependencies():
                              'shutil', 'numpy', 'imp', 'matplotlib',
                              'math', 'scipy', 'string',
                              'pandas', 'operator', 'warnings',
-                             'struct', 'mmap', 'random', 'seaborn']
+                             'struct', 'mmap', 'random', 'seaborn', 'future']
 
         if optionals:
             pythonPackageList += ['numexpr']
