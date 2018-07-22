@@ -16,6 +16,11 @@ b) New publication online now:
 
 c) Python environments for running RIDL (2.7 and 3.6 supported). See section below
 
+**New publication online now:**
+- Bury CS and Garman EF. (2018) *RIDL*: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3):952-962.
+
+Paper available here: https://onlinelibrary.wiley.com/doi/abs/10.1107/S1600576718005241.
+
 ## Queries and feedback
 
 - Please email *csbury@me.com*
@@ -260,7 +265,6 @@ SyntaxError: Missing parentheses in call to 'print'
 
 - The input file for RIDL now **must** contain **only** absolute paths to file. Relative paths are now not permitted.
   
-
 ## Citing when using the scripts
 
 A **new** methods paper for the program is available:
