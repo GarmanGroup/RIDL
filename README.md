@@ -26,6 +26,7 @@ Paper available here: https://onlinelibrary.wiley.com/doi/abs/10.1107/S160057671
 - [How to run in brief](#how-to-run-in-brief)
 - [A brief background](#a-brief-background)
 - [Dependencies](#dependencies)
+- [Python environments for running RIDL](#Python-environments-for-running-RIDL)
 - [Writing the RIDL input file](#writing-the-ridl-input-file)
 - [Running RIDL from command line](#running-ridl-from-command-line)
 - [Inspecting the output](#inspecting-the-output)
@@ -89,6 +90,25 @@ The scripts require the following to run:
 In order to check whether the RIDL dependencies are accessible to RIDL, use:
 
 ```python runRIDL.py --dependencies```
+
+
+If you have difficulties manually installing individual python packages, consider using a custom python environment below.
+
+
+## Python environments for running RIDL
+
+If you have an Anaconda distribution of python installed (https://www.anaconda.com/download/#macos) then you can set up a custom python environment including all python packages required for running RIDL. 
+
+To set up a new environment from the command line, run:
+
+```conda env create -f environment-RIDL-2.7.yml -n <new_env_name>```
+
+where ```<new_env_name>``` should be changed to whatever you would like to call your new environment. To then activate this particular environment, call:
+
+```source activate <new_env_name>```
+
+More information on how to handle python environments can he found here: https://conda.io/docs/user-guide/tasks/manage-environments.html
+
 
 ## What input data are needed?
 
