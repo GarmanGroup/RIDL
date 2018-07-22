@@ -1,6 +1,5 @@
 from __future__ import division
 from vxlsPerAtmAnalysisPlots import plotVxlsPerAtm, plotDensForAtm
-from perAtomClusterAnalysis import perAtomXYZAnalysis
 from densityAnalysisPlots import edens_scatter
 from PDBFileManipulation import PDBtoList
 from readMap import readMap
@@ -282,8 +281,13 @@ class maps2DensMetrics(object):
 
         self.vxlsPerAtom = vxlDic
 
-        # The following is not essential for run (TODO maybe omit)
+        # The following is not essential for run and should not be called by default
         if self.doXYZanalysis:
+
+            # call this extra module that is requried for XYZ analysis
+            from perAtomClusterAnalysis import perAtomXYZAnalysis
+
+
             xyz_list = self.densmap.getVoxXYZ(
                 self.atomIndices, coordType='fractional')
 
