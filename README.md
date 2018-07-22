@@ -1,6 +1,7 @@
 # RIDL: Radiation-Induced Density Loss
 
-[![python2](https://img.shields.io/badge/python-2.7-blue.svg)](https://badge.fury.io/py/scikit-learn)
+[![python 2.7](https://img.shields.io/badge/python-2.7-blue.svg)](https://badge.fury.io/py/scikit-learn)
+[![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1043864.svg)](https://doi.org/10.5281/zenodo.1043864)
 
 A program to calculate per-atom metrics to describe electron density change between **complete diffraction datasets** collected at **successive doses**. 
@@ -102,6 +103,12 @@ If you have an Anaconda distribution of python installed (https://www.anaconda.c
 To set up a new environment from the command line, run:
 
 ```conda env create -f environment-RIDL-2.7.yml -n <new_env_name>```
+
+for a *python 2.7* environment, or:
+
+```conda env create -f environment-RIDL-3.6.yml -n <new_env_name>```
+
+for a *python 3.6* environment.
 
 where ```<new_env_name>``` should be changed to whatever you would like to call your new environment. To then activate this particular environment, call:
 
