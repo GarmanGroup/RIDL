@@ -124,6 +124,8 @@ More information on how to handle python environments can he found here: https:/
 ## What input data are needed?
 
 #### (A) Default mode
+##### It is highly recommended to use this mode
+
  - The **default** input data required for RIDL are:
     - a PDB-format coordinate file containing a refined structure for the first dose in the damage series 
 
