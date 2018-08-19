@@ -110,7 +110,6 @@ class processFiles():
                 self.getCurrentInputParams(jobNumber=i)
                 self.runMapGenerationPipeline(firstTimeRun)
 
-
     def runMapGenerationPipeline(self,
                                  firstTimeRun=True):
 
@@ -325,7 +324,6 @@ class processFiles():
             setattr(self, line.split()[0], inputPart)
         fileIn.close()
 
-
     def checkForRelFilePaths(self):
 
         #  convert any relative file paths (with ./) to
@@ -340,7 +338,6 @@ class processFiles():
                     self.writeError(
                         text='Relative file paths have been found in input ' +
                         'file. Please convert to absolute paths to continue')
-
 
     def checkAllRequiredInputsFound(self):
 

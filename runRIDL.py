@@ -5,6 +5,7 @@ sys.path.insert(0, FULL_PATH+'/lib')
 from checkDependencies import checkDependencies
 import argparse
 import sys
+from errors import error
 
 
 # an outer layer for the pipeline scripts. This allows
@@ -124,13 +125,19 @@ if args.inputFileHelp:
 
 inputFileToUse = args.inputFile
 
+# check that the specified input file exists here
+if inputFileToUse is not None:
+    if not os.path.exists(inputFileToUse):
+        error(text='input file "{}" not found'.format(inputFileToUse),
+              type='error')
+
 # decide whether rigid body refinement must be run
 # first to generate higher dose coordinate models
 if args.performRigidBodyRefine:
     if inputFileToUse is None:
-        print('\nRIDL run error:\nMust specify input file with ' +
-              '-i tag to perform rigid body refinement job')
-        sys.exit()
+        error(text='Must specify input file with ' +
+              '-i tag to perform rigid body refinement job',
+              type='error')
     else:
         r = reRefine(inputFile=inputFileToUse)
         inputFileToUse = r.newInputFile
