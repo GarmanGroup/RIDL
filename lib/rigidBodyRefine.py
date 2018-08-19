@@ -33,9 +33,9 @@ class reRefine():
             with open(self.outputLogfile, 'r') as log:
                 for ln in log.readlines():
                     if 'Refmac:  Error' in ln:
-                        error(text='Refmac did not run to completion. ' +
+                        error(text='refmac did not run to completion. ' +
                                    'Please refer to the log file for ' +
-                                   'Refmac "{}"'.format(self.outputLogfile))
+                                   'refmac "{}"'.format(self.outputLogfile))
 
             # check if required files from refinement are present
             self.checkFileExists(self.refmacPDBout)
@@ -69,6 +69,7 @@ class reRefine():
         print('--> checking that all files for rigid-body refinement are present')
         self.checkFileExists(str(pdbIn))
         self.checkFileExists(str(mtzIn))
+        print('--> success')
 
         self.jobName = 'refmac'
         if refineType == 'RIGID':
@@ -150,6 +151,7 @@ class reRefine():
             self.inputDir, fileInd)
 
         # run REFMAC job
+        print('--> running refmac')
         self.runCCP4program()
 
     def runCCP4program(self):
@@ -248,6 +250,10 @@ class reRefine():
             else:
                 ln = l
             fileOut.write(ln)
+
+        # explicitly must specify the following to use each new pdb file
+        fileOut.write('\nuseLaterCellDims true')
+
         fileIn.close()
         fileOut.close()
 

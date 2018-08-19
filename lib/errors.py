@@ -1,8 +1,7 @@
 import sys
 
-CONTACT_EMAIL = 'csbury@me.com'
+CONTACT_EMAIL = 'ridl.help@gmail.com'
 
-CONTACT_EMAIL = 'csbury@me.com'
 
 class error():
 

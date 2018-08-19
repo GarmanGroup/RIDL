@@ -222,7 +222,7 @@ class calculateMetrics(object):
                 maps2DensMets.atomMapIn = self.atomMapList[i]
                 maps2DensMets.pdbName = self.pdbFileList[i]
                 if self.inclFCmets:
-                    self.maps2DensMets.FCmapIn = self.FcMapList[i]
+                    maps2DensMets.FCmapIn = self.FcMapList[i]
                 # if new maps per dataset, need to reread them
                 mapsAlreadyRead = False
 
