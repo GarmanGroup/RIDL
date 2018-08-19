@@ -21,7 +21,7 @@ c) Python environments for running RIDL (2.7 and 3.6 supported). See section bel
 
 ## Queries and feedback
 
-- Please email *csbury@me.com*
+- Please email *ridl.help@gmail.com*
 
 - Let me know your thoughts so that I can improve the program: https://goo.gl/forms/9aRrEwT1TUUqLroB2 (this is an anonymous form)
 
