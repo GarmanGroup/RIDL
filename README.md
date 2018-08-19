@@ -131,9 +131,13 @@ More information on how to handle python environments can he found here: https:/
 
     - a series of MTZ-format structure factor files (e.g. *dataset1.mtz*, *dataset2.mtz*, ...) containing merged & scaled data
 
+![RIDLcsvFiles](images/ridl-files-explanation-singlePDB.png)
+
 #### (B) Non-standard mode
 ##### Disclaimer: this corresponds to an old method for running RIDL and is non-recommended
  - Alternatively, a **separate** PDB-format coordinate file can be supplied per dataset using the `pdb2` input line (see *"Writing the RIDL input file"* section below). In addition, the `useLaterCellDims` input line must be specified in the input file and set to `true` for this to take effect. 
+
+ ![RIDLcsvFiles](images/ridl-files-explanation-multiplePDBs.png)
  
  - In this mode, RIDL will calculate each *F<sub>obs,n</sub> - F<sub>obs,1</sub>* difference map over the asymmetric unit dimensions for the dataset *n* supplied coordinate file, and will sample the density in the local region around each atom as defined in the higher dose dataset.
 
