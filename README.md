@@ -14,16 +14,14 @@ a) There is a full wiki available for RIDL: https://github.com/charliebury/RIDL/
 b) New publication online now:
 - Bury CS and Garman EF. (2018) *RIDL*: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3): 952-962.
 
+Paper available here: https://onlinelibrary.wiley.com/doi/abs/10.1107/S1600576718005241.
+
 c) Python environments for running RIDL (2.7 and 3.6 supported). See section below
 
-**New publication online now:**
-- Bury CS and Garman EF. (2018) *RIDL*: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3):952-962.
-
-Paper available here: https://onlinelibrary.wiley.com/doi/abs/10.1107/S1600576718005241.
 
 ## Queries and feedback
 
-- Please email *csbury@me.com*
+- Please email *ridl.help@gmail.com*
 
 - Let me know your thoughts so that I can improve the program: https://goo.gl/forms/9aRrEwT1TUUqLroB2 (this is an anonymous form)
 
@@ -126,22 +124,28 @@ More information on how to handle python environments can he found here: https:/
 ## What input data are needed?
 
 #### (A) Default mode
+##### It is highly recommended to use this mode
+
  - The **default** input data required for RIDL are:
     - a PDB-format coordinate file containing a refined structure for the first dose in the damage series 
 
     - a series of MTZ-format structure factor files (e.g. *dataset1.mtz*, *dataset2.mtz*, ...) containing merged & scaled data
 
-#### (B) Non-standard mode (the old method)
-- **Note:** This mode is not currently recommended
- - Alternatively, a **separate** PDB-format coordinate file can be supplied per dataset. In this mode, RIDL will calculate each *F<sub>obs,n</sub> - F<sub>obs,1</sub>* difference map over the asymmetric unit dimensions for the dataset *n* file, and will sample the density in the local region around each atom as defined in the higher dose dataset.
+#### (B) Non-standard mode
+##### Disclaimer: this corresponds to an old method for running RIDL and is non-recommended
+ - Alternatively, a **separate** PDB-format coordinate file can be supplied per dataset using the `pdb2` input line (see *"Writing the RIDL input file"* section below). In addition, the `useLaterCellDims` input line must be specified in the input file and set to `true` for this to take effect. 
+ 
+ - In this mode, RIDL will calculate each *F<sub>obs,n</sub> - F<sub>obs,1</sub>* difference map over the asymmetric unit dimensions for the dataset *n* supplied coordinate file, and will sample the density in the local region around each atom as defined in the higher dose dataset.
 
  - It is **highly recommended** that the coordinate models supplied for the higher dose datasets (*n* > 1) contain the identical atom/residue labelling schemes and no significant conformational changes relative to the first dataset (n = 1). Otherwise, large atomic displacements between different datasets may result in incomparable regions of density space being sampled. In practice this can be achieved by running a rigid body refinement job (through either *phenix.refine* or *refmac*) using the refined coordiate model for the first dataset with *F<sub>obs</sub>* for each higher dose dataset (n > 1) in turn.
 
-    - This preprocessing can be run externally by the user prior to using RIDL, in which case these higher dose coordinate models must be specified in the RIDL input file - see the section "*Writing the RIDL input file*" for details on how to write this input file.
+- This preprocessing can be run externally by the user prior to using RIDL, in which case these higher dose coordinate models must be specified in the RIDL input file - see the section "*Writing the RIDL input file*" for details on how to write this input file.
 
-    - Alternatively RIDL can perform this step itself with the command: ```python runRIDL.py -i inputFile.txt --rigid```. Here RIDL will retrieve the first dataset coordinate file and later dataset structure factor information from the RIDL input file *inputFile.txt*, and perform 10 cycles of rigid body refinement through REFMAC. Upon completion, the above command will generate an updated RIDL input file containing additional information for the newly generated higher dose coordinate models, in order to then run RIDL. Use this new RIDL input file for the following sections.
+- Alternatively RIDL can perform this preprocessing step itself with the command: ```python runRIDL.py -i inputFile.txt --rigid```. Here RIDL will retrieve the first dataset coordinate file and later dataset structure factor information from the RIDL input file *inputFile.txt*, and perform 10 cycles of rigid body refinement through REFMAC. Upon completion, the above command will generate an updated RIDL input file containing additional information for the newly generated higher dose coordinate models, in order to then run RIDL. Use this new RIDL input file for the following sections.
     
-    - If running ```python runRIDL.py -i inputFile.txt --rigid``` to generate separate higher dose dataset coordinate models through RIDL, the `pdb2` input file information (see section below) can be omitted, since this will be generated by RIDL itself and will be present in the new input file generated by RIDL in this step.
+- If running ```python runRIDL.py -i inputFile.txt --rigid``` to generate separate higher dose dataset coordinate models through RIDL, the `pdb2` input file information (see section below) can be omitted, since this will be generated by RIDL itself and will be present in the new input file generated by RIDL in this step.
+
+- **Tip:** By running ```python runRIDL.py -i inputFile.txt --rigid -pco```, the user can perform rigid body refinement and then immediately proceed to the calculations of per-atom density loss metrics using the newly generated `pdb2` coordinate file information.
 
 ## Writing the RIDL input file
 
@@ -198,12 +202,13 @@ Property | Description
 `mtz2` | Paths to each later dataset *.mtz* file.  (comma-separated list) **(absolute path only)**
 `mtzlabels2` | Labelling convention for the *Fobs* and *SIGFobs* columns in each later dataset. (comma-separated list)
 `mtzSIGFPlabel2` | **(optional)** Specify a separate labelling convention for the *SIGFobs* column in each later dataset (comma-separated list)
-`pdb2` | **(optional)** the full path to later dataset *.pdb* files. **Note:** only to be supplied for a non-standard run mode (see the *"What input data are needed?"* section above). **(absolute path only)**
+`pdb2` | **(optional)** the full path to later dataset *.pdb* files. **Note:** only to be supplied for a non-standard run mode (see the *"What input data are needed?"* section above). **Note 2:** this will only take effect if the `useLaterCellDims` input is set to `true` (see below) **(absolute path only)**
 `dose2` | The calculated dose for the each later dataset. If doses are unknown, set this input to `NOTCALCULATED`
 `name3` | Name of the dataset from which phases are taken
 `mtz3` | Path to the *.mtz* file containing a phase column to be used. As in the above example, it is recommended to use the first dataset *.mtz*. **(absolute path only)**
 `phaseLabel` | The phase column label in file specified by `mtz3`
 `FcalcLabel` | The calculated structure amplitude column label in file specified by `mtz3`
+`useLaterCellDims` | **(optional)** takes values *true* or *false*. Default is to exclude, and only to be supplied for a non-standard run mode (see the *"What input data are needed?"* section above). This is only suitable when `pdb2` information has been provided (see corresponding row above). In order to use `pdb2` coordinates to specify per-atom search radii, set to *true*.
 
 ## Running RIDL from command line
 
@@ -227,7 +232,7 @@ Several optional command line flags also exist:
 
 - `-r`: **(optional)** can be used to prevent the atom-tagged map generated by SFALL from being deleted following a full run of RIDL. If not included, this map is removed.
 
-- `--rigid`: **(optional)** can be used to run to generate higher dose dataset coordinate models through a scripted REFMAC rigid body refine job (see section "What data are needed to run RIDL?" above).
+- `--rigid`: **(optional)** can be used to run to generate higher dose dataset coordinate models through a scripted REFMAC rigid body refine job (see section "What data are needed to run RIDL?" above). **Note:** this is only suitable if following the `non-standard` mode of using RIDL (see *"What input data are needed?"* section above).
 
 - `--remove_maps`: **(optional)** can be used to used remove the generated RIDL-maps/ directory that is generated at runtime. This may be useful if RIDL is to be run repeatedly and storage of many generated .map files becomes a memory burden.
 
