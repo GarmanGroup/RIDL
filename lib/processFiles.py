@@ -67,7 +67,7 @@ class processFiles():
         try:
             self.multiDatasets
         except AttributeError:
-            print 'Unexpected error'
+            print('Unexpected error')
             return
         if self.multiDatasets:
             try:
@@ -75,7 +75,7 @@ class processFiles():
                     self.repeatedFile1InputsUsed
                 self.repeatedPhaseInputsUsed
             except AttributeError:
-                print 'Unexpected error'
+                print('Unexpected error')
                 return
 
         self.checkCorrectInputFormats()

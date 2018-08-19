@@ -1,10 +1,20 @@
 # RIDL: Radiation-Induced Density Loss
 
-[![python2](https://img.shields.io/badge/python-2.7-blue.svg)](https://badge.fury.io/py/scikit-learn)
+[![python 2.7](https://img.shields.io/badge/python-2.7-blue.svg)](https://badge.fury.io/py/scikit-learn)
+[![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1043864.svg)](https://doi.org/10.5281/zenodo.1043864)
 
 A program to calculate per-atom metrics to describe electron density change between **complete diffraction datasets** collected at **successive doses**. 
-It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data.
+It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data. It has been primarily developed as a high-throughput tool for site-specific radiation damage analysis, however is also applicable for tracking time-dependent changes in time-resolved crystallographic data.
+
+### New!:
+
+a) There is a full wiki available for RIDL: https://github.com/charliebury/RIDL/wiki
+
+b) New publication online now:
+- Bury CS and Garman EF. (2018) *RIDL*: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3): 952-962.
+
+c) Python environments for running RIDL (2.7 and 3.6 supported). See section below
 
 **New publication online now:**
 - Bury CS and Garman EF. (2018) *RIDL*: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3):952-962.
@@ -23,6 +33,7 @@ Paper available here: https://onlinelibrary.wiley.com/doi/abs/10.1107/S160057671
 - [How to run in brief](#how-to-run-in-brief)
 - [A brief background](#a-brief-background)
 - [Dependencies](#dependencies)
+- [Python environments for running RIDL](#Python-environments-for-running-RIDL)
 - [Writing the RIDL input file](#writing-the-ridl-input-file)
 - [Running RIDL from command line](#running-ridl-from-command-line)
 - [Inspecting the output](#inspecting-the-output)
@@ -86,6 +97,31 @@ The scripts require the following to run:
 In order to check whether the RIDL dependencies are accessible to RIDL, use:
 
 ```python runRIDL.py --dependencies```
+
+
+If you have difficulties manually installing individual python packages, consider using a custom python environment below.
+
+
+## Python environments for running RIDL
+
+If you have an Anaconda distribution of python installed (https://www.anaconda.com/download/#macos) then you can set up a custom python environment including all python packages required for running RIDL. 
+
+To set up a new environment from the command line, run:
+
+```conda env create -f environment-RIDL-2.7.yml -n <new_env_name>```
+
+for a *python 2.7* environment, or:
+
+```conda env create -f environment-RIDL-3.6.yml -n <new_env_name>```
+
+for a *python 3.6* environment.
+
+where ```<new_env_name>``` should be changed to whatever you would like to call your new environment. To then activate this particular environment, call:
+
+```source activate <new_env_name>```
+
+More information on how to handle python environments can he found here: https://conda.io/docs/user-guide/tasks/manage-environments.html
+
 
 ## What input data are needed?
 
@@ -159,10 +195,10 @@ Property | Description
 `RfreeFlag1` | Full *R<sub>free</sub>* column name as specified within the input *.mtz* file
 `dose1` | The calculated dose for the first dataset. It is recommended that *RADDOSE-3D* is run prior to RIDL (see *www.raddo.se*). If doses are unknown, set this input to `NOTCALCULATED`
 `name2` | Names to call each later dataset (see `name1`). (comma-separated list)
-`mtz2` | Paths to each later dataset *.mtz* file  (comma-separated list). **(absolute paths only)**
+`mtz2` | Paths to each later dataset *.mtz* file.  (comma-separated list) **(absolute path only)**
 `mtzlabels2` | Labelling convention for the *Fobs* and *SIGFobs* columns in each later dataset. (comma-separated list)
 `mtzSIGFPlabel2` | **(optional)** Specify a separate labelling convention for the *SIGFobs* column in each later dataset (comma-separated list)
-`pdb2` | **(optional)** the full path to later dataset *.pdb* files. **Note:** only to be supplied for a non-standard run mode (see the *"What input data are needed?"* section above). **(absolute paths only)**
+`pdb2` | **(optional)** the full path to later dataset *.pdb* files. **Note:** only to be supplied for a non-standard run mode (see the *"What input data are needed?"* section above). **(absolute path only)**
 `dose2` | The calculated dose for the each later dataset. If doses are unknown, set this input to `NOTCALCULATED`
 `name3` | Name of the dataset from which phases are taken
 `mtz3` | Path to the *.mtz* file containing a phase column to be used. As in the above example, it is recommended to use the first dataset *.mtz*. **(absolute path only)**
@@ -228,13 +264,12 @@ SyntaxError: Missing parentheses in call to 'print'
 - The ```summaryFile.html``` file  is currently only optimised to be compatible with Chrome and Safari web browsers. Support for Firefox in progress.
 
 - The input file for RIDL now **must** contain **only** absolute paths to file. Relative paths are now not permitted.
-
-
+  
 ## Citing when using the scripts
 
 A **new** methods paper for the program is available:
 
-- Bury CS and Garman EF. (2018) *RIDL*: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3):952-962.
+- Bury CS and Garman EF. (2018) *RIDL*: a tool to investigate radiation‐induced density loss. J Applied Crystallography 51(3): 952-962.
 
 Paper available here: https://onlinelibrary.wiley.com/doi/abs/10.1107/S1600576718005241.
 
